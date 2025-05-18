@@ -4,7 +4,9 @@
 import * as React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { AppEntity, EntityType, Dealer, Client, LoadixUnit, MethanisationSite } from '@/types';
-import { APIProvider, Map } from '@vis.gl/react-google-maps';
+// Removed direct import of APIProvider and Map as they will be dynamic
+// import { APIProvider, Map } from '@vis.gl/react-google-maps'; 
+import dynamic from 'next/dynamic';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +21,30 @@ import {
   Briefcase, Maximize, Minimize 
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image'; // Keep for sheet image for now
+// Image import is no longer needed for the main map
+// import Image from 'next/image';
+
+// Dynamically import Google Maps components individually
+const APIProvider = dynamic(() =>
+  import('@vis.gl/react-google-maps').then((mod) => mod.APIProvider),
+  { ssr: false }
+);
+
+const Map = dynamic(() =>
+  import('@vis.gl/react-google-maps').then((mod) => mod.Map),
+  { ssr: false }
+);
+
+const AdvancedMarker = dynamic(() =>
+  import('@vis.gl/react-google-maps').then((mod) => mod.AdvancedMarker),
+  { ssr: false }
+);
+
+const Pin = dynamic(() =>
+  import('@vis.gl/react-google-maps').then((mod) => mod.Pin),
+  { ssr: false }
+);
+
 
 interface MapClientContentProps {
   initialEntities: AppEntity[];
@@ -149,7 +174,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
       </div>
     );
   }
-
+  
   return (
     <APIProvider apiKey={googleMapsApiKey}>
       <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
@@ -158,7 +183,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           defaultZoom={5}
           gestureHandling={'greedy'}
           disableDefaultUI={false}
-          mapId="loadixManagerMap" // You can customize this ID
+          mapId="loadixManagerMap"
           style={{ width: '100%', height: '100%' }}
           className="opacity-90"
         >
@@ -175,7 +200,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Optional: hide results on blur
                 className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
               />
             </div>
@@ -297,21 +321,25 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     </CardContent>
                   </Card>
                   
-                  {selectedEntity.geoLocation && (
+                  {selectedEntity.geoLocation && selectedEntity.geoLocation.latitude && selectedEntity.geoLocation.longitude && (
                     <Card className="bg-background/50 border-border/40">
                       <CardHeader>
                           <CardTitle className="text-lg font-bebas-neue text-primary">Localisation (Mini-carte)</CardTitle>
                       </CardHeader>
                       <CardContent>
-                          <div className="h-40 w-full bg-muted rounded-md flex items-center justify-center">
-                          <Image
-                              src={`https://placehold.co/600x240.png?text=Carte+pour+${selectedEntity.name.replace(/\s/g, "+")}`}
-                              alt={`Carte pour ${selectedEntity.name}`}
-                              width={600}
-                              height={240}
-                              className="object-cover rounded-md h-full w-full"
-                              data-ai-hint="map location"
-                          />
+                          <div className="h-40 w-full rounded-md overflow-hidden">
+                            <Map
+                                center={{ lat: selectedEntity.geoLocation.latitude, lng: selectedEntity.geoLocation.longitude }}
+                                zoom={14}
+                                gestureHandling={'greedy'}
+                                disableDefaultUI={true}
+                                mapId="miniMapLoadix"
+                                style={{ width: '100%', height: '100%' }}
+                            >
+                                <AdvancedMarker position={{ lat: selectedEntity.geoLocation.latitude, lng: selectedEntity.geoLocation.longitude }}>
+                                    <Pin />
+                                </AdvancedMarker>
+                            </Map>
                           </div>
                       </CardContent>
                     </Card>
@@ -355,3 +383,4 @@ const TriangleAlert = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M12 17h.01" />
   </svg>
 );
+

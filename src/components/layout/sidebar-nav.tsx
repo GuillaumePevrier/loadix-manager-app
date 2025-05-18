@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench } from 'lucide-react'; // Changed Map to MapPin for variety
+import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench, Route } from 'lucide-react'; // Added Route for Alt Map
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' },
@@ -21,7 +21,8 @@ const navItems = [
     isGroup: true,
     subItems: [
         { href: '/service-records', label: 'Carnet de Santé', icon: FileText, tooltip: 'Carnets de Santé' },
-        { href: '/map', label: 'Carte Interactive', icon: MapPin, tooltip: 'Carte Interactive' }, // Changed icon
+        { href: '/map', label: 'Carte Interactive', icon: MapPin, tooltip: 'Carte Interactive' },
+        { href: '/alt-map', label: 'Carte Alt (Test)', icon: Route, tooltip: 'Carte Interactive Alternative' }, // Temporary link
     ],
   },
   {

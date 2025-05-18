@@ -10,34 +10,23 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Home, Users, Wrench, Map, FileText, Settings, BotMessageSquare, Truck, Factory, Building, UserCheck, Briefcase, BarChart3, List } from 'lucide-react';
+import { Map, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' }, // Changed Home to BarChart3 for Dashboard
+  { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' },
   { href: '/directory', label: 'Répertoire', icon: List, tooltip: 'Répertoire des Entités' },
-  {
-    label: 'Gestion Commerciale',
-    icon: Briefcase, 
-    isGroup: true,
-    subItems: [
-      { href: '/dealers', label: 'Concessionnaires', icon: Building, tooltip: 'Gestion Concessionnaires' },
-      { href: '/clients', label: 'Clients ManuRob', icon: Users, tooltip: 'Gestion Clients' },
-    ],
-  },
   {
     label: 'Gestion Technique',
     icon: Wrench,
     isGroup: true,
     subItems: [
-        { href: '/loadix-units', label: 'Engins LOADIX', icon: Truck, tooltip: 'Gestion Engins LOADIX' },
-        { href: '/sites', label: 'Sites Méthanisation', icon: Factory, tooltip: 'Gestion Sites' },
         { href: '/service-records', label: 'Carnet de Santé', icon: FileText, tooltip: 'Carnets de Santé' },
     ],
   },
   { href: '/map', label: 'Carte Interactive', icon: Map, tooltip: 'Carte Interactive' },
   {
     label: 'Outils Annexes',
-    icon: Settings, // Using Settings as a generic tool icon, could be Puzzle piece or other
+    icon: Settings,
     isGroup: true,
     subItems: [
         { href: '/forms/prevention-plan', label: 'Plan de Prévention', icon: FileText, tooltip: 'Formulaire Plan de Prévention' },
@@ -75,7 +64,7 @@ export default function SidebarNav() {
                     asChild
                     isActive={pathname === subItem.href || (pathname.startsWith(subItem.href + '/') && subItem.href !== '/')}
                     tooltip={subItem.tooltip}
-                    variant="default" 
+                    variant="default"
                     size="default"
                 >
                     <Link href={subItem.href}>
@@ -106,3 +95,4 @@ export default function SidebarNav() {
     </SidebarMenu>
   );
 }
+

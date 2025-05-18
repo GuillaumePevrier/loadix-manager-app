@@ -55,10 +55,13 @@ export async function generateMetadata({ params }: ItemPageProps, parent: Resolv
   };
 }
 
-const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | string[] | null; isLink?: boolean; isEmail?: boolean }> = ({ icon: Icon, label, value, isLink, isEmail }) => {
+const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | string[] | null | React.ReactNode; isLink?: boolean; isEmail?: boolean }> = ({ icon: Icon, label, value, isLink, isEmail }) => {
   if (!value) return null;
-  
+
   const renderValue = () => {
+    if (React.isValidElement(value)) {
+        return value;
+    }
     if (Array.isArray(value)) {
       return (
         <div className="flex flex-wrap gap-2">
@@ -66,13 +69,16 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
         </div>
       );
     }
-    if (isLink) {
-      return <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{value}</a>;
+    if (typeof value === 'string') {
+        if (isLink) {
+          return <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{value}</a>;
+        }
+        if (isEmail) {
+          return <a href={`mailto:${value}`} className="text-primary hover:underline break-all">{value}</a>;
+        }
+        return <span className="text-foreground/90 break-words">{value}</span>;
     }
-    if (isEmail) {
-      return <a href={`mailto:${value}`} className="text-primary hover:underline break-all">{value}</a>;
-    }
-    return <span className="text-foreground/90 break-words">{value}</span>;
+    return <span className="text-foreground/90 break-words">{String(value)}</span>;
   };
 
   return (
@@ -132,7 +138,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
   const entity = findEntityByIdAndType(entityType, entityId);
 
   if (!entity) {
-    notFound(); // This will render the not-found.tsx file if it exists, or a default Next.js 404 page.
+    notFound();
   }
 
   const entityTypeDisplay = getEntityTypeDisplayName(entity.entityType);
@@ -184,14 +190,13 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
             <div className="space-y-4">
               <h3 className="text-xl font-bebas-neue text-primary">Informations Générales</h3>
               <DetailItem icon={MapPin} label="Adresse" value={`${entity.address}, ${entity.postalCode} ${entity.city}, ${entity.country}`} />
-              {/* Placeholder for a small map or link to map */}
               {entity.geoLocation && (
                 <div className="h-48 w-full bg-muted rounded-md flex items-center justify-center">
-                   <Image 
-                    src={`https://placehold.co/600x300.png?text=Mini+Carte+pour+${entity.name.replace(/\s/g, "+")}`} 
-                    alt={`Carte pour ${entity.name}`} 
-                    width={600} 
-                    height={300} 
+                   <Image
+                    src={`https://placehold.co/600x300.png?text=Mini+Carte+pour+${entity.name.replace(/\s/g, "+")}`}
+                    alt={`Carte pour ${entity.name}`}
+                    width={600}
+                    height={300}
                     className="object-cover rounded-md h-full w-full"
                     data-ai-hint="map location"
                     />
@@ -203,9 +208,9 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
               {renderEntitySpecificDetails()}
             </div>
           </div>
-          
+
           <Separator className="my-6" />
-          
+
           <div>
             <h3 className="text-xl font-bebas-neue text-primary mb-3">Activité Récente (Placeholder)</h3>
             <p className="text-muted-foreground text-sm">
@@ -215,7 +220,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
 
         </CardContent>
         <CardFooter className="flex justify-end gap-2 pt-6">
-            <Button variant="outline" disabled>Modifier</Button>
+            <Button variant="outline">Modifier</Button> {/* Button is now enabled */}
             <Button variant="destructive" disabled>Supprimer</Button>
         </CardFooter>
       </Card>

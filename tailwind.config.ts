@@ -8,6 +8,11 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    fontFamily: {
+      sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
+      futura: ['var(--font-futura)', 'Impact', 'Charcoal', 'sans-serif'], // Fallbacks for Futura
+      'bebas-neue': ['var(--font-bebas-neue)', 'Impact', 'Charcoal', 'sans-serif'], // Fallbacks for Bebas Neue
+    },
   	extend: {
   		colors: {
   			background: 'hsl(var(--background))',

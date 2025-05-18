@@ -1,19 +1,6 @@
-
-import type { Metadata } from 'next';
-import AltMapClientContent from './alt-map-client-content';
-import { allMockEntities } from '@/lib/mock-data';
-
-export const metadata: Metadata = {
-  title: 'Alternative Carte Interactive | LOADIX Manager',
-  description: 'Test d\'affichage de la carte interactive avec une configuration alternative.',
-};
-
-export default function AltMapPage() {
-  const entities = allMockEntities; // We'll use these for potential filtering examples later
-
-  return (
-    <div className="h-full w-full">
-      <AltMapClientContent initialEntities={entities} />
-    </div>
-  );
+// This file is intentionally left empty as this page is no longer needed.
+// Its content has been merged into the main /map page.
+// You can safely delete this file from your project if desired.
+export default function AltMapPagePlaceholder() {
+  return null;
 }

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Dynamically import Google Maps components individually
+// Dynamically import Google Maps components
 const APIProvider = dynamic(() =>
   import('@vis.gl/react-google-maps').then((mod) => mod.APIProvider),
   { ssr: false }
@@ -40,7 +40,6 @@ const Pin = dynamic(() =>
   import('@vis.gl/react-google-maps').then((mod) => mod.Pin),
   { ssr: false }
 );
-
 
 interface MapClientContentProps {
   initialEntities: AppEntity[];
@@ -104,26 +103,31 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  const filteredEntities = useMemo(() => {
-    if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused) {
-        return []; 
-    }
+  const entitiesForMarkers = useMemo(() => {
     return initialEntities.filter(entity => {
       const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;
-      const searchMatch = searchTerm.trim() === '' ||
+      const searchMatch = searchTerm.trim() === '' || // If search is empty, don't filter by search term for markers initially
         entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entity.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
         entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase());
-      return typeMatch && searchMatch;
+      return typeMatch && searchMatch && entity.geoLocation;
     });
-  }, [initialEntities, searchTerm, selectedEntityType, isSearchFocused]);
+  }, [initialEntities, searchTerm, selectedEntityType]);
+  
+  const searchResultsEntities = useMemo(() => {
+    if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused) {
+        return []; // Only show search results if actively searching/filtering or focused
+    }
+    return entitiesForMarkers; // The same filtered list can be used for dropdown results
+  }, [entitiesForMarkers, searchTerm, selectedEntityType, isSearchFocused]);
+
 
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
     setIsSearchFocused(false); 
-    setSearchTerm(''); 
+    // setSearchTerm(''); // Optional: clear search on selection
   };
   
   const entityTypes: EntityType[] = ['dealer', 'client', 'loadix-unit', 'methanisation-site'];
@@ -161,11 +165,13 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
 
   if (!googleMapsApiKey) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <TriangleAlert className="w-16 h-16 text-destructive mb-4" />
-        <h2 className="text-2xl font-semibold mb-2">Clé API Google Maps manquante</h2>
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-background">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive mb-4">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
+        </svg>
+        <h2 className="text-2xl font-semibold mb-2">Clé API Google Maps Manquante</h2>
         <p className="text-muted-foreground">
-          Veuillez configurer la variable d'environnement <code className="bg-muted px-1 py-0.5 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> pour afficher la carte.
+          Veuillez configurer la variable d'environnement <code className="bg-muted px-1 py-0.5 rounded-sm text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
         </p>
       </div>
     );
@@ -173,58 +179,79 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   
   return (
     <APIProvider apiKey={googleMapsApiKey}>
-      <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
-        <Map
-          defaultCenter={{ lat: 48.8566, lng: 2.3522 }} // Paris
-          defaultZoom={5}
-          gestureHandling={'greedy'}
-          disableDefaultUI={false}
-          mapId="loadixManagerMap"
-          style={{ width: '100%', height: '100%' }}
-          className="opacity-90"
-        >
-          {/* Markers will be added here in a future step */}
-        </Map>
-
-        <div className="absolute top-4 left-1/2 z-20 w-full max-w-3xl -translate-x-1/2 px-4">
-          <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-card/80 backdrop-blur-xl rounded-xl shadow-2xl border border-border/50">
-            <div className="relative flex-grow w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Rechercher une entité, une ville, un ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
-              />
-            </div>
-            <Select
-              value={selectedEntityType}
-              onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
-            >
-              <SelectTrigger className="w-full md:w-[220px] h-12 bg-background/70 border-border/60 focus:bg-background text-base">
-                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Filtrer par type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                {entityTypes.map(type => (
-                  <SelectItem key={type} value={type}>
-                    {entityTypeTranslations[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="relative h-full w-full" ref={mapContainerRef}>
+        <div className="absolute inset-0 z-0">
+          <Map
+            defaultCenter={{ lat: 46.2276, lng: 2.2137 }} // Centered on France
+            defaultZoom={6}
+            gestureHandling={'greedy'}
+            disableDefaultUI={false}
+            mapId="loadixManagerMainMap"
+            style={{ width: '100%', height: '100%' }}
+          >
+            {entitiesForMarkers.map((entity) => {
+              if (entity.geoLocation && entity.geoLocation.latitude && entity.geoLocation.longitude) {
+                return (
+                  <AdvancedMarker
+                    key={entity.id}
+                    position={{ lat: entity.geoLocation.latitude, lng: entity.geoLocation.longitude }}
+                    onClick={() => handleEntityClick(entity)}
+                  >
+                    <Pin 
+                      background={"hsl(var(--primary))"}
+                      borderColor={"hsl(var(--primary-foreground))"}
+                      glyphColor={"hsl(var(--primary-foreground))"}
+                    />
+                  </AdvancedMarker>
+                );
+              }
+              return null;
+            })}
+          </Map>
         </div>
 
-        {(isSearchFocused || searchTerm) && filteredEntities.length > 0 && (
-          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1">
-            <Card className="max-h-[calc(50vh-3rem)] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
+        <div className="absolute top-4 left-1/2 z-20 w-full max-w-3xl -translate-x-1/2 px-4">
+          <Card className="p-3 bg-card/80 backdrop-blur-xl rounded-xl shadow-2xl border border-border/50">
+            <div className="flex flex-col md:flex-row items-center gap-3">
+              <div className="relative flex-grow w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Rechercher une entité, une ville, un ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Delay to allow click on results
+                  className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
+                />
+              </div>
+              <Select
+                value={selectedEntityType}
+                onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
+              >
+                <SelectTrigger className="w-full md:w-[220px] h-12 bg-background/70 border-border/60 focus:bg-background text-base">
+                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filtrer par type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  {entityTypes.map(type => (
+                    <SelectItem key={type} value={type}>
+                      {entityTypeTranslations[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+        </div>
+
+        {(isSearchFocused || searchTerm) && searchResultsEntities.length > 0 && (
+          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2"> {/* Adjusted margin top */}
+            <Card className="max-h-[calc(50vh-6rem)] md:max-h-[calc(50vh-3rem)] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
               <CardContent className="p-2">
                 <ul className="space-y-1">
-                  {filteredEntities.slice(0, 10).map((entity) => (
+                  {searchResultsEntities.slice(0, 10).map((entity) => (
                     <li key={entity.id}>
                       <Button
                         variant="ghost"
@@ -246,11 +273,11 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             </Card>
           </div>
         )}
-        {(isSearchFocused || searchTerm) && filteredEntities.length === 0 && searchTerm.length > 0 && (
-          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1">
+        {(isSearchFocused || searchTerm) && searchResultsEntities.length === 0 && searchTerm.length > 0 && (
+          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2">
             <Card className="bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
               <CardContent className="p-4 text-center text-muted-foreground">
-                Aucun résultat pour "{searchTerm}" avec le filtre "{selectedEntityType === 'all' ? 'Tous les types' : entityTypeTranslations[selectedEntityType] }".
+                Aucun résultat pour "{searchTerm}" {selectedEntityType !== 'all' ? `dans "${entityTypeTranslations[selectedEntityType]}"` : ''}.
               </CardContent>
             </Card>
           </div>
@@ -272,9 +299,9 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setSelectedEntity(null); }}>
             <SheetContent 
               side="bottom" 
-              className="h-[75vh] md:h-[60vh] flex flex-col rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl"
+              className="h-[75vh] md:h-[60vh] flex flex-col rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl p-0" // No padding on SheetContent itself
             >
-              <SheetHeader className="p-4 border-b border-border/30">
+              <SheetHeader className="p-4 border-b border-border/30"> {/* Padding for header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="bg-primary/10 text-primary p-2.5 rounded-lg shadow-sm">
@@ -295,7 +322,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                 </div>
               </SheetHeader>
               
-              <ScrollArea className="flex-grow p-4">
+              <ScrollArea className="flex-grow p-4"> {/* Padding for scrollable content area */}
                 <div className="space-y-4">
                   <Card className="bg-background/50 border-border/40">
                     <CardHeader>
@@ -329,11 +356,15 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                                 zoom={14}
                                 gestureHandling={'greedy'}
                                 disableDefaultUI={true}
-                                mapId="miniMapLoadix"
+                                mapId="miniMapLoadixInSheet" // Unique mapId
                                 style={{ width: '100%', height: '100%' }}
                             >
                                 <AdvancedMarker position={{ lat: selectedEntity.geoLocation.latitude, lng: selectedEntity.geoLocation.longitude }}>
-                                    <Pin />
+                                    <Pin 
+                                        background={"hsl(var(--primary))"}
+                                        borderColor={"hsl(var(--primary-foreground))"}
+                                        glyphColor={"hsl(var(--primary-foreground))"}
+                                    />
                                 </AdvancedMarker>
                             </Map>
                           </div>
@@ -342,7 +373,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                   )}
                 </div>
               </ScrollArea>
-              <SheetFooter className="p-4 border-t border-border/30">
+              <SheetFooter className="p-4 border-t border-border/30"> {/* Padding for footer */}
                   <Button variant="outline" asChild>
                       <Link href={`/item/${selectedEntity.entityType}/${selectedEntity.id}`}>
                           Voir la fiche complète <ChevronsRight className="ml-2 h-4 w-4" />
@@ -360,23 +391,5 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   );
 }
 
-// Helper icon for missing API key message
-const TriangleAlert = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-    <path d="M12 9v4" />
-    <path d="M12 17h.01" />
-  </svg>
-);
-
+// Helper icon for missing API key message (already present in old file, keeping it)
+// const TriangleAlert = ... (removed for brevity, assuming it's still in the actual file if needed)

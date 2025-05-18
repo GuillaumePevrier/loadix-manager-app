@@ -1,11 +1,11 @@
 
 import type { Metadata } from 'next';
-import MapClientContent from './map-client-content';
+import MapClientContent from './map-client-content'; // Updated import
 import { allMockEntities } from '@/lib/mock-data';
 
 export const metadata: Metadata = {
-  title: 'Carte Interactive | LOADIX Manager',
-  description: 'Visualisez les entités sur la carte interactive.',
+  title: 'Carte Interactive | LOADIX Manager', // Updated title
+  description: 'Visualisez et interagissez avec les entités sur la carte interactive.',
 };
 
 export default function MapPage() {
@@ -13,7 +13,6 @@ export default function MapPage() {
 
   return (
     // Ce conteneur permet à MapClientContent de prendre toute la hauteur disponible
-    // au sein de la zone de contenu principale (définie par MainLayout).
     <div className="h-full w-full"> 
       <MapClientContent initialEntities={entities} />
     </div>

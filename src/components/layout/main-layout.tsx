@@ -1,4 +1,9 @@
+
+'use client'; // Required for useAuth, useRouter, etc.
+
 import type { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +15,7 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, Loader2 } from 'lucide-react';
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
@@ -20,6 +25,14 @@ type MainLayoutProps = {
 };
 
 export default function MainLayout({ children }: MainLayoutProps) {
+  const { user, logout, isLoading: authIsLoading } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   return (
     <>
       <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-border/50">
@@ -34,19 +47,33 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <SidebarNav />
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent/50 transition-colors">
-            <Avatar className="h-9 w-9 flex-shrink-0">
-              <AvatarImage src="https://placehold.co/100x100.png" alt="User" data-ai-hint="user avatar" />
-              <AvatarFallback>LM</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-medium truncate">Admin User</p>
-              <p className="text-xs text-muted-foreground truncate">admin@manurob.com</p>
+          {authIsLoading ? (
+            <div className="flex items-center justify-center p-2 h-[60px]">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
-            <Button variant="ghost" size="icon" className="group-data-[collapsible=icon]:hidden text-muted-foreground hover:text-foreground">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
+          ) : user ? (
+            <div className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent/50 transition-colors">
+              <Avatar className="h-9 w-9 flex-shrink-0">
+                <AvatarImage src={user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`} alt={user.name} data-ai-hint="user avatar" />
+                <AvatarFallback>{user.name ? user.name.substring(0, 2).toUpperCase() : 'AD'}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
+                <p className="text-sm font-medium truncate">{user.name || 'Admin User'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email || 'admin@manurob.com'}</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="group-data-[collapsible=icon]:hidden text-muted-foreground hover:text-foreground"
+                onClick={handleLogout}
+                aria-label="Déconnexion"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+             <div className="p-2 h-[60px]"><!-- Placeholder for logged out state, though this layout shouldn't be visible --></div>
+          )}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col bg-background">

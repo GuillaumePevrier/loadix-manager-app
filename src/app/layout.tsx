@@ -1,26 +1,24 @@
+
 import type {Metadata} from 'next';
 import { Inter, Bebas_Neue } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { SidebarProvider } from '@/components/ui/sidebar';
-import MainLayout from '@/components/layout/main-layout';
+// Removed SidebarProvider and MainLayout from here
 import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter', // CSS variable for Inter
+  variable: '--font-inter', 
   display: 'swap',
 });
 
 const bebasNeue = Bebas_Neue({
   subsets: ['latin'],
-  weight: ['400'], // Bebas Neue typically comes in one main weight for display
-  variable: '--font-bebas-neue', // CSS variable for Bebas Neue
+  weight: ['400'], 
+  variable: '--font-bebas-neue', 
   display: 'swap',
 });
-
-// Futura is not available via next/font/google.
-// It will be referenced via the CSS variable --font-futura defined in globals.css.
 
 export const metadata: Metadata = {
   title: 'LOADIX Manager',
@@ -33,21 +31,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* Modified to allow next-themes to control the class */}
-      <body className={`${inter.variable} ${bebasNeue.variable} font-sans antialiased`}> {/* font-sans will use Inter due to Tailwind config */}
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark" // Defaulting to dark as per previous setup
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SidebarProvider defaultOpen={true}>
-            <MainLayout>
-              {children}
-            </MainLayout>
-          </SidebarProvider>
-          <Toaster />
-        </ThemeProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} ${bebasNeue.variable} font-sans antialiased`}>
+        <AuthProvider> {/* AuthProvider wraps ThemeProvider and children */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children} {/* Children will be (app)/layout.tsx or login/layout.tsx's content */}
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

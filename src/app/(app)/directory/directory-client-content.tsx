@@ -54,9 +54,9 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-grow w-full md:w-auto">
+    <div className="flex flex-col h-full p-2 md:p-3"> {/* Added padding here to compensate for CardContent p-0, flex-col and h-full */}
+      <div className="flex flex-col md:flex-row items-center mb-2 md:mb-3"> {/* Minimal margin bottom, no gap */}
+        <div className="relative flex-grow w-full md:w-auto mb-2 md:mb-0 md:mr-2"> {/* Margin for spacing */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             type="search"
@@ -66,8 +66,8 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
             className="pl-10 w-full bg-input/50 border-border/70 focus:bg-input"
           />
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-            <Filter className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+        <div className="flex items-center w-full md:w-auto mb-2 md:mb-0 md:mr-2"> {/* Margin for spacing */}
+            <Filter className="h-5 w-5 text-muted-foreground flex-shrink-0 mr-2" /> {/* Added margin to icon */}
             <Select
                 value={selectedEntityType}
                 onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
@@ -91,7 +91,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border/50 bg-card/50 backdrop-blur-md">
+      <div className="overflow-x-auto flex-grow"> {/* Removed styling, flex-grow for table to take remaining space */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -130,7 +130,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
         </Table>
       </div>
       {filteredEntities.length > 0 && (
-         <p className="text-sm text-muted-foreground text-center md:text-right">
+         <p className="text-sm text-muted-foreground text-center md:text-right pt-2"> {/* Added padding-top */}
             Affichage de {filteredEntities.length} sur {initialEntities.length} entités.
         </p>
       )}

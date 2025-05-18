@@ -1,4 +1,5 @@
 
+import * as React from 'react'; // Ajout de cette ligne
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { EntityType, AppEntity, Dealer, Client, LoadixUnit, MethanisationSite } from '@/types';

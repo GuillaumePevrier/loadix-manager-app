@@ -80,7 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col bg-background">
-        <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-20 flex items-center h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-md">
           <div className="flex items-center">
             <SidebarTrigger /> 
           </div>
@@ -99,7 +99,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto ${pathname === '/map' ? '' : 'p-4 md:p-6 lg:p-8'}`}>
+        <main className={`flex-1 overflow-y-auto ${pathname === '/map' || pathname === '/directory' ? '' : 'p-4 md:p-6 lg:p-8'}`}>
           {children}
         </main>
       </SidebarInset>
@@ -107,4 +107,3 @@ export default function MainLayout({ children }: MainLayoutProps) {
     </>
   );
 }
-

@@ -3,7 +3,7 @@
 
 import type { ReactNode } from 'react';
 import { useState } from 'react'; 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Ajout de usePathname
 import { useAuth } from '@/context/auth-context';
 import {
   Sidebar,
@@ -29,6 +29,7 @@ type MainLayoutProps = {
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, logout, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Obtenir le chemin actuel
   const [isSearchOpen, setIsSearchOpen] = useState(false); 
 
   const handleLogout = async () => {
@@ -50,7 +51,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </SidebarContent>
         <SidebarFooter className="p-2 border-t border-sidebar-border">
           {authIsLoading ? (
-            <div className="flex items-center justify-center p-2 h-[60px]">
+            <div className="flex items-center justify-center p-2 h-[60px] group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : user ? (
@@ -74,14 +75,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Button>
             </div>
           ) : (
-             <div className="p-2 h-[60px]">{/* Placeholder for logged out state, though this layout shouldn't be visible */}</div>
+             <div className="p-2 h-[60px] group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">{/* Placeholder for logged out state */}</div>
           )}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col bg-background">
         <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-md">
           <div className="flex items-center">
-            <SidebarTrigger /> {/* This trigger now handles both mobile and desktop toggle */}
+            <SidebarTrigger /> 
           </div>
           <div className="flex-1 text-center md:text-left">
             {/* Breadcrumbs or dynamic page title can go here */}
@@ -98,7 +99,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className={`flex-1 overflow-y-auto ${pathname === '/map' ? '' : 'p-4 md:p-6 lg:p-8'}`}>
           {children}
         </main>
       </SidebarInset>
@@ -106,3 +107,4 @@ export default function MainLayout({ children }: MainLayoutProps) {
     </>
   );
 }
+

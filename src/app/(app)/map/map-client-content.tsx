@@ -2,17 +2,21 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { AppEntity, EntityType, Dealer, Client, LoadixUnit, MethanisationSite } from '@/types';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // CardHeader, CardTitle potentially for results list
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe, CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter, Briefcase } from 'lucide-react';
+import { 
+  Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe, 
+  CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter, 
+  Briefcase, Maximize, Minimize 
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface MapClientContentProps {
@@ -72,11 +76,13 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const [selectedEntityType, setSelectedEntityType] = useState<EntityType | 'all'>('all');
   const [selectedEntity, setSelectedEntity] = React.useState<AppEntity | null>(null);
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
-  const [isSearchFocused, setIsSearchFocused] = React.useState(false); // To control visibility of results list
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredEntities = useMemo(() => {
     if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused) {
-        return []; // Don't show results if search is empty and not focused, and no filter
+        return []; 
     }
     return initialEntities.filter(entity => {
       const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;
@@ -92,8 +98,8 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
-    setIsSearchFocused(false); // Hide search results when an item is selected
-    setSearchTerm(''); // Optionally clear search term
+    setIsSearchFocused(false); 
+    setSearchTerm(''); 
   };
   
   const entityTypes: EntityType[] = ['dealer', 'client', 'loadix-unit', 'methanisation-site'];
@@ -108,19 +114,37 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      mapContainerRef.current?.requestFullscreen().catch((err) => {
+        alert(`Erreur lors de la tentative d'activation du mode plein écran: ${err.message} (${err.name})`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      {/* Map Placeholder */}
+    <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
       <Image
         src="https://placehold.co/1600x900.png"
         alt="Carte interactive plein écran"
         layout="fill"
         objectFit="cover"
         data-ai-hint="abstract world map"
-        className="opacity-90" // Slightly less opaque
+        className="opacity-90"
       />
 
-      {/* Search and Filter Bar */}
       <div className="absolute top-4 left-1/2 z-20 w-full max-w-3xl -translate-x-1/2 px-4">
         <div className="flex flex-col md:flex-row items-center gap-3 p-3 bg-card/80 backdrop-blur-xl rounded-xl shadow-2xl border border-border/50">
           <div className="relative flex-grow w-full">
@@ -131,7 +155,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
-              // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Delay to allow click on results
               className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
             />
           </div>
@@ -155,7 +178,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         </div>
       </div>
 
-      {/* Search Results List */}
       {(isSearchFocused || searchTerm) && filteredEntities.length > 0 && (
         <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1">
           <Card className="max-h-[calc(50vh-3rem)] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
@@ -192,9 +214,19 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </Card>
         </div>
       )}
+      
+      <div className="absolute bottom-4 right-4 z-30">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleFullscreen}
+          className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground"
+          title={isFullscreen ? "Quitter le mode plein écran" : "Passer en mode plein écran"}
+        >
+          {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+        </Button>
+      </div>
 
-
-      {/* Entity Detail Sheet */}
       {selectedEntity && (
          <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setSelectedEntity(null); }}>
           <SheetContent 
@@ -281,3 +313,4 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     </div>
   );
 }
+

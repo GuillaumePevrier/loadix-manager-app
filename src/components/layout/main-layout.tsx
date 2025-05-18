@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useState } from 'react'; // Added useState
+import { useState } from 'react'; 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import {
@@ -16,11 +16,11 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut, Loader2, Search } from 'lucide-react'; // Added Search icon
+import { Settings, LogOut, Loader2, Search } from 'lucide-react'; 
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
-import GlobalSearchDialog from '@/components/search/global-search-dialog'; // Import the new component
+import GlobalSearchDialog from '@/components/search/global-search-dialog'; 
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -29,7 +29,7 @@ type MainLayoutProps = {
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, logout, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // State for search dialog
+  const [isSearchOpen, setIsSearchOpen] = useState(false); 
 
   const handleLogout = async () => {
     await logout();
@@ -39,12 +39,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <>
       <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-border/50">
-        <SidebarHeader className="flex items-center justify-between p-4 h-16 border-b border-sidebar-border">
+        <SidebarHeader className="flex items-center p-4 h-16 border-b border-sidebar-border"> {/* Removed justify-between */}
           <Link href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
             <Logo className="w-8 h-8 text-primary flex-shrink-0" />
             <h1 className="text-xl font-futura font-semibold group-data-[collapsible=icon]:hidden">LOADIX</h1>
           </Link>
-          <SidebarTrigger className="hidden md:flex group-data-[collapsible=icon]:hidden" />
+          {/* SidebarTrigger removed from here */}
         </SidebarHeader>
         <SidebarContent className="p-2 flex-1">
           <SidebarNav />
@@ -81,8 +81,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </Sidebar>
       <SidebarInset className="flex flex-col bg-background">
         <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-6 border-b bg-background/80 backdrop-blur-md">
-          <div className="md:hidden"> {/* Mobile trigger */}
-            <SidebarTrigger />
+          <div className="flex items-center">
+            <SidebarTrigger /> {/* This trigger now handles both mobile and desktop toggle */}
           </div>
           <div className="flex-1 text-center md:text-left">
             {/* Breadcrumbs or dynamic page title can go here */}

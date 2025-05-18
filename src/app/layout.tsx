@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { SidebarProvider } from '@/components/ui/sidebar';
 import MainLayout from '@/components/layout/main-layout';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,14 +33,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark"> {/* Force dark theme as per user request */}
+    <html lang="en" suppressHydrationWarning> {/* Modified to allow next-themes to control the class */}
       <body className={`${inter.variable} ${bebasNeue.variable} font-sans antialiased`}> {/* font-sans will use Inter due to Tailwind config */}
-        <SidebarProvider defaultOpen={true}>
-          <MainLayout>
-            {children}
-          </MainLayout>
-        </SidebarProvider>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark" // Defaulting to dark as per previous setup
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider defaultOpen={true}>
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </SidebarProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

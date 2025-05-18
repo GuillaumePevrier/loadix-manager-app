@@ -4,8 +4,6 @@
 import * as React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import type { AppEntity, EntityType, Dealer, Client, LoadixUnit, MethanisationSite } from '@/types';
-// Removed direct import of APIProvider and Map as they will be dynamic
-// import { APIProvider, Map } from '@vis.gl/react-google-maps'; 
 import dynamic from 'next/dynamic';
 
 import { Button } from '@/components/ui/button';
@@ -21,8 +19,6 @@ import {
   Briefcase, Maximize, Minimize 
 } from 'lucide-react';
 import Link from 'next/link';
-// Image import is no longer needed for the main map
-// import Image from 'next/image';
 
 // Dynamically import Google Maps components individually
 const APIProvider = dynamic(() =>

@@ -16,12 +16,12 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut, Loader2, Search, MapIcon } from 'lucide-react';
+import { Settings, LogOut, Loader2, Search } from 'lucide-react'; // Removed MapIcon
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
 import GlobalSearchDialog from '@/components/search/global-search-dialog';
-import TestMapDialog from '@/components/debug/test-map-dialog'; // Import the new dialog
+// Removed import for TestMapDialog
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -32,7 +32,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isTestMapOpen, setIsTestMapOpen] = useState(false); // State for the test map dialog
+  // Removed state for isTestMapOpen
 
   const handleLogout = async () => {
     await logout();
@@ -95,10 +95,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <span className="sr-only">Rechercher</span>
             </Button>
             <ThemeToggleButton />
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setIsTestMapOpen(true)} title="Test Carte">
-              <MapIcon className="w-5 h-5" />
-              <span className="sr-only">Test Carte</span>
-            </Button>
+            {/* Removed Test Carte button */}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Settings className="w-5 h-5" />
               <span className="sr-only">Paramètres</span>
@@ -110,7 +107,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </main>
       </SidebarInset>
       <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
-      <TestMapDialog isOpen={isTestMapOpen} onOpenChange={setIsTestMapOpen} /> {/* Add the test map dialog */}
+      {/* Removed TestMapDialog instance */}
     </>
   );
 }

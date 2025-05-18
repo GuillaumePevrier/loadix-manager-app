@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Map, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench } from 'lucide-react';
+import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench } from 'lucide-react'; // Changed Map to MapPin for variety
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' },
@@ -21,9 +21,9 @@ const navItems = [
     isGroup: true,
     subItems: [
         { href: '/service-records', label: 'Carnet de Santé', icon: FileText, tooltip: 'Carnets de Santé' },
+        { href: '/map', label: 'Carte Interactive', icon: MapPin, tooltip: 'Carte Interactive' }, // Changed icon
     ],
   },
-  { href: '/map', label: 'Carte Interactive', icon: Map, tooltip: 'Carte Interactive' },
   {
     label: 'Outils Annexes',
     icon: Settings,
@@ -95,4 +95,3 @@ export default function SidebarNav() {
     </SidebarMenu>
   );
 }
-

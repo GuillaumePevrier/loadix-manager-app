@@ -1,3 +1,4 @@
+
 // src/components/layout/sidebar-nav.tsx
 'use client';
 
@@ -9,10 +10,11 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Home, Users, Wrench, Map, FileText, Settings, BotMessageSquare, Truck, Factory, Building, UserCheck, Briefcase, BarChart3 } from 'lucide-react';
+import { Home, Users, Wrench, Map, FileText, Settings, BotMessageSquare, Truck, Factory, Building, UserCheck, Briefcase, BarChart3, List } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' }, // Changed Home to BarChart3 for Dashboard
+  { href: '/directory', label: 'Répertoire', icon: List, tooltip: 'Répertoire des Entités' },
   {
     label: 'Gestion Commerciale',
     icon: Briefcase, 

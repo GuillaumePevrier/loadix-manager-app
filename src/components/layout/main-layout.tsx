@@ -39,12 +39,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <>
       <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-border/50">
-        <SidebarHeader className="flex items-center p-4 h-16 border-b border-sidebar-border"> {/* Removed justify-between */}
+        <SidebarHeader className="flex items-center p-4 h-16 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
             <Logo className="w-8 h-8 text-primary flex-shrink-0" />
             <h1 className="text-xl font-futura font-semibold group-data-[collapsible=icon]:hidden">LOADIX</h1>
           </Link>
-          {/* SidebarTrigger removed from here */}
         </SidebarHeader>
         <SidebarContent className="p-2 flex-1">
           <SidebarNav />
@@ -55,9 +54,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : user ? (
-            <div className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent/50 transition-colors">
-              <Avatar className="h-9 w-9 flex-shrink-0">
-                <AvatarImage src={user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`} alt={user.name} data-ai-hint="user avatar" />
+            <div className="flex items-center group-data-[collapsible=icon]:justify-center gap-3 p-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2 rounded-md hover:bg-sidebar-accent/50 transition-colors">
+              <Avatar className="h-9 w-9 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 flex-shrink-0">
+                <AvatarImage src={user.avatarUrl || `https://placehold.co/100x100.png`} alt={user.name || 'User Avatar'} data-ai-hint="user avatar" />
                 <AvatarFallback>{user.name ? user.name.substring(0, 2).toUpperCase() : 'AD'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">

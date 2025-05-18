@@ -72,7 +72,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Button>
             </div>
           ) : (
-             <div className="p-2 h-[60px]"><!-- Placeholder for logged out state, though this layout shouldn't be visible --></div>
+             <div className="p-2 h-[60px]">{/* Placeholder for logged out state, though this layout shouldn't be visible */}</div>
           )}
         </SidebarFooter>
       </Sidebar>

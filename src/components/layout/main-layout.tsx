@@ -1,7 +1,8 @@
 
-'use client'; // Required for useAuth, useRouter, etc.
+'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react'; // Added useState
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import {
@@ -15,10 +16,11 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut, Loader2 } from 'lucide-react';
+import { Settings, LogOut, Loader2, Search } from 'lucide-react'; // Added Search icon
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
+import GlobalSearchDialog from '@/components/search/global-search-dialog'; // Import the new component
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -27,6 +29,7 @@ type MainLayoutProps = {
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, logout, isLoading: authIsLoading } = useAuth();
   const router = useRouter();
+  const [isSearchOpen, setIsSearchOpen] = useState(false); // State for search dialog
 
   const handleLogout = async () => {
     await logout();
@@ -85,9 +88,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {/* Breadcrumbs or dynamic page title can go here */}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setIsSearchOpen(true)}>
+              <Search className="w-5 h-5" />
+              <span className="sr-only">Rechercher</span>
+            </Button>
             <ThemeToggleButton />
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Settings className="w-5 h-5" />
+              <span className="sr-only">Paramètres</span>
             </Button>
           </div>
         </header>
@@ -95,6 +103,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           {children}
         </main>
       </SidebarInset>
+      <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
     </>
   );
 }

@@ -3,17 +3,21 @@ import type { Metadata } from 'next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ListChecks } from 'lucide-react';
 import DirectoryClientContent from './directory-client-content';
-import { allMockEntities } from '@/lib/mock-data'; // Import mock data
+import { getDealers } from '@/services/dealerService'; // Import the new service
+import type { AppEntity } from '@/types';
 
 export const metadata: Metadata = {
   title: 'Répertoire des Entités | LOADIX Manager',
   description: 'Consultez et gérez toutes les entités: concessionnaires, clients, engins, et sites.',
 };
 
-export default function DirectoryPage() {
-  // For now, we pass all entities. The client component will handle filtering.
-  // In a real app, this would likely involve server-side pagination and filtering.
-  const entities = allMockEntities;
+export default async function DirectoryPage() {
+  // Fetch dealers from Firestore
+  // For now, initialEntities will only contain dealers.
+  // The DirectoryClientContent component will still allow filtering by type,
+  // but only dealers will be available until other entity types are fetched from Firebase.
+  const dealers = await getDealers();
+  const initialEntities: AppEntity[] = dealers; // Dealer[] is assignable to AppEntity[]
 
   return (
     <div className="w-full h-full"> {/* Ensure this takes full height too */}
@@ -32,7 +36,7 @@ export default function DirectoryPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0 flex-grow"> {/* No padding, allow content to grow */}
-          <DirectoryClientContent initialEntities={entities} />
+          <DirectoryClientContent initialEntities={initialEntities} />
         </CardContent>
       </Card>
     </div>

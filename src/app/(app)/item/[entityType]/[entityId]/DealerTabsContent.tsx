@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// Removed ScrollArea as we will handle scrolling directly for the timeline
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -147,7 +147,6 @@ const CommentCard: React.FC<{ comment: Comment; className?: string }> = ({ comme
 
 const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
     const [timelineSearchTerm, setTimelineSearchTerm] = React.useState('');
-
     const statusInfo = getProspectionStatusBadgeInfo(dealer.prospectionStatus);
 
     const sortedComments = React.useMemo(() => 
@@ -164,68 +163,43 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         );
     }, [sortedComments, timelineSearchTerm]);
 
-    const scrollableTimelineRef = React.useRef<HTMLDivElement>(null);
-    const viewportElementRef = React.useRef<HTMLElement | null>(null);
+    const timelineContainerRef = React.useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = React.useState(false);
     const [startX, setStartX] = React.useState(0);
     const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
-    const DRAG_SPEED_MULTIPLIER = 1.5;
+    const DRAG_SPEED_MULTIPLIER = 1.5; // Adjust for desired drag speed
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        const contentElement = e.currentTarget; // This is the div with scrollableTimelineRef
-        const actualViewport = contentElement.parentElement as HTMLElement;
-
-        if (!actualViewport) return;
-        viewportElementRef.current = actualViewport; // Store the viewport
-
-        setIsDragging(true);
-        setStartX(e.pageX); // pageX is fine here
-        setScrollLeftStart(actualViewport.scrollLeft);
+    const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        const el = timelineContainerRef.current;
+        if (!el) return;
         
-        if (scrollableTimelineRef.current) { // Style the content div
-            scrollableTimelineRef.current.style.cursor = 'grabbing';
-        }
-        document.body.style.userSelect = 'none'; // Prevent text selection globally
-    };
+        el.setPointerCapture(e.pointerId);
+        setIsDragging(true);
+        setStartX(e.pageX);
+        setScrollLeftStart(el.scrollLeft);
+        document.body.style.userSelect = 'none'; // Prevent text selection during drag
+        el.style.cursor = 'grabbing';
+    }, []);
 
-    const handleMouseMoveGlobal = React.useCallback((e: MouseEvent) => {
-        if (!isDragging || !viewportElementRef.current) return;
-        e.preventDefault(); // Prevent default mousemove behavior (like text selection)
+    const onPointerMove = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+        if (!isDragging) return;
+        const el = timelineContainerRef.current;
+        if (!el) return;
 
-        const targetViewport = viewportElementRef.current;
-        const x = e.pageX;
-        const walk = (x - startX) * DRAG_SPEED_MULTIPLIER;
-        targetViewport.scrollLeft = scrollLeftStart - walk;
+        const deltaX = e.pageX - startX;
+        el.scrollLeft = scrollLeftStart - (deltaX * DRAG_SPEED_MULTIPLIER);
     }, [isDragging, startX, scrollLeftStart, DRAG_SPEED_MULTIPLIER]);
 
-    const handleMouseUpGlobal = React.useCallback(() => {
+    const onPointerUpOrCancel = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging) return;
+        const el = timelineContainerRef.current;
+        if (!el) return;
+
+        el.releasePointerCapture(e.pointerId);
         setIsDragging(false);
-        if (scrollableTimelineRef.current) {
-            scrollableTimelineRef.current.style.cursor = 'grab';
-        }
-        document.body.style.userSelect = 'auto';
-        viewportElementRef.current = null; // Clean up the stored viewport ref
+        document.body.style.userSelect = 'auto'; // Re-enable text selection
+        el.style.cursor = 'grab';
     }, [isDragging]);
-
-    React.useEffect(() => {
-        if (isDragging) {
-            document.addEventListener('mousemove', handleMouseMoveGlobal);
-            document.addEventListener('mouseup', handleMouseUpGlobal);
-        } else {
-            document.removeEventListener('mousemove', handleMouseMoveGlobal);
-            document.removeEventListener('mouseup', handleMouseUpGlobal);
-        }
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMoveGlobal);
-            document.removeEventListener('mouseup', handleMouseUpGlobal);
-            // Ensure userSelect is reset if component unmounts while dragging
-            if (isDragging) {
-                 document.body.style.userSelect = 'auto';
-            }
-        };
-    }, [isDragging, handleMouseMoveGlobal, handleMouseUpGlobal]);
     
     return (
   <Tabs defaultValue="details" className="w-full">
@@ -305,52 +279,52 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         {timelineSearchTerm ? `Aucun commentaire trouvé pour "${timelineSearchTerm}".` : 'Aucun commentaire de suivi pour le moment.'}
                     </p>
                 ) : (
-                    <ScrollArea className="w-full pb-4 cursor-grab">
-                        <div 
-                            ref={scrollableTimelineRef}
-                            className="relative flex items-start pt-10 pb-6 min-w-max select-none" 
-                            onMouseDown={handleMouseDown}
-                        >
-                            {/* Timeline central line */}
-                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2"></div>
-                            
-                            <div className="flex space-x-20 pl-8 pr-8"> {/* This div contains the actual comment cards */}
-                                {filteredComments.map((comment, index) => (
-                                    <div 
-                                        key={index} 
+                    <div
+                        ref={timelineContainerRef}
+                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none"
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUpOrCancel}
+                        onPointerCancel={onPointerUpOrCancel}
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Prevent text selection during drag
+                    >
+                        {/* Timeline central line */}
+                        <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2 z-0"></div>
+                        
+                        {/* Container for comment cards - this needs to be wide enough to scroll */}
+                        <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10">
+                            {filteredComments.map((comment, index) => (
+                                <div 
+                                    key={index} 
+                                    className={cn(
+                                        "relative flex items-center group",
+                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" 
+                                    )}
+                                >
+                                    <CommentCard 
+                                        comment={comment} 
                                         className={cn(
-                                            "relative flex items-center group", // Main container for card + dot + connector
-                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" // Alternating position, mt-8 for items below to clear the line
+                                            "shadow-xl",
+                                            index % 2 === 0 ? "mb-4" : "mt-4"
                                         )}
-                                    >
-                                        <CommentCard 
-                                            comment={comment} 
-                                            className={cn(
-                                                "shadow-xl",
-                                                index % 2 === 0 ? "mb-4" : "mt-4" // Margin to separate card from dot
-                                            )}
-                                        />
-                                        {/* Vertical Connector Line */}
-                                        <div className={cn(
-                                            "w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity",
-                                            index % 2 === 0 ? "h-8" : "h-8" // Connector height
-                                        )}></div>
-                                        {/* Timeline Dot */}
-                                        <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
-                                                        group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
-                                        {/* Date below the dot */}
-                                        <div className={cn(
-                                            "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
-                                            index % 2 === 0 ? "mt-2" : "mb-2" // Adjust margin for date based on card position
-                                        )}>
-                                            {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                                        </div>
+                                    />
+                                    <div className={cn(
+                                        "w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity",
+                                        index % 2 === 0 ? "h-8" : "h-8"
+                                    )}></div>
+                                    <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
+                                                    group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
+                                    <div className={cn(
+                                        "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
+                                        index % 2 === 0 ? "mt-2" : "mb-2" 
+                                    )}>
+                                        {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
-                        <div className="h-1" /> {/* Ensures scrollbar has some space at the end if needed */}
-                    </ScrollArea>
+                         <div className="h-1" /> {/* Ensures scrollbar has some space if needed */}
+                    </div>
                 )}
                  <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                     <Info className="h-4 w-4 text-accent" />
@@ -413,6 +387,5 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 )};
 
 export default DealerTabsContent;
-
 
     

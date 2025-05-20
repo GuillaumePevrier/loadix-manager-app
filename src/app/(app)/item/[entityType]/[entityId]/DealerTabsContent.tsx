@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert'; // Removed AlertTitle as it wasn't used
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { 
@@ -109,9 +109,9 @@ const getProspectionStatusBadgeInfo = (
 };
 
 const CommentCard: React.FC<{ comment: Comment; className?: string }> = ({ comment, className }) => (
-  <div className={cn("flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-md w-72", className)}>
+  <div className={cn("flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72", className)}>
     <Avatar className="h-8 w-8 flex-shrink-0">
-      <AvatarImage src={comment.imageUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
+      <AvatarImage src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
       <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
     </Avatar>
     <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <CardHeader><CardTitle className="font-bebas-neue text-primary text-xl">Coordonnées</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} />
-                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />} {/* Corrected icon for Fax if Printer isn't desired */}
+                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />}
                 <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail />
                 <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink />
                 <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} />
@@ -242,22 +242,32 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         {timelineSearchTerm ? `Aucun commentaire trouvé pour "${timelineSearchTerm}".` : 'Aucun commentaire de suivi pour le moment.'}
                     </p>
                 ) : (
-                    <ScrollArea className="w-full pb-4 pr-2"> {/* Added pr-2 for scrollbar visibility */}
-                        <div className="relative flex items-start pt-10 pb-6 min-w-max"> {/* Added pt/pb for spacing */}
-                            {/* Timeline Axis */}
-                            <div className="absolute left-0 right-0 top-[calc(50%+20px)] h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2"></div>
+                    <ScrollArea className="w-full pb-4 pr-2">
+                        <div className="relative flex items-start pt-10 pb-6 min-w-max">
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2"></div>
                             
-                            <div className="flex space-x-20 pl-8 pr-8"> {/* Increased spacing between items */}
+                            <div className="flex space-x-20 pl-8 pr-8">
                                 {filteredComments.map((comment, index) => (
-                                    <div key={index} className="relative flex flex-col items-center group pt-2"> {/* pt-2 to push card up slightly */}
-                                        {/* Comment Card positioned above the dot */}
-                                        <CommentCard comment={comment} className="mb-4 shadow-xl"/>
-                                        {/* Vertical connector */}
-                                        <div className="h-8 w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity"></div>
-                                        {/* Dot on the timeline */}
+                                    <div 
+                                        key={index} 
+                                        className={cn(
+                                            "relative flex items-center group",
+                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse" // Alternating position
+                                        )}
+                                    >
+                                        <CommentCard 
+                                            comment={comment} 
+                                            className={cn(
+                                                "shadow-xl",
+                                                index % 2 === 0 ? "mb-4" : "mt-4" // Margin to separate card from dot
+                                            )}
+                                        />
+                                        <div className={cn(
+                                            "w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity",
+                                            index % 2 === 0 ? "h-8" : "h-8" // Connector height
+                                        )}></div>
                                         <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
                                                         group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
-                                        {/* Date below the dot */}
                                         <div className="mt-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm">
                                             {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </div>
@@ -265,7 +275,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                 ))}
                             </div>
                         </div>
-                        <div className="h-1" /> {/* Ensures scrollbar appears correctly */}
+                        <div className="h-1" /> 
                     </ScrollArea>
                 )}
                  <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
@@ -322,7 +332,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 {dealer.relatedSiteIds && dealer.relatedSiteIds.length > 0 && (
                     <DetailItem icon={Factory} label="Sites de Méthanisation Liés" value={dealer.relatedSiteIds.map(id => <Link key={id} href={`/item/methanisation-site/${id}`} className="text-primary hover:underline block">Site {id.substring(0,8)}...</Link>)} />
                 )}
-                 {/* Placeholder for related clients/prospects if needed */}
             </CardContent>
         </Card>
     </TabsContent>
@@ -330,5 +339,3 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 )};
 
 export default DealerTabsContent;
-
-    

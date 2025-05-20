@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { getDealerById, updateDealer } from '@/services/dealerService';
+import { getDealerById, updateDealer, addCommentToDealer } from '@/services/dealerService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import type { Dealer, UpdateDealerData, Comment } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CircleAlert, ChevronLeft, Loader2, MapPin, Info, Image as ImageIconLucide, FileText as FileTextLucide, PlusCircle, Trash2 } from 'lucide-react'; // Renamed icons to avoid conflict
+import { CircleAlert, ChevronLeft, Loader2, MapPin, Info, Image as ImageIconLucide, FileText as FileTextLucide, PlusCircle, Trash2, Send } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +19,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Image from 'next/image'; // For next/image
+import Image from 'next/image';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 interface EditDealerPageProps {
   params: Promise<{ 
@@ -29,6 +31,8 @@ interface EditDealerPageProps {
 
 export default function EditDealerPage({ params: paramsPromise }: EditDealerPageProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const resolvedParams = React.use(paramsPromise);
   const { dealerId } = resolvedParams;
 
@@ -43,57 +47,63 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [newCommentText, setNewCommentText] = useState('');
+  
+  const [newCommentText, setNewCommentText] = useState('');
+  const [newCommentFile, setNewCommentFile] = useState<File | null>(null);
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [currentDealerData, setCurrentDealerData] = useState<Dealer | null>(null);
+
+
+  const fetchDealerData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!dealerId) {
+          setError('ID de concessionnaire non valide ou manquant après résolution.');
+          setLoading(false);
+          return;
+      }
+
+      const dealerData = await getDealerById(dealerId);
+      if (dealerData) {
+        setCurrentDealerData(dealerData); // Store fetched data
+        const initialFormState: Partial<UpdateDealerData> = {
+          name: dealerData.name || '',
+          address: dealerData.address || '',
+          city: dealerData.city || '',
+          postalCode: dealerData.postalCode || '',
+          country: dealerData.country || '',
+          department: dealerData.department || '',
+          phone: dealerData.phone || '',
+          fax: dealerData.fax || '',
+          email: dealerData.email || '',
+          website: dealerData.website || '',
+          contactPerson: dealerData.contactPerson || '',
+          brandSign: dealerData.brandSign || '',
+          branchName: dealerData.branchName || '',
+          machineTypes: dealerData.machineTypes || [],
+          tractorBrands: dealerData.tractorBrands || [],
+          prospectionStatus: dealerData.prospectionStatus || 'none',
+          geoLocation: dealerData.geoLocation,
+          comments: dealerData.comments || [],
+          servicesOffered: dealerData.servicesOffered || [],
+          galleryUris: dealerData.galleryUris || [],
+          documentUris: dealerData.documentUris || [],
+        };
+        setFormData(initialFormState);
+      } else {
+        setError('Concessionnaire non trouvé.');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération du concessionnaire :', err);
+      setError('Échec du chargement des données du concessionnaire.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDealerData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        if (!dealerId) {
-            setError('ID de concessionnaire non valide ou manquant après résolution.');
-            setLoading(false);
-            return;
-        }
-
-        const dealerData = await getDealerById(dealerId);
-        if (dealerData) {
-          const initialFormState: Partial<UpdateDealerData> = {
-            name: dealerData.name || '',
-            address: dealerData.address || '',
-            city: dealerData.city || '',
-            postalCode: dealerData.postalCode || '',
-            country: dealerData.country || '',
-            department: dealerData.department || '',
-            phone: dealerData.phone || '',
-            fax: dealerData.fax || '',
-            email: dealerData.email || '',
-            website: dealerData.website || '',
-            contactPerson: dealerData.contactPerson || '',
-            brandSign: dealerData.brandSign || '',
-            branchName: dealerData.branchName || '',
-            machineTypes: dealerData.machineTypes || [],
-            tractorBrands: dealerData.tractorBrands || [],
-            prospectionStatus: dealerData.prospectionStatus || 'none',
-            geoLocation: dealerData.geoLocation,
-            comments: dealerData.comments || [],
-            servicesOffered: dealerData.servicesOffered || [],
-            galleryUris: dealerData.galleryUris || [],
-            documentUris: dealerData.documentUris || [],
-          };
-          setFormData(initialFormState);
-        } else {
-          setError('Concessionnaire non trouvé.');
-        }
-      } catch (err) {
-        console.error('Erreur lors de la récupération du concessionnaire :', err);
-        setError('Échec du chargement des données du concessionnaire.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (dealerId) {
       fetchDealerData();
     } else {
@@ -111,6 +121,47 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
 
+  const handleNewCommentFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewCommentFile(e.target.files[0]);
+    } else {
+      setNewCommentFile(null);
+    }
+  };
+
+  const handleAddNewComment = async () => {
+    if (!newCommentText.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Le texte du commentaire ne peut pas être vide.",
+      });
+      return;
+    }
+    setIsAddingComment(true);
+    try {
+      const userName = user?.name || "Utilisateur Anonyme";
+      await addCommentToDealer(dealerId, userName, newCommentText, newCommentFile || undefined);
+      toast({
+        title: "Succès",
+        description: "Commentaire ajouté avec succès.",
+      });
+      setNewCommentText('');
+      setNewCommentFile(null);
+      // Refresh comments by re-fetching dealer data
+      await fetchDealerData(); 
+    } catch (err) {
+      console.error("Erreur lors de l'ajout du commentaire :", err);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Échec de l'ajout du commentaire.",
+      });
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -124,17 +175,32 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        comments: Array.isArray(formData.comments) ? formData.comments.map(c => ({...c, date: new Date(c.date).toISOString()})) : [], // Ensure date is ISO string
+        // Comments are now handled by addCommentToDealer, so we don't submit them here
+        // unless we want to allow direct editing of existing comments, which is not implemented.
+        // For safety, remove comments from formData before submitting general dealer updates if they are not directly editable.
+        // Or, ensure `updateDealer` service function knows how to handle the full comments array if it's just for re-saving.
+        // For now, assuming `updateDealer` will not modify comments unless explicitly changed.
+        // If we keep comments in formData, ensure dates are correct.
+        comments: currentDealerData?.comments?.map(c => ({...c, date: new Date(c.date).toISOString()})) || [],
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
         galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
         documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
       };
       
       await updateDealer(dealerId, dataToUpdate);
+      toast({
+        title: "Succès",
+        description: "Concessionnaire mis à jour avec succès.",
+      });
       router.push(`/item/dealer/${dealerId}`); 
     } catch (err) {
       console.error('Erreur lors de la mise à jour du concessionnaire :', err);
       setError(err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.');
+      toast({
+        variant: "destructive",
+        title: "Erreur de Mise à Jour",
+        description: err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -148,7 +214,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     );
   }
 
-  if (error) {
+  if (error && !currentDealerData) { // Only show full page error if dealer data couldn't be loaded at all
     return (
       <div className="container mx-auto max-w-3xl py-8 px-4">
         <Alert variant="destructive">
@@ -166,7 +232,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     );
   }
 
-  if (!formData || Object.keys(formData).length === 0) {
+  if (!currentDealerData || Object.keys(formData).length === 0) { // formData check is also important
     return (
       <div className="container mx-auto max-w-3xl py-8 px-4">
         <Alert>
@@ -207,6 +273,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         </CardHeader>
         <CardContent className="p-3 md:p-4 flex-grow overflow-y-auto">
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+            {error && ( // Display non-critical errors here
+              <Alert variant="destructive" className="mb-4">
+                <CircleAlert className="h-5 w-5" />
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4 bg-muted/50 p-1 h-auto">
                 <TabsTrigger value="details" className="text-xs sm:text-sm px-2 py-1.5">Détails</TabsTrigger>
@@ -334,28 +407,50 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         </Select>
                     </div>
                     <div className="mt-4">
-                        <Label>Commentaires Existants</Label>
-                        {(!formData.comments || formData.comments.length === 0) ? (
+                        <h4 className="text-md font-semibold text-foreground/90 mb-2">Commentaires Existants</h4>
+                        {(!currentDealerData?.comments || currentDealerData.comments.length === 0) ? (
                             <p className="text-sm text-muted-foreground italic mt-1">Aucun commentaire.</p>
                         ) : (
-                            <ScrollArea className="h-[200px] mt-1 p-3 border rounded-md bg-muted/20">
-                                <div className="space-y-3">
-                                    {formData.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
-                                        <div key={index} className="text-xs p-2 rounded bg-background/50 border">
-                                            <p className="font-medium text-foreground/90">{comment.userName} - <span className="text-muted-foreground">{new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></p>
-                                            <p className="text-foreground/80 whitespace-pre-line mt-0.5">{comment.text}</p>
-                                            {/* Display existing image/file for comment - non-editable here */}
-                                            {comment.imageUrl && <Image src={comment.imageUrl} alt="Image commentaire" width={100} height={100} className="mt-1 rounded-md object-cover" />}
-                                            {comment.fileUrl && <a href={comment.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs mt-1 inline-block">{comment.fileName || 'Fichier attaché'}</a>}
-                                        </div>
-                                    ))}
-                                </div>
+                            <ScrollArea className="h-[200px] mt-1 p-3 border rounded-md bg-muted/20 space-y-3">
+                                {currentDealerData.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
+                                    <div key={index} className="text-xs p-2 rounded bg-background/50 border">
+                                        <p className="font-medium text-foreground/90">{comment.userName} - <span className="text-muted-foreground">{new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></p>
+                                        <p className="text-foreground/80 whitespace-pre-line mt-0.5">{comment.text}</p>
+                                        {comment.imageUrl && <Image src={comment.imageUrl} alt="Image commentaire" width={100} height={100} className="mt-1 rounded-md object-cover" data-ai-hint="comment image" />}
+                                        {comment.fileUrl && <a href={comment.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs mt-1 inline-block">{comment.fileName || 'Fichier attaché'}</a>}
+                                    </div>
+                                ))}
                             </ScrollArea>
                         )}
-                         <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
-                            <Info className="h-4 w-4 text-accent" />
-                            <AlertDescription>L'ajout de nouveaux commentaires avec pièces jointes depuis cet écran de modification sera implémenté ultérieurement. Les commentaires existants sont affichés pour référence.</AlertDescription>
-                        </Alert>
+                    </div>
+
+                    <div className="mt-6 space-y-3 p-4 border rounded-md shadow-sm bg-card/50">
+                        <h4 className="text-md font-semibold text-foreground/90">Ajouter un nouveau suivi</h4>
+                        <div>
+                            <Label htmlFor="newCommentText">Nouveau commentaire</Label>
+                            <Textarea 
+                                id="newCommentText" 
+                                value={newCommentText} 
+                                onChange={(e) => setNewCommentText(e.target.value)}
+                                placeholder="Votre commentaire..."
+                                rows={3}
+                                className="bg-input/70 focus:bg-input"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="newCommentFile">Pièce jointe (Image/Document)</Label>
+                            <Input 
+                                id="newCommentFile" 
+                                type="file" 
+                                onChange={handleNewCommentFileChange} 
+                                className="bg-input/70 focus:bg-input file:text-primary file:font-medium"
+                            />
+                             {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier sélectionné: {newCommentFile.name}</p>}
+                        </div>
+                        <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">
+                            {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            {isAddingComment ? 'Ajout en cours...' : 'Ajouter le suivi'}
+                        </Button>
                     </div>
                  </div>
               </TabsContent>
@@ -367,7 +462,6 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         <ImageIconLucide className="h-4 w-4 text-accent" />
                         <AlertDescription>La gestion de la galerie d'images et des documents (ajout, suppression) sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
-                    {/* Placeholder for galleryUris and documentUris display/management */}
                  </div>
               </TabsContent>
 
@@ -378,14 +472,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         <Info className="h-4 w-4 text-accent" />
                         <AlertDescription>La gestion des entités liées (clients, prospects, sites) sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
-                    {/* Placeholder for related entities display/management */}
                  </div>
               </TabsContent>
 
             </Tabs>
 
             <CardFooter className="flex justify-end pt-6 mt-4 border-t">
-              <Button type="submit" disabled={isSubmitting || loading} size="lg">
+              <Button type="submit" disabled={isSubmitting || loading || isAddingComment} size="lg">
                 {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                 {isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
               </Button>

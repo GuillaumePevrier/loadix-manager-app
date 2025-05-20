@@ -16,7 +16,7 @@ import {
   MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { BadgeProps } from '@/components/ui/badge'; // Ensure BadgeProps is correctly typed if used for variant casting
+import type { BadgeProps } from '@/components/ui/badge'; 
 
 const DetailItem: React.FC<{
   icon: React.ElementType;
@@ -196,20 +196,8 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 
     const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const el = timelineContainerRef.current;
-        if (!el || !(e.target === el || (e.target as HTMLElement).parentElement === el)) { // Only drag if clicking on container or direct children (not cards)
-          // This check might need refinement based on exact DOM structure of the timeline items
-          // to prevent card clicks from initiating drag.
-          // For now, a simpler check or allowing drag from anywhere within the container.
-          // Or, if the cards are direct children, we prevent drag if target is a card.
-        }
+        if (!el ) return;
         
-        if (!el) return;
-
-        // Only allow drag if the click is on the timeline container itself, not on a comment card
-        // This requires careful event target checking or stopping propagation on card clicks.
-        // For simplicity, let's assume any click in the timelineContainerRef initiates drag for now.
-        // Better solution: check if e.target is the container itself or a non-interactive part of it.
-
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
         setStartX(e.pageX);
@@ -239,7 +227,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         }
         setIsDragging(false);
         document.body.style.userSelect = 'auto';
-        el.style.cursor = 'grab';
+        if (el) el.style.cursor = 'grab'; // Check if el is still valid
     }, [isDragging]);
 
 
@@ -341,30 +329,30 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                 <div
                                     key={comment.date + index} 
                                     className={cn(
-                                        "relative flex items-center group",
+                                        "relative flex items-center group z-10", 
                                         index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" 
                                     )}
                                 >
                                     <CommentCard
                                         comment={comment}
                                         className={cn(
-                                            "shadow-xl z-10", // Ensure cards are above the line by default
-                                            index % 2 === 0 ? "mb-4" : "mt-4" 
+                                            "shadow-xl", 
+                                            index % 2 === 0 ? "mb-5" : "mt-5" 
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
-                                    {/* Connector - themed blue */}
-                                    <div className={cn(
-                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity z-10", 
+                                   
+                                    <div className={cn( // Connector
+                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
                                         timelineStatusColors.connectorClassName, 
-                                        index % 2 === 0 ? "h-8" : "h-8" 
+                                        index % 2 === 0 ? "h-10" : "h-10" 
                                     )}></div>
-                                    {/* Dot - themed blue and more visible */}
-                                    <div className={cn(
+                                    
+                                    <div className={cn( // Dot
                                       "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
                                       timelineStatusColors.dotClassName
                                     )}></div>
-                                    <div className={cn(
+                                    <div className={cn( // Date
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
                                         index % 2 === 0 ? "mt-2" : "mb-2" 
                                     )}>

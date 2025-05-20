@@ -93,11 +93,11 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' };
+      return { variant: 'default', label: 'Tiède 🌤️' }; // Using default (primary) for warm
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' };
+      return { variant: 'success' as any, label: 'Converti ✅' }; // Casting success as any to match BadgeProps
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
@@ -199,31 +199,32 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         setIsDragging(true);
         setStartX(e.pageX);
         setScrollLeftStart(el.scrollLeft);
-        document.body.style.userSelect = 'none';
+        document.body.style.userSelect = 'none'; // Prevent text selection during drag
         el.style.cursor = 'grabbing';
     }, []);
 
     const onPointerMove = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         if (!isDragging || !timelineContainerRef.current) return;
-        e.preventDefault(); // Prevent text selection during drag
+        e.preventDefault(); 
         const el = timelineContainerRef.current;
         const deltaX = e.pageX - startX;
         el.scrollLeft = scrollLeftStart - (deltaX * DRAG_SPEED_MULTIPLIER);
     }, [isDragging, startX, scrollLeftStart, DRAG_SPEED_MULTIPLIER]);
 
     const onPointerUpOrCancel = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-        if (!isDragging || !timelineContainerRef.current) return;
         const el = timelineContainerRef.current;
+        if (!isDragging || !el) return;
+        
         try {
           el.releasePointerCapture(e.pointerId);
         } catch (error) {
-          // In some cases, the pointer capture might have already been released (e.g., if element is removed from DOM)
           // console.warn("Failed to release pointer capture:", error);
         }
         setIsDragging(false);
         document.body.style.userSelect = 'auto';
         el.style.cursor = 'grab';
     }, [isDragging]);
+
 
     return (
   <Tabs defaultValue="details" className="w-full">
@@ -263,7 +264,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <CardHeader><CardTitle className="font-bebas-neue text-primary text-xl">Coordonnées</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} />
-                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />}
+                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />} {/* Changed Printer to Info for Fax */}
                 <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail />
                 <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink />
                 <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} />
@@ -291,7 +292,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 <div className="mb-4 relative">
                     <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Rechercher dans la timeline (texte, nom, date, statut)..."
+                        placeholder="Rechercher (texte, nom, date, statut)..."
                         value={timelineSearchTerm}
                         onChange={(e) => setTimelineSearchTerm(e.target.value)}
                         className="pl-10 bg-input/50 focus:bg-input border-border/70"
@@ -310,43 +311,43 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
                         onPointerCancel={onPointerUpOrCancel}
-                        style={{ userSelect: isDragging ? 'none' : 'auto' }}
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Redundant with document.body style, but safe.
                     >
-                        {/* Timeline central line */}
+                        {/* Timeline central line - more visible */}
                         <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2 z-0"></div>
 
-                        {/* Container for comment cards - this needs to be wide enough to scroll */}
-                        <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10">
+                        <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10"> {/* Ensure cards are above the line */}
                             {filteredComments.map((comment, index) => {
                                 const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
                                 return (
                                 <div
-                                    key={index}
+                                    key={comment.date + index} // Using date + index for better key stability if comments can be identical
                                     className={cn(
                                         "relative flex items-center group",
-                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8"
+                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" // Alternating position
                                     )}
                                 >
                                     <CommentCard
                                         comment={comment}
                                         className={cn(
                                             "shadow-xl",
-                                            index % 2 === 0 ? "mb-4" : "mt-4"
+                                            index % 2 === 0 ? "mb-4" : "mt-4" // Adjust margin based on position
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
                                     <div className={cn(
                                         "w-px opacity-70 group-hover:opacity-100 transition-opacity",
                                         timelineStatusColors.connectorClassName,
-                                        index % 2 === 0 ? "h-8" : "h-8"
+                                        index % 2 === 0 ? "h-8" : "h-8" // Connector length
                                     )}></div>
+                                    {/* Dot - more visible */}
                                     <div className={cn(
                                       "w-4 h-4 rounded-full border-2 border-background shadow-md z-10 group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150",
                                       timelineStatusColors.dotClassName
                                     )}></div>
                                     <div className={cn(
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
-                                        index % 2 === 0 ? "mt-2" : "mb-2"
+                                        index % 2 === 0 ? "mt-2" : "mb-2" // Date position
                                     )}>
                                         {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </div>

@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import type { AppEntity, EntityType, Dealer, Client, LoadixUnit, MethanisationSite } from '@/types';
+import type { AppEntity, EntityType, Dealer, LoadixUnit, MethanisationSite } from '@/types'; // Client removed
 import dynamic from 'next/dynamic';
 
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe, 
-  CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter, 
-  Briefcase, Maximize, Minimize 
+import {
+  Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe,
+  CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter,
+  Briefcase, Maximize, Minimize
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image'; // For mini-map placeholder
 
 // Dynamically import Google Maps components
 const APIProvider = dynamic(() =>
@@ -47,15 +48,20 @@ interface MapClientContentProps {
 
 const entityTypeTranslations: Record<EntityType, string> = {
   'dealer': 'Concessionnaire',
-  'client': 'Client',
   'loadix-unit': 'Engin LOADIX',
   'methanisation-site': 'Site de Méthanisation',
 };
 
+const entityPinColors: Record<EntityType, { background: string; glyphColor: string; borderColor?: string }> = {
+    'dealer': { background: "hsl(var(--primary))", glyphColor: "hsl(var(--primary-foreground))", borderColor: "hsl(var(--primary-foreground))" }, // Blue
+    'loadix-unit': { background: "hsl(var(--destructive))", glyphColor: "hsl(var(--destructive-foreground))", borderColor: "hsl(var(--destructive-foreground))" }, // Red
+    'methanisation-site': { background: "hsl(var(--secondary))", glyphColor: "hsl(var(--secondary-foreground))", borderColor: "hsl(var(--secondary-foreground))" }, // Green (using accent for now)
+};
+
+
 const getEntityIcon = (type: EntityType, className?: string): React.ReactNode => {
   const icons: Record<EntityType, React.ElementType> = {
     'dealer': Building,
-    'client': User,
     'loadix-unit': Truck,
     'methanisation-site': Factory,
   };
@@ -88,7 +94,6 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 };
 
 const DealerDetailContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => ( <> <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} /> <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail /> <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink /> <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} /> {dealer.servicesOffered && dealer.servicesOffered.length > 0 && (<DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />)} </> );
-const ClientDetailContent: React.FC<{ client: Client }> = ({ client }) => ( <> <DetailItem icon={User} label="Nom du Contact" value={client.contactName} /> <DetailItem icon={Mail} label="Email du Contact" value={client.contactEmail} isEmail /> <DetailItem icon={Phone} label="Téléphone du Contact" value={client.contactPhone} /> <DetailItem icon={Factory} label="Secteur d'Activité" value={client.industry} /> </>);
 const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'default' : unit.status === 'maintenance' ? 'outline' : 'destructive'}>{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
 const MethanisationSiteDetailContent: React.FC<{ site: MethanisationSite }> = ({ site }) => ( <> <DetailItem icon={Info} label="Capacité" value={site.capacity} /> <DetailItem icon={User} label="Opérateur" value={site.operator} /> <DetailItem icon={CalendarDays} label="Date de mise en service" value={site.startDate ? new Date(site.startDate).toLocaleDateString() : undefined} /> </>);
 
@@ -106,36 +111,34 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const entitiesForMarkers = useMemo(() => {
     return initialEntities.filter(entity => {
       const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;
-      const searchMatch = searchTerm.trim() === '' || // If search is empty, don't filter by search term for markers initially
+      const searchMatch = searchTerm.trim() === '' ||
         entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entity.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity.city && entity.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
         entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase());
       return typeMatch && searchMatch && entity.geoLocation;
     });
   }, [initialEntities, searchTerm, selectedEntityType]);
-  
+
   const searchResultsEntities = useMemo(() => {
     if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused) {
-        return []; // Only show search results if actively searching/filtering or focused
+        return [];
     }
-    return entitiesForMarkers; // The same filtered list can be used for dropdown results
+    return entitiesForMarkers;
   }, [entitiesForMarkers, searchTerm, selectedEntityType, isSearchFocused]);
 
 
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
-    setIsSearchFocused(false); 
-    // setSearchTerm(''); // Optional: clear search on selection
+    setIsSearchFocused(false);
   };
-  
-  const entityTypes: EntityType[] = ['dealer', 'client', 'loadix-unit', 'methanisation-site'];
+
+  const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'methanisation-site'];
 
   const renderEntitySpecificDetails = (entity: AppEntity) => {
     switch (entity.entityType) {
       case 'dealer': return <DealerDetailContent dealer={entity as Dealer} />;
-      case 'client': return <ClientDetailContent client={entity as Client} />;
       case 'loadix-unit': return <LoadixUnitDetailContent unit={entity as LoadixUnit} />;
       case 'methanisation-site': return <MethanisationSiteDetailContent site={entity as MethanisationSite} />;
       default: return <p className="text-muted-foreground">Aucun détail spécifique pour ce type d'entité.</p>;
@@ -146,7 +149,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     if (!mapContainerRef.current) return;
     if (!document.fullscreenElement) {
       mapContainerRef.current.requestFullscreen().catch((err) => {
-        alert(`Erreur lors de la tentative d'activation du mode plein écran: ${err.message} (${err.name})`);
+        alert(`Erreur mode plein écran: ${err.message} (${err.name})`);
       });
     } else {
       if (document.exitFullscreen) {
@@ -171,12 +174,12 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         </svg>
         <h2 className="text-2xl font-semibold mb-2">Clé API Google Maps Manquante</h2>
         <p className="text-muted-foreground">
-          Veuillez configurer la variable d'environnement <code className="bg-muted px-1 py-0.5 rounded-sm text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
+          Veuillez configurer <code className="bg-muted px-1 py-0.5 rounded-sm text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
         </p>
       </div>
     );
   }
-  
+
   return (
     <APIProvider apiKey={googleMapsApiKey}>
       <div className="relative h-full w-full" ref={mapContainerRef}>
@@ -185,22 +188,24 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             defaultCenter={{ lat: 46.2276, lng: 2.2137 }} // Centered on France
             defaultZoom={6}
             gestureHandling={'greedy'}
-            disableDefaultUI={false}
+            disableDefaultUI={true} // UI controls (zoom, etc.) will be custom or managed by sheet
             mapId="loadixManagerMainMap"
             style={{ width: '100%', height: '100%' }}
           >
             {entitiesForMarkers.map((entity) => {
               if (entity.geoLocation && entity.geoLocation.latitude && entity.geoLocation.longitude) {
+                const pinStyle = entityPinColors[entity.entityType] || entityPinColors['dealer'];
                 return (
                   <AdvancedMarker
                     key={entity.id}
                     position={{ lat: entity.geoLocation.latitude, lng: entity.geoLocation.longitude }}
                     onClick={() => handleEntityClick(entity)}
+                    title={entity.name}
                   >
-                    <Pin 
-                      background={"hsl(var(--primary))"}
-                      borderColor={"hsl(var(--primary-foreground))"}
-                      glyphColor={"hsl(var(--primary-foreground))"}
+                    <Pin
+                      background={pinStyle.background}
+                      borderColor={pinStyle.borderColor || pinStyle.background}
+                      glyphColor={pinStyle.glyphColor}
                     />
                   </AdvancedMarker>
                 );
@@ -217,11 +222,10 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Rechercher une entité, une ville, un ID..."
+                  placeholder="Rechercher une entité, ville, ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
-                  // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Delay to allow click on results
                   className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
                 />
               </div>
@@ -247,7 +251,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         </div>
 
         {(isSearchFocused || searchTerm) && searchResultsEntities.length > 0 && (
-          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2"> {/* Adjusted margin top */}
+          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2">
             <Card className="max-h-[calc(50vh-6rem)] md:max-h-[calc(50vh-3rem)] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
               <CardContent className="p-2">
                 <ul className="space-y-1">
@@ -282,7 +286,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             </Card>
           </div>
         )}
-        
+
         <div className="absolute bottom-4 right-4 z-30">
           <Button
             variant="outline"
@@ -297,11 +301,11 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
 
         {selectedEntity && (
           <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setSelectedEntity(null); }}>
-            <SheetContent 
-              side="bottom" 
-              className="h-[75vh] md:h-[60vh] flex flex-col rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl p-0" // No padding on SheetContent itself
+            <SheetContent
+              side="bottom"
+              className="h-[75vh] md:h-[60vh] flex flex-col rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl p-0"
             >
-              <SheetHeader className="p-4 border-b border-border/30"> {/* Padding for header */}
+              <SheetHeader className="p-4 border-b border-border/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="bg-primary/10 text-primary p-2.5 rounded-lg shadow-sm">
@@ -321,15 +325,15 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                   </SheetClose>
                 </div>
               </SheetHeader>
-              
-              <ScrollArea className="flex-grow p-4"> {/* Padding for scrollable content area */}
+
+              <ScrollArea className="flex-grow p-4">
                 <div className="space-y-4">
                   <Card className="bg-background/50 border-border/40">
                     <CardHeader>
                       <CardTitle className="text-lg font-bebas-neue text-primary">Informations Générales</CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm space-y-1">
-                      <DetailItem icon={LocationIcon} label="Adresse" value={`${selectedEntity.address}, ${selectedEntity.postalCode} ${selectedEntity.city}, ${selectedEntity.country}`} />
+                      <DetailItem icon={LocationIcon} label="Adresse" value={`${selectedEntity.address || 'N/A'}, ${selectedEntity.postalCode || ''} ${selectedEntity.city || ''}, ${selectedEntity.country || ''}`} />
                       <Badge variant="outline" className="text-xs">ID: {selectedEntity.id}</Badge>
                       <Badge variant="outline" className="ml-2 text-xs">Créé le: {new Date(selectedEntity.createdAt).toLocaleDateString()}</Badge>
                     </CardContent>
@@ -343,7 +347,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                       {renderEntitySpecificDetails(selectedEntity)}
                     </CardContent>
                   </Card>
-                  
+
                   {selectedEntity.geoLocation && selectedEntity.geoLocation.latitude && selectedEntity.geoLocation.longitude && (
                     <Card className="bg-background/50 border-border/40">
                       <CardHeader>
@@ -351,29 +355,22 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                       </CardHeader>
                       <CardContent>
                           <div className="h-40 w-full rounded-md overflow-hidden">
-                            <Map
-                                center={{ lat: selectedEntity.geoLocation.latitude, lng: selectedEntity.geoLocation.longitude }}
-                                zoom={14}
-                                gestureHandling={'greedy'}
-                                disableDefaultUI={true}
-                                mapId="miniMapLoadixInSheet" // Unique mapId
-                                style={{ width: '100%', height: '100%' }}
-                            >
-                                <AdvancedMarker position={{ lat: selectedEntity.geoLocation.latitude, lng: selectedEntity.geoLocation.longitude }}>
-                                    <Pin 
-                                        background={"hsl(var(--primary))"}
-                                        borderColor={"hsl(var(--primary-foreground))"}
-                                        glyphColor={"hsl(var(--primary-foreground))"}
-                                    />
-                                </AdvancedMarker>
-                            </Map>
+                            {/* Using an Image placeholder for the mini-map inside the sheet to avoid nested APIProviders or complex map instances */}
+                            <Image
+                                src={`https://placehold.co/600x200.png?text=Mini-carte+${encodeURIComponent(selectedEntity.name)}`}
+                                alt={`Mini-carte de ${selectedEntity.name}`}
+                                width={600}
+                                height={200}
+                                className="object-cover w-full h-full"
+                                data-ai-hint="map location"
+                            />
                           </div>
                       </CardContent>
                     </Card>
                   )}
                 </div>
               </ScrollArea>
-              <SheetFooter className="p-4 border-t border-border/30"> {/* Padding for footer */}
+              <SheetFooter className="p-4 border-t border-border/30">
                   <Button variant="outline" asChild>
                       <Link href={`/item/${selectedEntity.entityType}/${selectedEntity.id}`}>
                           Voir la fiche complète <ChevronsRight className="ml-2 h-4 w-4" />
@@ -390,6 +387,3 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     </APIProvider>
   );
 }
-
-// Helper icon for missing API key message (already present in old file, keeping it)
-// const TriangleAlert = ... (removed for brevity, assuming it's still in the actual file if needed)

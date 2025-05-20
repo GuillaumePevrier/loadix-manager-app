@@ -4,12 +4,11 @@ export interface GeoLocation {
   lng: number;
 }
 
-// Adjusted EntityType: Removed 'client' as per request
+// EntityType updated to include all relevant types
 export type EntityType = 'dealer' | 'loadix-unit' | 'methanisation-site';
 
 export interface Comment {
-  // userId: string; // Or userName if you don't have user IDs yet
-  userName: string; // For simplicity for now
+  userName: string;
   date: string; // ISO Date string
   text: string;
 }
@@ -22,7 +21,7 @@ export interface BaseEntity {
   city: string;
   postalCode: string;
   country: string;
-  geoLocation?: GeoLocation; // Made optional as it might not be set immediately
+  geoLocation?: GeoLocation;
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
 }
@@ -30,59 +29,56 @@ export interface BaseEntity {
 export interface Dealer extends BaseEntity {
   entityType: 'dealer';
   phone?: string;
-  fax?: string; // Added
+  fax?: string;
   email?: string;
   website?: string;
   contactPerson?: string;
-  servicesOffered?: string[]; // e.g., Vente, Réparation, Entretien
-  tractorBrands?: string[]; // Marques de tracteurs que le concessionnaire représente
-  machineTypes?: string[]; // Types de machines agricoles gérées/vendues (e.g., Tracteurs, Moissonneuses)
-  prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost'; // Expanded
+  servicesOffered?: string[];
+  tractorBrands?: string[];
+  machineTypes?: string[];
+  prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost';
   comments?: Comment[];
-  galleryUris?: string[]; // URLs for images
-  documentUris?: string[]; // URLs for documents
-  // relatedClientIds?: string[]; // Clients are now part of MethanisationSite or linked through it
-  relatedProspectIds?: string[]; // If you track prospects separately
-  relatedSiteIds?: string[]; // IDs of MethanisationSite entities
-  department?: string; // Added: Département
-  brandSign?: string; // Added: Enseigne
-  branchName?: string; // Added: Succursale (si applicable, sinon nom principal)
+  galleryUris?: string[];
+  documentUris?: string[];
+  relatedProspectIds?: string[];
+  relatedSiteIds?: string[];
+  department?: string;
+  brandSign?: string;
+  branchName?: string;
 }
-
-// Client is removed as a top-level standalone entity for now. 
-// Client-like info will be part of MethanisationSite or linked through other means.
 
 export interface LoadixUnit extends BaseEntity {
   entityType: 'loadix-unit';
   serialNumber: string;
-  model: string;
-  status: 'active' | 'maintenance' | 'inactive';
-  lastMaintenanceDate?: string; // ISO Date string
+  model: string; // e.g., LOADIX Pro v2, LOADIX Compact
+  status: 'active' | 'maintenance' | 'inactive' | 'in_stock' | 'sold';
   purchaseDate?: string; // ISO Date string
-  // linkedClientId?: string; // To link to a client/site that owns/uses it
-  linkedSiteId?: string; // ID of the MethanisationSite it's associated with
-  dealerId?: string; // Dealer who sold/maintains it
+  lastMaintenanceDate?: string; // ISO Date string
+  dealerId?: string; // ID of the dealer who sold/maintains it
+  methanisationSiteId?: string; // ID of the MethanisationSite it's associated with (owner/operator)
+  // Add other LoadixUnit specific fields here: hours_of_operation, firmware_version, etc.
 }
 
-export interface MethanisationSiteClient { // Defines structure for clients associated with a site
-    name: string; 
-    contactEmail?: string; 
+export interface MethanisationSiteClient {
+    name: string;
+    contactEmail?: string;
     contactPhone?: string;
-    // Add other client-specific fields here if needed
 }
 
 export interface MethanisationSite extends BaseEntity {
   entityType: 'methanisation-site';
-  capacity?: string; // e.g., "1000 tons/year"
-  operator?: string;
-  startDate?: string; // ISO Date string
-  siteClients?: MethanisationSiteClient[]; 
+  capacity?: string; // e.g., "5000 tons/year", "250 kW"
+  operator?: string; // Name of the operating company or individual
+  startDate?: string; // ISO Date string of when the site became operational
+  siteClients?: MethanisationSiteClient[]; // List of clients/farms supplying the site
+  technologies?: string[]; // e.g., "Infinitely
+  relatedDealerIds?: string[]; // Dealers involved with equipment at this site
+  // Add other MethanisationSite specific fields here: feedstock_types, energy_output_type etc.
 }
 
-// Union type for any entity, can be expanded
 export type AppEntity = Dealer | LoadixUnit | MethanisationSite;
 
-// For creating a new dealer - ensure this matches the form fields and expected data structure
+// Data for Creating Entities
 export interface NewDealerData {
   name: string;
   address: string;
@@ -95,20 +91,52 @@ export interface NewDealerData {
   email?: string;
   website?: string;
   contactPerson?: string;
-  brandSign?: string; // Enseigne
-  branchName?: string; // Succursale
-  machineTypes?: string[]; 
+  brandSign?: string;
+  branchName?: string;
+  machineTypes?: string[];
   tractorBrands?: string[];
-  prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost';
-  comments?: Comment[]; // For initial comments
+  prospectionStatus?: Dealer['prospectionStatus'];
+  initialCommentText?: string; // Renamed from comments to avoid confusion with Comment[]
+  comments?: Comment[]; // For initial comments if structured
   geoLocation?: GeoLocation;
-  // Optional fields that might not be part of initial creation but part of Dealer type
   servicesOffered?: string[];
   galleryUris?: string[];
   documentUris?: string[];
   relatedProspectIds?: string[];
   relatedSiteIds?: string[];
 }
+export type UpdateDealerData = Partial<NewDealerData>;
 
-// For updating an existing dealer
-export type UpdateDealerData = Partial<NewDealerData>; // Can be more specific if needed
+
+export interface NewLoadixUnitData {
+  name: string;
+  serialNumber: string;
+  model: string;
+  status: LoadixUnit['status'];
+  address: string; // Location address
+  city: string;
+  postalCode: string;
+  country: string;
+  geoLocation?: GeoLocation;
+  purchaseDate?: string;
+  lastMaintenanceDate?: string;
+  dealerId?: string;
+  methanisationSiteId?: string;
+}
+export type UpdateLoadixUnitData = Partial<NewLoadixUnitData>;
+
+export interface NewMethanisationSiteData {
+  name: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  geoLocation?: GeoLocation;
+  capacity?: string;
+  operator?: string;
+  startDate?: string;
+  // siteClients?: MethanisationSiteClient[]; // Simplified for form
+  // technologies?: string[]; // Simplified for form
+  // relatedDealerIds?: string[]; // Simplified for form
+}
+export type UpdateMethanisationSiteData = Partial<NewMethanisationSiteData>;

@@ -2,15 +2,15 @@
 import * as React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite, Comment } from '@/types'; // Client removed
-import { findEntityByIdAndType } from '@/lib/mock-data'; 
-import { getDealerById } from '@/services/dealerService';
+import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite, Comment } from '@/types';
+import { findEntityByIdAndType } from '@/lib/mock-data';
+import { getDealerById } from '@/services/dealerService'; // Assuming other getById functions will be added here or new services
 import { cn } from '@/lib/utils';
 import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
-  Info, Hash, Power, ChevronsRight, Edit2, // Added Edit2
-  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer // Added Printer
+  Info, Hash, Power, ChevronsRight, Edit2,
+  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText // Added FileText
 } from 'lucide-react';
 import DeleteEntityButton from './DeleteEntityButton';
 import Image from 'next/image';
@@ -18,11 +18,10 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-// import { Separator } from '@/components/ui/separator'; // Not used currently
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ItemPageProps {
   params: {
@@ -50,6 +49,16 @@ const getEntityIcon = (type: EntityType, className?: string): React.ReactNode =>
   return <IconComponent className={className || 'h-6 w-6'} />;
 };
 
+const getEntityEditRoute = (type: EntityType, id: string): string => {
+    switch (type) {
+        case 'dealer': return `/dealers/edit/${id}`;
+        case 'loadix-unit': return `/loadix-units/edit/${id}`; // To be created
+        case 'methanisation-site': return `/methanisation-sites/edit/${id}`; // To be created
+        default: return '/directory';
+    }
+};
+
+
 export async function generateMetadata(
   { params }: ItemPageProps,
   parent: ResolvingMetadata
@@ -58,6 +67,7 @@ export async function generateMetadata(
   if (params.entityType === 'dealer') {
     entity = await getDealerById(params.entityId);
   } else {
+    // For other types, use mock data for now, or implement their respective getById service functions
     entity = findEntityByIdAndType(params.entityType, params.entityId) ?? null;
   }
 
@@ -142,17 +152,29 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' }; // Using primary for warm
+      return { variant: 'default', label: 'Tiède 🌤️' };
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' }; // Assuming 'success' variant exists or maps to green
+      return { variant: 'success' as any, label: 'Converti ✅' };
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
       return { variant: 'outline', label: 'Aucun statut' };
   }
 };
+
+const getLoadixStatusBadgeVariant = (status?: LoadixUnit['status']): "default" | "secondary" | "destructive" | "outline" | "success" => {
+    switch (status) {
+        case 'active': return 'success' as any;
+        case 'maintenance': return 'default'; // Using primary for maintenance
+        case 'inactive': return 'outline';
+        case 'in_stock': return 'secondary';
+        case 'sold': return 'destructive';
+        default: return 'outline';
+    }
+};
+
 
 const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
   <div className="flex items-start space-x-3 p-3 bg-muted/30 rounded-md border border-border/20">
@@ -172,7 +194,6 @@ const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
   </div>
 );
 
-// Dealer tabs content
 const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
     const statusInfo = getProspectionStatusBadgeInfo(dealer.prospectionStatus);
     return (
@@ -243,7 +264,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 ) : (
                     <ScrollArea className="h-[300px] pr-3">
                         <div className="space-y-3">
-                            {dealer.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => ( // Sort by newest first
+                            {dealer.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
                                 <CommentCard key={index} comment={comment} />
                             ))}
                         </div>
@@ -281,7 +302,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 <li key={index} className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    Document {index + 1} {/* TODO: Use actual document names if available */}
+                    Document {index + 1}
                   </a>
                 </li>
               ))}
@@ -295,79 +316,81 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         <Card>
             <CardHeader><CardTitle className="font-bebas-neue text-primary text-xl">Entités Liées</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-                <p className="text-muted-foreground italic">Fonctionnalité de liaison à implémenter (ex: Sites de méthanisation associés).</p>
+                <p className="text-muted-foreground italic">Fonctionnalité de liaison à implémenter.</p>
+                {/* Example for related sites, adapt for prospects, clients (now part of sites), units */}
                 {dealer.relatedSiteIds && dealer.relatedSiteIds.length > 0 && (
-                    <DetailItem icon={Factory} label="Sites de Méthanisation Liés" value={dealer.relatedSiteIds.map(id => <Link href={`/item/methanisation-site/${id}`} className="text-primary hover:underline">Site {id}</Link>)} />
+                    <DetailItem icon={Factory} label="Sites de Méthanisation Liés" value={dealer.relatedSiteIds.map(id => <Link key={id} href={`/item/methanisation-site/${id}`} className="text-primary hover:underline block">Site {id.substring(0,8)}...</Link>)} />
                 )}
+                 {/* Placeholder for related Loadix Units */}
+                 {/* Placeholder for related Prospects */}
             </CardContent>
         </Card>
     </TabsContent>
-    
-    <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
-        <Button asChild variant="outline" className="w-full sm:w-auto">
-            <Link href={`/dealers/edit/${dealer.id}`}>
-                <Edit2 className="mr-2 h-4 w-4" />
-                Modifier
-            </Link>
-        </Button>
-        <DeleteEntityButton entityType={dealer.entityType} entityId={dealer.id} />
-    </CardFooter>
-
-     <Alert variant="default" className="mt-8 bg-accent/10 border-accent/50 text-accent-foreground/90">
-        <CircleAlert className="h-5 w-5 text-accent" />
-        <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
-        <AlertDescription className="text-xs">
-            Les données des concessionnaires sont lues depuis Firebase Firestore. 
-            Les autres types d'entités (Engins, Sites) utilisent encore des données simulées.
-            La création et la modification des concessionnaires sont en cours d'implémentation.
-        </AlertDescription>
-    </Alert>
   </Tabs>
 )};
 
 const LoadixUnitDetailCard: React.FC<{ unit: LoadixUnit }> = ({ unit }) => (
   <Card className="shadow-lg">
     <CardHeader>
-      <CardTitle className="font-bebas-neue text-primary text-xl">Détails de l'Engin LOADIX</CardTitle>
+      <CardTitle className="font-bebas-neue text-primary text-xl">Détails de l'Engin</CardTitle>
     </CardHeader>
-    <CardContent className="space-y-3">
+    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
       <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} />
       <DetailItem icon={Truck} label="Modèle" value={unit.model} />
-      <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'default' : unit.status === 'maintenance' ? 'outline' : 'destructive'}>{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} />
+      <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={getLoadixStatusBadgeVariant(unit.status)}>{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} />
       <DetailItem icon={MapPin} label="Localisation" value={`${unit.address || 'N/A'}, ${unit.postalCode || ''} ${unit.city || ''}, ${unit.country || ''}`} />
       {unit.purchaseDate && <DetailItem icon={CalendarDays} label="Date d'achat" value={new Date(unit.purchaseDate).toLocaleDateString()} />}
       {unit.lastMaintenanceDate && <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={new Date(unit.lastMaintenanceDate).toLocaleDateString()} />}
+      {unit.dealerId && <DetailItem icon={Building} label="Concessionnaire Associé" value={<Link href={`/item/dealer/${unit.dealerId}`} className="text-primary hover:underline">Voir Concessionnaire</Link>} />}
+      {unit.methanisationSiteId && <DetailItem icon={Factory} label="Site de Méthanisation Associé" value={<Link href={`/item/methanisation-site/${unit.methanisationSiteId}`} className="text-primary hover:underline">Voir Site</Link>} />}
+       {unit.geoLocation && (
+          <div className="md:col-span-2 h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
+              <Image
+              src={`https://placehold.co/800x300.png?text=Carte+Engin+${encodeURIComponent(unit.name)}`}
+              alt={`Carte pour ${unit.name}`}
+              width={800}
+              height={300}
+              className="object-cover h-full w-full"
+              data-ai-hint="map location"
+              />
+          </div>
+      )}
     </CardContent>
-    <CardFooter className="flex justify-end gap-2 pt-4 border-t">
-      <Button variant="outline" disabled>Modifier</Button>
-      <Button variant="destructive" disabled>Supprimer</Button> {/* Consider enabling this with appropriate service */}
-    </CardFooter>
   </Card>
 );
 
 const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ site }) => (
   <Card className="shadow-lg">
     <CardHeader>
-      <CardTitle className="font-bebas-neue text-primary text-xl">Détails du Site de Méthanisation</CardTitle>
+      <CardTitle className="font-bebas-neue text-primary text-xl">Détails du Site</CardTitle>
     </CardHeader>
-    <CardContent className="space-y-3">
+    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
       <DetailItem icon={MapPin} label="Adresse" value={`${site.address || 'N/A'}, ${site.postalCode || ''} ${site.city || ''}, ${site.country || ''}`} />
       {site.capacity && <DetailItem icon={Info} label="Capacité" value={site.capacity} />}
       {site.operator && <DetailItem icon={User} label="Opérateur" value={site.operator} />}
       {site.startDate && <DetailItem icon={CalendarDays} label="Date de mise en service" value={new Date(site.startDate).toLocaleDateString()} />}
-       {site.siteClients && site.siteClients.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mt-3 mb-1">Clients du Site:</h4>
-          {site.siteClients.map((client, idx) => (
-            <Badge key={idx} variant="outline" className="mr-1 mb-1">{client.name}</Badge>
-          ))}
-        </div>
+      {site.siteClients && site.siteClients.length > 0 && (
+        <DetailItem icon={User} label="Clients du Site" value={site.siteClients.map(client => client.name)} />
+      )}
+      {site.technologies && site.technologies.length > 0 && (
+        <DetailItem icon={Tag} label="Technologies" value={site.technologies} />
+      )}
+      {site.relatedDealerIds && site.relatedDealerIds.length > 0 && (
+        <DetailItem icon={Building} label="Concessionnaires Liés" value={site.relatedDealerIds.map(id => <Link key={id} href={`/item/dealer/${id}`} className="text-primary hover:underline block">Concessionnaire {id.substring(0,8)}...</Link>)} />
+      )}
+       {site.geoLocation && (
+          <div className="md:col-span-2 h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
+              <Image
+              src={`https://placehold.co/800x300.png?text=Carte+Site+${encodeURIComponent(site.name)}`}
+              alt={`Carte pour ${site.name}`}
+              width={800}
+              height={300}
+              className="object-cover h-full w-full"
+              data-ai-hint="map location"
+              />
+          </div>
       )}
     </CardContent>
-     <CardFooter className="flex justify-end gap-2 pt-4 border-t">
-      <Button variant="outline" disabled>Modifier</Button>
-      <Button variant="destructive" disabled>Supprimer</Button> {/* Consider enabling this with appropriate service */}
-    </CardFooter>
   </Card>
 );
 
@@ -375,10 +398,16 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
   const { entityType, entityId } = params;
   let entity: AppEntity | null = null;
 
+  // Fetch entity data based on type
+  // This will be expanded with actual service calls for each type
   if (entityType === 'dealer') {
     entity = await getDealerById(entityId);
+  } else if (entityType === 'loadix-unit') {
+    entity = findEntityByIdAndType(entityType, entityId) as LoadixUnit || null; // Using mock for now
+  } else if (entityType === 'methanisation-site') {
+    entity = findEntityByIdAndType(entityType, entityId) as MethanisationSite || null; // Using mock for now
   } else {
-    entity = findEntityByIdAndType(entityType, entityId) ?? null;
+    notFound();
   }
 
   if (!entity) {
@@ -386,6 +415,7 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
   }
 
   const entityTypeDisplay = getEntityTypeDisplayName(entity.entityType);
+  const editRoute = getEntityEditRoute(entity.entityType, entity.id);
 
   const renderEntitySpecificDetails = () => {
     switch (entity.entityType) {
@@ -396,7 +426,8 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
       case 'methanisation-site':
         return <MethanisationSiteDetailCard site={entity as MethanisationSite} />;
       default:
-        const _exhaustiveCheck: never = entity; 
+        // This should not happen if types are handled above
+        const _exhaustiveCheck: never = entity;
         return <p className="text-muted-foreground">Type d'entité non pris en charge: {(_exhaustiveCheck as AppEntity).entityType}</p>;
     }
   };
@@ -419,35 +450,50 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
           </div>
           <Badge variant="secondary" className="text-xs px-2.5 py-1 self-start md:self-center">{entityTypeDisplay}</Badge>
         </div>
-        {(entity.city || entity.country) && ( // Display only if city or country exists
+        {(entity.city || entity.country) && (
             <p className="text-sm text-muted-foreground mt-1.5 ml-1 flex items-center">
                 <MapPin className="h-3.5 w-3.5 mr-1.5 inline-block opacity-70" />
                 {entity.city}{entity.city && entity.country ? ', ' : ''}{entity.country}
             </p>
         )}
       </header>
-      
+
       {renderEntitySpecificDetails()}
+
+       {/* Common Footer for all entity types if not handled within specific tabs/cards */}
+      {entity.entityType !== 'dealer' && ( // Dealer has its own footer within tabs
+        <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={editRoute}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Modifier
+                </Link>
+            </Button>
+            <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
+        </CardFooter>
+      )}
+      {entity.entityType === 'dealer' && ( // Specific footer actions for Dealer are inside DealerTabsContent
+         <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={editRoute}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Modifier
+                </Link>
+            </Button>
+            <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
+        </CardFooter>
+      )}
+
+
+     <Alert variant="default" className="mt-8 bg-accent/10 border-accent/50 text-accent-foreground/90">
+        <CircleAlert className="h-5 w-5 text-accent" />
+        <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
+        <AlertDescription className="text-xs">
+            Les données des concessionnaires sont lues depuis Firebase Firestore.
+            Les autres types d'entités (Engins, Sites) utilisent encore des données simulées et leurs fonctions d'ajout/modification sont pour l'instant simulées.
+            La création et la modification pour tous les types sont en cours d'implémentation.
+        </AlertDescription>
+    </Alert>
     </div>
   );
 }
-
-// Redefined Printer icon as it was removed previously by mistake
-// const Printer: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-//   <svg
-//     xmlns="http://www.w3.org/2000/svg"
-//     width="24"
-//     height="24"
-//     viewBox="0 0 24 24"
-//     fill="none"
-//     stroke="currentColor"
-//     strokeWidth="2"
-//     strokeLinecap="round"
-//     strokeLinejoin="round"
-//     {...props}
-//   >
-//     <polyline points="6 9 6 2 18 2 18 9" />
-//     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-//     <rect x="6" y="14" width="12" height="8" />
-//   </svg>
-// );

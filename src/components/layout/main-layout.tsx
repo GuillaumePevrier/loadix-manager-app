@@ -16,7 +16,7 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut, Loader2, Search } from 'lucide-react'; 
+import { Settings, LogOut, Loader2, Search } from 'lucide-react';
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
@@ -37,10 +37,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
     router.push('/login');
   };
 
-  // Ensure /dealers/create and /dealers/edit/[dealerId] are full width
-  const noPaddingRoutes = ['/map', '/directory', '/dealers/create'];
+  const noPaddingRoutes = [
+    '/map',
+    '/directory',
+    '/dealers/create',
+    '/loadix-units/create', // Add new creation page
+    '/methanisation-sites/create' // Add new creation page
+  ];
   const isDealerEditPage = /^\/dealers\/edit\/[^/]+$/.test(pathname);
+  const isLoadixUnitEditPage = /^\/loadix-units\/edit\/[^/]+$/.test(pathname); // Add new edit page pattern
+  const isMethanisationSiteEditPage = /^\/methanisation-sites\/edit\/[^/]+$/.test(pathname); // Add new edit page pattern
 
+  const applyNoPadding = noPaddingRoutes.includes(pathname) ||
+                         isDealerEditPage ||
+                         isLoadixUnitEditPage ||
+                         isMethanisationSiteEditPage;
 
   return (
     <>
@@ -80,7 +91,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </Button>
             </div>
           ) : (
-             <div className="p-2 h-[60px] group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">{/* Placeholder for logged out state */}</div>
+             <div className="p-2 h-[60px] group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">{/* Placeholder */}</div>
           )}
         </SidebarFooter>
       </Sidebar>
@@ -104,7 +115,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto ${(noPaddingRoutes.includes(pathname) || isDealerEditPage) ? '' : 'p-4 md:p-6 lg:p-8'}`}>
+        <main className={`flex-1 overflow-y-auto ${applyNoPadding ? '' : 'p-4 md:p-6 lg:p-8'}`}>
           {children}
         </main>
       </SidebarInset>

@@ -163,6 +163,55 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             new Date(comment.date).toLocaleDateString().includes(lowerSearchTerm)
         );
     }, [sortedComments, timelineSearchTerm]);
+
+    const scrollableTimelineRef = React.useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [startX, setStartX] = React.useState(0);
+    const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
+    const DRAG_SPEED_MULTIPLIER = 1.5;
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!scrollableTimelineRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX); // Record mouse position relative to document
+        setScrollLeftStart(scrollableTimelineRef.current.scrollLeft);
+        if (scrollableTimelineRef.current) {
+            scrollableTimelineRef.current.style.cursor = 'grabbing';
+            scrollableTimelineRef.current.style.userSelect = 'none';
+        }
+    };
+
+    const handleMouseMoveGlobal = React.useCallback((e: MouseEvent) => {
+        if (!isDragging || !scrollableTimelineRef.current) return;
+        e.preventDefault();
+        const x = e.pageX;
+        const walk = (x - startX) * DRAG_SPEED_MULTIPLIER;
+        scrollableTimelineRef.current.scrollLeft = scrollLeftStart - walk;
+    }, [isDragging, startX, scrollLeftStart, DRAG_SPEED_MULTIPLIER]);
+
+    const handleMouseUpGlobal = React.useCallback(() => {
+        if (!scrollableTimelineRef.current) return;
+        setIsDragging(false);
+        if (scrollableTimelineRef.current) {
+            scrollableTimelineRef.current.style.cursor = 'grab';
+            scrollableTimelineRef.current.style.userSelect = 'auto';
+        }
+    }, []);
+
+    React.useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMoveGlobal);
+            document.addEventListener('mouseup', handleMouseUpGlobal);
+        } else {
+            document.removeEventListener('mousemove', handleMouseMoveGlobal);
+            document.removeEventListener('mouseup', handleMouseUpGlobal);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMoveGlobal);
+            document.removeEventListener('mouseup', handleMouseUpGlobal);
+        };
+    }, [isDragging, handleMouseMoveGlobal, handleMouseUpGlobal]);
     
     return (
   <Tabs defaultValue="details" className="w-full">
@@ -242,19 +291,29 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         {timelineSearchTerm ? `Aucun commentaire trouvé pour "${timelineSearchTerm}".` : 'Aucun commentaire de suivi pour le moment.'}
                     </p>
                 ) : (
-                    <ScrollArea className="w-full pb-4 pr-2">
-                        <div className="relative flex items-start pt-10 pb-6 min-w-max">
+                    <ScrollArea className="w-full pb-4 cursor-grab" /* Removed pr-2 for potentially better full width scroll experience */
+                        // Using the viewport's ref if ScrollArea manages its own viewport,
+                        // otherwise, a direct child div would need the ref.
+                        // For now, we'll apply mouse down to the direct child.
+                    >
+                        <div 
+                            ref={scrollableTimelineRef}
+                            className="relative flex items-start pt-10 pb-6 min-w-max select-none" // Added select-none here
+                            onMouseDown={handleMouseDown}
+                        >
+                            {/* Timeline central line */}
                             <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2"></div>
                             
-                            <div className="flex space-x-20 pl-8 pr-8">
+                            <div className="flex space-x-20 pl-8 pr-8"> {/* This div contains the actual comment cards */}
                                 {filteredComments.map((comment, index) => (
                                     <div 
                                         key={index} 
                                         className={cn(
-                                            "relative flex items-center group",
-                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse" // Alternating position
+                                            "relative flex items-center group", // Main container for card + dot + connector
+                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" // Alternating position, mt-8 for items below to clear the line
                                         )}
                                     >
+                                        {/* Comment Card moved inside the alternating logic if needed, or kept outside if positioning is absolute/relative to point */}
                                         <CommentCard 
                                             comment={comment} 
                                             className={cn(
@@ -262,20 +321,26 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                                 index % 2 === 0 ? "mb-4" : "mt-4" // Margin to separate card from dot
                                             )}
                                         />
+                                        {/* Vertical Connector Line */}
                                         <div className={cn(
                                             "w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity",
                                             index % 2 === 0 ? "h-8" : "h-8" // Connector height
                                         )}></div>
+                                        {/* Timeline Dot */}
                                         <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
                                                         group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
-                                        <div className="mt-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm">
+                                        {/* Date below the dot */}
+                                        <div className={cn(
+                                            "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
+                                            index % 2 === 0 ? "mt-2" : "mb-2" // Adjust margin for date based on card position
+                                        )}>
                                             {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="h-1" /> 
+                        <div className="h-1" /> {/* Ensures scrollbar has some space at the end if needed */}
                     </ScrollArea>
                 )}
                  <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
@@ -339,3 +404,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 )};
 
 export default DealerTabsContent;
+
+
+    

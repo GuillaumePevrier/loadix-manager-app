@@ -2,10 +2,10 @@
 'use server';
 
 import { db, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
-import { collection, writeBatch, serverTimestamp, Timestamp, GeoPoint } from 'firebase/firestore';
+import { collection, writeBatch, serverTimestamp, Timestamp, GeoPoint, doc } from 'firebase/firestore';
 import Papa from 'papaparse';
 import type { EntityType, NewDealerData, NewLoadixUnitData, NewMethanisationSiteData, DealerImportSchema, LoadixUnitImportSchema, MethanisationSiteImportSchema } from '@/types';
-import { DealerImportSchemaZod, LoadixUnitImportSchemaZod, MethanisationSiteImportSchemaZod } from '@/types'; // Assuming Zod schemas are also exported from types
+import { DealerImportSchemaZod, LoadixUnitImportSchemaZod, MethanisationSiteImportSchemaZod } from '@/types';
 
 export interface ImportResult {
   success: boolean;
@@ -13,13 +13,7 @@ export interface ImportResult {
   totalRows: number;
   importedCount: number;
   errorCount: number;
-  errorsDetail: { rowIndex: number; message: string; rowData: string[] }[];
-}
-
-// Helper to convert multi-value strings (e.g., "val1;val2") to string[]
-function parseMultiValueString(value: string | undefined | null): string[] {
-  if (!value) return [];
-  return value.split(';').map(s => s.trim()).filter(Boolean);
+  errorsDetail: { rowIndex: number; message: string; rowData: Record<string, string> }[];
 }
 
 export async function importEntitiesFromCSV(csvData: string, entityType: EntityType): Promise<ImportResult> {
@@ -50,11 +44,19 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
     result.totalRows = parseResult.data.length;
     if (parseResult.errors.length > 0) {
         parseResult.errors.forEach(err => {
-            result.errorsDetail.push({ 
-                rowIndex: err.row ?? -1, 
-                message: `Erreur de parsing CSV: ${err.message}`, 
-                rowData: parseResult.data[err.row ?? -1] ? Object.values(parseResult.data[err.row ?? -1]) : []
-            });
+            if (err.row !== undefined) { // Check if err.row is defined
+                 result.errorsDetail.push({ 
+                    rowIndex: err.row, 
+                    message: `Erreur de parsing CSV: ${err.message}`, 
+                    rowData: parseResult.data[err.row] ? parseResult.data[err.row] : {}
+                });
+            } else {
+                 result.errorsDetail.push({ 
+                    rowIndex: -1, // Indicate an error not tied to a specific row
+                    message: `Erreur de parsing CSV (non liée à une ligne spécifique): ${err.message}`, 
+                    rowData: {}
+                });
+            }
             result.errorCount++;
         });
     }
@@ -67,24 +69,20 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
       let schema;
 
       try {
+        let dataForZod = { ...row };
         switch (entityType) {
           case 'dealer':
             schema = DealerImportSchemaZod;
-            // Prepare data for Zod (handle multi-value fields before validation if Zod doesn't transform them)
-             const dealerRowForZod = {
-              ...row,
-              tractorBrands: row.tractorBrands, // Keep as string for Zod transform
-              machineTypes: row.machineTypes,   // Keep as string for Zod transform
-            };
-            validatedData = schema.parse(dealerRowForZod) as DealerImportSchema;
+            // Zod transform handles tractorBrands and machineTypes from string to string[]
+            validatedData = schema.parse(dataForZod) as DealerImportSchema;
             break;
           case 'loadix-unit':
             schema = LoadixUnitImportSchemaZod;
-            validatedData = schema.parse(row) as LoadixUnitImportSchema;
+            validatedData = schema.parse(dataForZod) as LoadixUnitImportSchema;
             break;
           case 'methanisation-site':
             schema = MethanisationSiteImportSchemaZod;
-            validatedData = schema.parse(row) as MethanisationSiteImportSchema;
+            validatedData = schema.parse(dataForZod) as MethanisationSiteImportSchema;
             break;
           default:
             throw new Error(`Type d'entité inconnu pour l'import: ${entityType}`);
@@ -93,12 +91,12 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
       } catch (error: any) {
         result.errorCount++;
         let errorMessage = "Erreur de validation des données.";
-        if (error.errors && Array.isArray(error.errors)) { // Zod errors
+        if (error.errors && Array.isArray(error.errors)) { 
           errorMessage = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('; ');
         } else if (error instanceof Error) {
           errorMessage = error.message;
         }
-        result.errorsDetail.push({ rowIndex: i + 1, message: errorMessage, rowData: Object.values(row) });
+        result.errorsDetail.push({ rowIndex: i + 1, message: errorMessage, rowData: row });
       }
     }
 
@@ -114,11 +112,11 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
       const collectionRef = collection(db, collectionName);
 
       validRows.forEach(data => {
-        const docRef = doc(collectionRef); // Auto-generate ID
+        const newDocRef = doc(collectionRef); 
         const dataToSave: any = {
           ...data,
-          entityType, // ensure entityType is set
-          // GeoLocation is explicitly ignored for bulk import for now
+          id: newDocRef.id, // Store the auto-generated ID within the document
+          entityType,
           geoLocation: null, 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -126,9 +124,8 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
 
         if (entityType === 'dealer') {
           const dealerData = data as DealerImportSchema;
-          // tractorBrands & machineTypes are already string[] due to Zod transform
-          dataToSave.tractorBrands = dealerData.tractorBrands;
-          dataToSave.machineTypes = dealerData.machineTypes;
+          dataToSave.tractorBrands = dealerData.tractorBrands; // Already string[] from Zod
+          dataToSave.machineTypes = dealerData.machineTypes;   // Already string[] from Zod
           dataToSave.comments = dealerData.initialCommentText
             ? [{
                 userName: 'Import en Masse',
@@ -143,7 +140,7 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
         if (entityType === 'loadix-unit') {
             const unitData = data as LoadixUnitImportSchema;
             if (unitData.purchaseDate) dataToSave.purchaseDate = Timestamp.fromDate(new Date(unitData.purchaseDate));
-            else delete dataToSave.purchaseDate;
+            else delete dataToSave.purchaseDate; // Remove if empty or invalid
             if (unitData.lastMaintenanceDate) dataToSave.lastMaintenanceDate = Timestamp.fromDate(new Date(unitData.lastMaintenanceDate));
             else delete dataToSave.lastMaintenanceDate;
         }
@@ -152,13 +149,12 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
             const siteData = data as MethanisationSiteImportSchema;
             if (siteData.startDate) dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
             else delete dataToSave.startDate;
-             // Ensure array fields are initialized if not provided or empty after parsing
-            dataToSave.siteClients = []; // Not handled in CSV import for now
-            dataToSave.technologies = []; // Not handled in CSV import for now
-            dataToSave.relatedDealerIds = []; // Not handled in CSV import for now
+            dataToSave.siteClients = []; 
+            dataToSave.technologies = []; 
+            dataToSave.relatedDealerIds = []; 
         }
         
-        batch.set(docRef, dataToSave);
+        batch.set(newDocRef, dataToSave);
         result.importedCount++;
       });
       await batch.commit();
@@ -175,18 +171,13 @@ export async function importEntitiesFromCSV(csvData: string, entityType: EntityT
         result.message = "Le fichier CSV est vide ou ne contient pas de données après les en-têtes.";
     }
 
-
   } catch (error: any) {
     console.error("Erreur majeure lors de l'importation CSV:", error);
     result.success = false;
     result.message = error.message || "Une erreur serveur est survenue lors de l'importation.";
-    // It's possible all rows failed at a higher level, so update counts if they weren't already
     if (result.totalRows > 0 && result.errorCount === 0 && result.importedCount === 0) {
         result.errorCount = result.totalRows;
     }
   }
   return result;
 }
-
-// Need to import doc from 'firebase/firestore'
-import { doc } from 'firebase/firestore';

@@ -107,11 +107,11 @@ const getProspectionStatusBadgeInfo = (
 
 const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']): { dotClassName: string; connectorClassName: string; badgeVariant: BadgeProps['variant']; label: string } => {
   switch (status) {
-    case 'hot': return { dotClassName: 'bg-red-500 border-red-700', connectorClassName: 'bg-red-500/70', badgeVariant: 'destructive', label: 'Chaud 🔥' };
-    case 'warm': return { dotClassName: 'bg-orange-500 border-orange-700', connectorClassName: 'bg-orange-500/70', badgeVariant: 'default', label: 'Tiède 🌤️' };
-    case 'cold': return { dotClassName: 'bg-blue-500 border-blue-700', connectorClassName: 'bg-blue-500/70', badgeVariant: 'secondary', label: 'Froid ❄️' };
-    case 'converted': return { dotClassName: 'bg-green-500 border-green-700', connectorClassName: 'bg-green-500/70', badgeVariant: 'success' as any, label: 'Converti ✅' };
-    case 'lost': return { dotClassName: 'bg-gray-500 border-gray-700', connectorClassName: 'bg-gray-500/70', badgeVariant: 'outline', label: 'Perdu ❌' };
+    case 'hot': return { dotClassName: 'bg-red-500 border-red-700', connectorClassName: 'bg-red-500', badgeVariant: 'destructive', label: 'Chaud 🔥' };
+    case 'warm': return { dotClassName: 'bg-orange-500 border-orange-700', connectorClassName: 'bg-orange-500', badgeVariant: 'default', label: 'Tiède 🌤️' };
+    case 'cold': return { dotClassName: 'bg-blue-500 border-blue-700', connectorClassName: 'bg-blue-500', badgeVariant: 'secondary', label: 'Froid ❄️' };
+    case 'converted': return { dotClassName: 'bg-green-500 border-green-700', connectorClassName: 'bg-green-500', badgeVariant: 'success' as any, label: 'Converti ✅' };
+    case 'lost': return { dotClassName: 'bg-gray-500 border-gray-700', connectorClassName: 'bg-gray-500', badgeVariant: 'outline', label: 'Perdu ❌' };
     default: return { dotClassName: 'bg-muted border-border', connectorClassName: 'bg-border', badgeVariant: 'outline', label: 'Aucun' };
   }
 };
@@ -199,7 +199,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         setIsDragging(true);
         setStartX(e.pageX);
         setScrollLeftStart(el.scrollLeft);
-        document.body.style.userSelect = 'none'; // Prevent text selection during drag
+        document.body.style.userSelect = 'none'; 
         el.style.cursor = 'grabbing';
     }, []);
 
@@ -311,7 +311,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
                         onPointerCancel={onPointerUpOrCancel}
-                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Redundant with document.body style, but safe.
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }}
                     >
                         {/* Timeline central line - more visible */}
                         <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2 z-0"></div>
@@ -321,24 +321,24 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                 const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
                                 return (
                                 <div
-                                    key={comment.date + index} // Using date + index for better key stability if comments can be identical
+                                    key={comment.date + index} 
                                     className={cn(
                                         "relative flex items-center group",
-                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" // Alternating position
+                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" 
                                     )}
                                 >
                                     <CommentCard
                                         comment={comment}
                                         className={cn(
                                             "shadow-xl",
-                                            index % 2 === 0 ? "mb-4" : "mt-4" // Adjust margin based on position
+                                            index % 2 === 0 ? "mb-4" : "mt-4" 
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
                                     <div className={cn(
-                                        "w-px opacity-70 group-hover:opacity-100 transition-opacity",
+                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", // Made connector always opaque
                                         timelineStatusColors.connectorClassName,
-                                        index % 2 === 0 ? "h-8" : "h-8" // Connector length
+                                        index % 2 === 0 ? "h-8" : "h-8" 
                                     )}></div>
                                     {/* Dot - more visible */}
                                     <div className={cn(
@@ -347,14 +347,14 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                     )}></div>
                                     <div className={cn(
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
-                                        index % 2 === 0 ? "mt-2" : "mb-2" // Date position
+                                        index % 2 === 0 ? "mt-2" : "mb-2" 
                                     )}>
                                         {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </div>
                                 </div>
                             )})}
                         </div>
-                         <div className="h-1" /> {/* Ensures scrollbar has some space if needed */}
+                         <div className="h-1" /> 
                     </div>
                 )}
                  <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">

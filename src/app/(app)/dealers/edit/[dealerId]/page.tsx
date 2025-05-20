@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getDealerById, updateDealer } from '@/services/dealerService';
 import { Button } from '@/components/ui/button';
@@ -10,37 +10,43 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Dealer, UpdateDealerData } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CircleAlert, ChevronLeft, Loader2, MapPin } from 'lucide-react';
+import { CircleAlert, ChevronLeft, Loader2, MapPin, Info } from 'lucide-react'; // Added Info here
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EditDealerPageProps {
-  params: {
+  params: Promise<{ // Type updated to Promise
     dealerId: string;
-  };
+  }>;
 }
 
-export default function EditDealerPage({ params }: EditDealerPageProps) {
-  const { dealerId } = params;
+export default function EditDealerPage({ params: paramsPromise }: EditDealerPageProps) {
   const router = useRouter();
+  
+  // Unwrap the params Promise using React.use() as suggested by Next.js warning
+  const resolvedParams = React.use(paramsPromise);
+  const { dealerId } = resolvedParams;
+
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Add state for simulated geocoding if needed, though geocoding on edit is complex
-  // const [isGeocoding, setIsGeocoding] = useState(false);
-  // const [addressValidated, setAddressValidated] = useState<boolean | null>(null);
-
 
   useEffect(() => {
     const fetchDealerData = async () => {
       try {
         setLoading(true);
         setError(null);
+        
+        if (!dealerId) {
+            setError('ID de concessionnaire non valide ou manquant après résolution.');
+            setLoading(false);
+            return;
+        }
+
         const dealerData = await getDealerById(dealerId);
         if (dealerData) {
-          // Ensure all fields are present for the form, even if undefined
           const initialFormState: Partial<UpdateDealerData> = {
             name: dealerData.name || '',
             address: dealerData.address || '',
@@ -58,10 +64,7 @@ export default function EditDealerPage({ params }: EditDealerPageProps) {
             machineTypes: dealerData.machineTypes || [],
             tractorBrands: dealerData.tractorBrands || [],
             prospectionStatus: dealerData.prospectionStatus || 'none',
-            // Comments are complex, usually handled separately or via a sub-component.
-            // For simplicity, we might not edit comments directly in this form.
-            // initialCommentText: '', // This field is for creation, not typically for edit form.
-            geoLocation: dealerData.geoLocation, // Keep existing geoLocation
+            geoLocation: dealerData.geoLocation,
           };
           setFormData(initialFormState);
         } else {
@@ -78,19 +81,14 @@ export default function EditDealerPage({ params }: EditDealerPageProps) {
     if (dealerId) {
       fetchDealerData();
     } else {
-      setError("ID de concessionnaire manquant.");
+      setError("ID de concessionnaire manquant ou non résolu.");
       setLoading(false);
     }
-  }, [dealerId]);
+  }, [dealerId]); // dealerId is now stable after React.use resolves
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // If address fields change, you might want to reset or re-validate geoLocation
-    // if (['address', 'city', 'postalCode', 'country'].includes(name)) {
-    //   setAddressValidated(null);
-    //   setFormData(prev => ({ ...prev, geoLocation: undefined }));
-    // }
   };
 
   const handleSelectChange = (name: keyof UpdateDealerData, value: string) => {
@@ -109,14 +107,10 @@ export default function EditDealerPage({ params }: EditDealerPageProps) {
       if (!dealerId) {
         throw new Error("L'ID du concessionnaire est manquant.");
       }
-      // Prepare data for update, removing any fields not meant for direct update here
       const dataToUpdate: UpdateDealerData = { ...formData };
       
-      // Geocoding on edit if address changed would go here
-      // For now, we assume geoLocation is either kept as is or cleared if address changes without new geocoding
-
       await updateDealer(dealerId, dataToUpdate);
-      router.push(`/item/dealer/${dealerId}`); // Redirect to the dealer detail page
+      router.push(`/item/dealer/${dealerId}`); 
     } catch (err) {
       console.error('Erreur lors de la mise à jour du concessionnaire :', err);
       setError(err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.');
@@ -295,11 +289,7 @@ export default function EditDealerPage({ params }: EditDealerPageProps) {
                     </SelectContent>
                 </Select>
               </div>
-              {/* Note: Comment editing is usually a more complex feature, potentially a list of comments with add/edit/delete.
-                  For this form, we're focusing on top-level dealer fields. The existing comments are preserved.
-                  Adding new comments would typically be on the detail page. */}
             </div>
-
 
             <div className="flex justify-end pt-4">
               <Button type="submit" disabled={isSubmitting || loading} size="lg">

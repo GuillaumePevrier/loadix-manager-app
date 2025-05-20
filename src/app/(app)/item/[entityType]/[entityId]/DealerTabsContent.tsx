@@ -165,38 +165,48 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
     }, [sortedComments, timelineSearchTerm]);
 
     const scrollableTimelineRef = React.useRef<HTMLDivElement>(null);
+    const viewportElementRef = React.useRef<HTMLElement | null>(null);
     const [isDragging, setIsDragging] = React.useState(false);
     const [startX, setStartX] = React.useState(0);
     const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
     const DRAG_SPEED_MULTIPLIER = 1.5;
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!scrollableTimelineRef.current) return;
+        const contentElement = e.currentTarget; // This is the div with scrollableTimelineRef
+        const actualViewport = contentElement.parentElement as HTMLElement;
+
+        if (!actualViewport) return;
+        viewportElementRef.current = actualViewport; // Store the viewport
+
         setIsDragging(true);
-        setStartX(e.pageX); // Record mouse position relative to document
-        setScrollLeftStart(scrollableTimelineRef.current.scrollLeft);
-        if (scrollableTimelineRef.current) {
+        setStartX(e.pageX); // pageX is fine here
+        setScrollLeftStart(actualViewport.scrollLeft);
+        
+        if (scrollableTimelineRef.current) { // Style the content div
             scrollableTimelineRef.current.style.cursor = 'grabbing';
-            scrollableTimelineRef.current.style.userSelect = 'none';
         }
+        document.body.style.userSelect = 'none'; // Prevent text selection globally
     };
 
     const handleMouseMoveGlobal = React.useCallback((e: MouseEvent) => {
-        if (!isDragging || !scrollableTimelineRef.current) return;
-        e.preventDefault();
+        if (!isDragging || !viewportElementRef.current) return;
+        e.preventDefault(); // Prevent default mousemove behavior (like text selection)
+
+        const targetViewport = viewportElementRef.current;
         const x = e.pageX;
         const walk = (x - startX) * DRAG_SPEED_MULTIPLIER;
-        scrollableTimelineRef.current.scrollLeft = scrollLeftStart - walk;
+        targetViewport.scrollLeft = scrollLeftStart - walk;
     }, [isDragging, startX, scrollLeftStart, DRAG_SPEED_MULTIPLIER]);
 
     const handleMouseUpGlobal = React.useCallback(() => {
-        if (!scrollableTimelineRef.current) return;
+        if (!isDragging) return;
         setIsDragging(false);
         if (scrollableTimelineRef.current) {
             scrollableTimelineRef.current.style.cursor = 'grab';
-            scrollableTimelineRef.current.style.userSelect = 'auto';
         }
-    }, []);
+        document.body.style.userSelect = 'auto';
+        viewportElementRef.current = null; // Clean up the stored viewport ref
+    }, [isDragging]);
 
     React.useEffect(() => {
         if (isDragging) {
@@ -210,6 +220,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         return () => {
             document.removeEventListener('mousemove', handleMouseMoveGlobal);
             document.removeEventListener('mouseup', handleMouseUpGlobal);
+            // Ensure userSelect is reset if component unmounts while dragging
+            if (isDragging) {
+                 document.body.style.userSelect = 'auto';
+            }
         };
     }, [isDragging, handleMouseMoveGlobal, handleMouseUpGlobal]);
     
@@ -291,14 +305,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         {timelineSearchTerm ? `Aucun commentaire trouvé pour "${timelineSearchTerm}".` : 'Aucun commentaire de suivi pour le moment.'}
                     </p>
                 ) : (
-                    <ScrollArea className="w-full pb-4 cursor-grab" /* Removed pr-2 for potentially better full width scroll experience */
-                        // Using the viewport's ref if ScrollArea manages its own viewport,
-                        // otherwise, a direct child div would need the ref.
-                        // For now, we'll apply mouse down to the direct child.
-                    >
+                    <ScrollArea className="w-full pb-4 cursor-grab">
                         <div 
                             ref={scrollableTimelineRef}
-                            className="relative flex items-start pt-10 pb-6 min-w-max select-none" // Added select-none here
+                            className="relative flex items-start pt-10 pb-6 min-w-max select-none" 
                             onMouseDown={handleMouseDown}
                         >
                             {/* Timeline central line */}
@@ -313,7 +323,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                             index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" // Alternating position, mt-8 for items below to clear the line
                                         )}
                                     >
-                                        {/* Comment Card moved inside the alternating logic if needed, or kept outside if positioning is absolute/relative to point */}
                                         <CommentCard 
                                             comment={comment} 
                                             className={cn(

@@ -12,34 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addDealer } from '@/services/dealerService'; 
 import type { NewDealerData, Comment, Dealer } from '@/types';
+import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types'; // Import options
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { MultiSelect } from '@/components/ui/multi-select'; 
 
-// Define the structure for dealer form data, aligning with NewDealerData
-interface DealerFormData {
-  name: string;
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  department: string;
-  
-  phone: string;
-  fax: string;
-  email: string;
-  website: string;
-  contactPerson: string;
-  brandSign: string; 
-  branchName: string; 
-
-  machineTypesRaw: string; // Raw comma-separated string
-  tractorBrandsRaw: string; // Raw comma-separated string
-  
-  prospectionStatus: Dealer['prospectionStatus'];
-  initialCommentText: string; 
-  
-  geoLocation?: { lat: number; lng: number };
-}
+interface DealerFormData extends NewDealerData {} // Use NewDealerData directly as it matches
 
 const initialFormData: DealerFormData = {
   name: '',
@@ -55,11 +33,17 @@ const initialFormData: DealerFormData = {
   contactPerson: '',
   brandSign: '',
   branchName: '',
-  machineTypesRaw: '',
-  tractorBrandsRaw: '',
+  machineTypes: [], 
+  tractorBrands: [], 
   prospectionStatus: 'none',
   initialCommentText: '',
   geoLocation: undefined,
+  servicesOffered: [],
+  galleryUris: [],
+  documentUris: [],
+  relatedProspectIds: [],
+  relatedSiteIds: [],
+  comments: [],
 };
 
 const CreateDealerForm: React.FC = () => {
@@ -94,7 +78,7 @@ const CreateDealerForm: React.FC = () => {
     }
   };
 
-  const handleSelectChange = (name: keyof DealerFormData, value: string) => {
+  const handleSelectChange = (name: keyof DealerFormData, value: string | string[]) => {
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
   
@@ -109,19 +93,6 @@ const CreateDealerForm: React.FC = () => {
     setSubmissionError(null);
 
     try {
-        // NOTE: Actual Geocoding API call is needed here.
-        // Ensure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set and Geocoding API is enabled.
-        // const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
-        // const data = await response.json();
-        // if (data.status === 'OK' && data.results[0]) {
-        //   const location = data.results[0].geometry.location; 
-        //   setFormData((prev) => ({ ...prev, geoLocation: location }));
-        //   setAddressValidated(true);
-        // } else {
-        //   setAddressValidated(false);
-        //   setSubmissionError(`Échec du géocodage : ${data.error_message || data.status}`);
-        // }
-
         await new Promise(resolve => setTimeout(resolve, 1500)); 
         const mockSuccess = Math.random() > 0.1; 
         if (mockSuccess) {
@@ -152,39 +123,20 @@ const CreateDealerForm: React.FC = () => {
     }
 
     const commentsArray: Comment[] = [];
-    if (formData.initialCommentText.trim() !== '') {
+    if (formData.initialCommentText && formData.initialCommentText.trim() !== '') {
       commentsArray.push({
-        userName: 'Admin ManuRob', // Placeholder for actual user
+        userName: 'Admin ManuRob', 
         date: new Date().toISOString(),
         text: formData.initialCommentText,
       });
     }
 
     const dealerToSave: NewDealerData = {
-      name: formData.name,
-      address: formData.address,
-      city: formData.city,
-      postalCode: formData.postalCode,
-      country: formData.country,
-      department: formData.department,
-      phone: formData.phone,
-      fax: formData.fax,
-      email: formData.email,
-      website: formData.website,
-      contactPerson: formData.contactPerson,
-      brandSign: formData.brandSign,
-      branchName: formData.branchName,
-      machineTypes: formData.machineTypesRaw.split(',').map(s => s.trim()).filter(Boolean), 
-      tractorBrands: formData.tractorBrandsRaw.split(',').map(s => s.trim()).filter(Boolean), 
-      prospectionStatus: formData.prospectionStatus,
-      comments: commentsArray,
-      geoLocation: formData.geoLocation,
-      servicesOffered: [], 
-      galleryUris: [],
-      documentUris: [],
-      relatedProspectIds: [],
-      relatedSiteIds: [],
+      ...formData,
+      comments: commentsArray, // Add the initial comment if present
     };
+    // initialCommentText is part of DealerFormData but not directly NewDealerData
+    // it is handled above to create the first comment.
 
     try {
       const newDealer = await addDealer(dealerToSave);
@@ -248,15 +200,16 @@ const CreateDealerForm: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <Label htmlFor="department">Département</Label>
-                    <Input id="department" name="department" value={formData.department} onChange={handleChange} placeholder="Ex: 75 - Paris ou Nord" />
+                    <Input id="department" name="department" value={formData.department || ''} onChange={handleChange} placeholder="Ex: 75 - Paris ou Nord" />
                 </div>
-                <div>
-                    <Label htmlFor="machineTypesRaw">Types de machines gérées (séparées par virgule)</Label>
-                    <Input id="machineTypesRaw" name="machineTypesRaw" value={formData.machineTypesRaw} onChange={handleChange} placeholder="Tracteurs, Moissonneuses..."  />
-                     <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
-                        <Info className="h-4 w-4 text-accent" />
-                        <AlertDescription>Un composant de sélection multiple sera ajouté ultérieurement. Pour l'instant, séparez les valeurs par des virgules.</AlertDescription>
-                     </Alert>
+                 <div>
+                  <Label htmlFor="machineTypes">Types de machines gérées</Label>
+                  <MultiSelect
+                    options={MACHINE_TYPE_OPTIONS}
+                    selected={formData.machineTypes}
+                    onChange={(selected) => handleSelectChange('machineTypes', selected)}
+                    placeholder="Sélectionner types de machines..."
+                  />
                 </div>
             </div>
           </div>
@@ -268,44 +221,45 @@ const CreateDealerForm: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <Label htmlFor="phone">Téléphone</Label>
-                    <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" />
+                    <Input id="phone" name="phone" type="tel" value={formData.phone || ''} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" />
                 </div>
                 <div>
                     <Label htmlFor="fax">Fax</Label>
-                    <Input id="fax" name="fax" type="tel" value={formData.fax} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" />
+                    <Input id="fax" name="fax" type="tel" value={formData.fax || ''} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" />
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Ex: contact@example.com" />
+                    <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="Ex: contact@example.com" />
                 </div>
                 <div>
                     <Label htmlFor="website">Site Web</Label>
-                    <Input id="website" name="website" type="url" value={formData.website} onChange={handleChange} placeholder="Ex: https://www.example.com" />
+                    <Input id="website" name="website" type="url" value={formData.website || ''} onChange={handleChange} placeholder="Ex: https://www.example.com" />
                 </div>
             </div>
              <div>
                 <Label htmlFor="contactPerson">Personne à contacter</Label>
-                <Input id="contactPerson" name="contactPerson" value={formData.contactPerson} onChange={handleChange} placeholder="Ex: Jean Dupont" />
+                <Input id="contactPerson" name="contactPerson" value={formData.contactPerson || ''} onChange={handleChange} placeholder="Ex: Jean Dupont" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <Label htmlFor="tractorBrandsRaw">Marques d'engins (séparées par virgule)</Label>
-                    <Input id="tractorBrandsRaw" name="tractorBrandsRaw" value={formData.tractorBrandsRaw} onChange={handleChange} placeholder="John Deere, Claas..." />
-                    <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
-                        <Info className="h-4 w-4 text-accent" />
-                        <AlertDescription>Un composant de sélection multiple sera ajouté ultérieurement. Pour l'instant, séparez les valeurs par des virgules.</AlertDescription>
-                     </Alert>
+                  <Label htmlFor="tractorBrands">Marques d'engins distribuées</Label>
+                  <MultiSelect
+                    options={TRACTOR_BRAND_OPTIONS}
+                    selected={formData.tractorBrands}
+                    onChange={(selected) => handleSelectChange('tractorBrands', selected)}
+                    placeholder="Sélectionner marques..."
+                  />
                 </div>
                 <div>
                     <Label htmlFor="brandSign">Enseigne</Label>
-                    <Input id="brandSign" name="brandSign" value={formData.brandSign} onChange={handleChange} placeholder="Ex: Groupe AgriPro" />
+                    <Input id="brandSign" name="brandSign" value={formData.brandSign || ''} onChange={handleChange} placeholder="Ex: Groupe AgriPro" />
                 </div>
             </div>
              <div>
                 <Label htmlFor="branchName">Nom de la succursale (si applicable)</Label>
-                <Input id="branchName" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="Ex: Agence de Lille" />
+                <Input id="branchName" name="branchName" value={formData.branchName || ''} onChange={handleChange} placeholder="Ex: Agence de Lille" />
             </div>
           </div>
         );
@@ -315,7 +269,7 @@ const CreateDealerForm: React.FC = () => {
             <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Prospection et Commentaires</h3>
             <div>
               <Label htmlFor="prospectionStatus">Statut de prospection</Label>
-              <Select name="prospectionStatus" onValueChange={(value) => handleSelectChange('prospectionStatus', value)} value={formData.prospectionStatus || 'none'}>
+              <Select name="prospectionStatus" onValueChange={(value) => handleSelectChange('prospectionStatus', value as Dealer['prospectionStatus'])} value={formData.prospectionStatus || 'none'}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un statut" />
                 </SelectTrigger>
@@ -331,14 +285,17 @@ const CreateDealerForm: React.FC = () => {
             </div>
             <div>
                 <Label htmlFor="initialCommentText">Commentaire initial</Label>
-                <Textarea id="initialCommentText" name="initialCommentText" value={formData.initialCommentText} onChange={handleChange} rows={4} placeholder="Ajoutez un premier commentaire ou une note sur ce concessionnaire..." />
+                <Textarea id="initialCommentText" name="initialCommentText" value={formData.initialCommentText || ''} onChange={handleChange} rows={4} placeholder="Ajoutez un premier commentaire ou une note sur ce concessionnaire..." />
+                 <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                    <Info className="h-4 w-4 text-accent" />
+                    <AlertDescription>L'ajout d'images ou de fichiers aux commentaires sera possible ultérieurement.</AlertDescription>
+                 </Alert>
             </div>
             <Alert variant="default" className="mt-6 bg-accent/10 border-accent/50 text-accent-foreground/90">
               <AlertTriangle className="h-5 w-5 text-accent" />
               <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
               <AlertDescription className="text-xs">
                 La galerie d'images, la gestion des documents et la liaison avec d'autres entités (clients, sites) seront ajoutées ultérieurement.
-                Les champs pour "Types de machines" et "Marques d'engins" seront améliorés avec des sélections multiples dédiées.
               </AlertDescription>
             </Alert>
           </div>

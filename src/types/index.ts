@@ -4,13 +4,15 @@ export interface GeoLocation {
   lng: number;
 }
 
-// EntityType updated to include all relevant types
 export type EntityType = 'dealer' | 'loadix-unit' | 'methanisation-site';
 
 export interface Comment {
   userName: string;
   date: string; // ISO Date string
   text: string;
+  imageUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
 }
 
 export interface BaseEntity {
@@ -34,8 +36,8 @@ export interface Dealer extends BaseEntity {
   website?: string;
   contactPerson?: string;
   servicesOffered?: string[];
-  tractorBrands?: string[];
-  machineTypes?: string[];
+  tractorBrands?: string[]; // Array of brand values/keys
+  machineTypes?: string[]; // Array of machine type values/keys
   prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost';
   comments?: Comment[];
   galleryUris?: string[];
@@ -50,13 +52,12 @@ export interface Dealer extends BaseEntity {
 export interface LoadixUnit extends BaseEntity {
   entityType: 'loadix-unit';
   serialNumber: string;
-  model: string; // e.g., LOADIX Pro v2, LOADIX Compact
+  model: string; 
   status: 'active' | 'maintenance' | 'inactive' | 'in_stock' | 'sold';
-  purchaseDate?: string; // ISO Date string
-  lastMaintenanceDate?: string; // ISO Date string
-  dealerId?: string; // ID of the dealer who sold/maintains it
-  methanisationSiteId?: string; // ID of the MethanisationSite it's associated with (owner/operator)
-  // Add other LoadixUnit specific fields here: hours_of_operation, firmware_version, etc.
+  purchaseDate?: string; 
+  lastMaintenanceDate?: string; 
+  dealerId?: string; 
+  methanisationSiteId?: string; 
 }
 
 export interface MethanisationSiteClient {
@@ -67,18 +68,16 @@ export interface MethanisationSiteClient {
 
 export interface MethanisationSite extends BaseEntity {
   entityType: 'methanisation-site';
-  capacity?: string; // e.g., "5000 tons/year", "250 kW"
-  operator?: string; // Name of the operating company or individual
-  startDate?: string; // ISO Date string of when the site became operational
-  siteClients?: MethanisationSiteClient[]; // List of clients/farms supplying the site
-  technologies?: string[]; // e.g., "Infinitely
-  relatedDealerIds?: string[]; // Dealers involved with equipment at this site
-  // Add other MethanisationSite specific fields here: feedstock_types, energy_output_type etc.
+  capacity?: string; 
+  operator?: string; 
+  startDate?: string; 
+  siteClients?: MethanisationSiteClient[]; 
+  technologies?: string[]; 
+  relatedDealerIds?: string[]; 
 }
 
 export type AppEntity = Dealer | LoadixUnit | MethanisationSite;
 
-// Data for Creating Entities
 export interface NewDealerData {
   name: string;
   address: string;
@@ -93,11 +92,11 @@ export interface NewDealerData {
   contactPerson?: string;
   brandSign?: string;
   branchName?: string;
-  machineTypes?: string[];
-  tractorBrands?: string[];
+  machineTypes: string[]; 
+  tractorBrands: string[]; 
   prospectionStatus?: Dealer['prospectionStatus'];
-  initialCommentText?: string; // Renamed from comments to avoid confusion with Comment[]
-  comments?: Comment[]; // For initial comments if structured
+  initialCommentText?: string;
+  comments?: Comment[]; 
   geoLocation?: GeoLocation;
   servicesOffered?: string[];
   galleryUris?: string[];
@@ -105,7 +104,8 @@ export interface NewDealerData {
   relatedProspectIds?: string[];
   relatedSiteIds?: string[];
 }
-export type UpdateDealerData = Partial<NewDealerData>;
+
+export type UpdateDealerData = Partial<Omit<NewDealerData, 'initialCommentText'>>;
 
 
 export interface NewLoadixUnitData {
@@ -113,7 +113,7 @@ export interface NewLoadixUnitData {
   serialNumber: string;
   model: string;
   status: LoadixUnit['status'];
-  address: string; // Location address
+  address: string; 
   city: string;
   postalCode: string;
   country: string;
@@ -135,8 +135,37 @@ export interface NewMethanisationSiteData {
   capacity?: string;
   operator?: string;
   startDate?: string;
-  // siteClients?: MethanisationSiteClient[]; // Simplified for form
-  // technologies?: string[]; // Simplified for form
-  // relatedDealerIds?: string[]; // Simplified for form
 }
 export type UpdateMethanisationSiteData = Partial<NewMethanisationSiteData>;
+
+// Options for MultiSelect components
+export const TRACTOR_BRAND_OPTIONS = [
+  { value: "john_deere", label: "John Deere" },
+  { value: "case_ih", label: "Case IH" },
+  { value: "new_holland", label: "New Holland" },
+  { value: "fendt", label: "Fendt" },
+  { value: "massey_ferguson", label: "Massey Ferguson" },
+  { value: "claas", label: "Claas" },
+  { value: "valtra", label: "Valtra" },
+  { value: "deutz_fahr", label: "Deutz-Fahr" },
+  { value: "kubota", label: "Kubota" },
+  { value: "mc_cormick", label: "McCormick" },
+  { value: "landini", label: "Landini" },
+  { value: "same", label: "SAME" },
+  // Add more as needed
+];
+
+export const MACHINE_TYPE_OPTIONS = [
+  { value: "tractor", label: "Tracteurs" },
+  { value: "combine_harvester", label: "Moissonneuses-batteuses" },
+  { value: "loader", label: "Chargeurs" },
+  { value: "forage_harvester", label: "Ensileuses" },
+  { value: "baler", label: "Ramasseuses-presses" },
+  { value: "beet_harvester", label: "Récolteuses de betteraves" },
+  { value: "milking_machine", label: "Machines à traire" },
+  { value: "grape_harvester", label: "Machines à Vendanger" },
+  { value: "planter_seeder", label: "Semoirs et Planteuses" },
+  { value: "sprayer", label: "Pulvérisateurs" },
+  { value: "tillage_equipment", label: "Matériel de travail du sol" },
+  // Add more as needed
+];

@@ -3,17 +3,16 @@ import * as React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite, Comment } from '@/types';
-import { findEntityByIdAndType } from '@/lib/mock-data'; // Fallback for unmigrated types
 import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService'; 
 import { cn } from '@/lib/utils';
 import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText 
-} from 'lucide-react';
+  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText as FileTextLucide, Download, Image as ImageIconLucide 
+} from 'lucide-react'; // Renamed icons
 import DeleteEntityButton from './DeleteEntityButton';
-import Image from 'next/image';
+import Image from 'next/image'; // For next/image
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -70,8 +69,6 @@ export async function generateMetadata(
     entity = await getLoadixUnitById(params.entityId);
   } else if (params.entityType === 'methanisation-site') {
     entity = await getMethanisationSiteById(params.entityId);
-  } else {
-    entity = findEntityByIdAndType(params.entityType, params.entityId) ?? null;
   }
 
   if (!entity) {
@@ -93,7 +90,7 @@ const DetailItem: React.FC<{
   isEmail?: boolean;
   className?: string;
 }> = ({ icon: Icon, label, value, isLink, isEmail, className }) => {
-  if (!value && typeof value !== 'boolean' && typeof value !== 'number') return null;
+  if (!value && typeof value !== 'boolean' && typeof value !== 'number' && (Array.isArray(value) && value.length === 0)) return null;
 
   const renderValue = () => {
     if (React.isValidElement(value)) return value;
@@ -133,6 +130,9 @@ const DetailItem: React.FC<{
         );
       }
       return <span className="text-foreground/90 break-words text-sm">{value}</span>;
+    }
+     if (value === null || value === undefined) {
+        return <span className="text-muted-foreground italic text-sm">Non spécifié</span>;
     }
     return <span className="text-foreground/90 break-words text-sm">{String(value)}</span>;
   };
@@ -182,7 +182,7 @@ const getLoadixStatusBadgeVariant = (status?: LoadixUnit['status']): "default" |
 const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
   <div className="flex items-start space-x-3 p-3 bg-muted/30 rounded-md border border-border/20">
     <Avatar className="h-8 w-8">
-      <AvatarImage src={`https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
+      <AvatarImage src={comment.imageUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
       <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
     </Avatar>
     <div className="flex-1">
@@ -193,6 +193,24 @@ const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
         </p>
       </div>
       <p className="text-sm text-foreground/80 whitespace-pre-line mt-1">{comment.text}</p>
+      {comment.imageUrl && (
+        <div className="mt-2 rounded-md overflow-hidden border border-border/30 w-full max-w-xs">
+          <Image src={comment.imageUrl} alt="Image de commentaire" width={300} height={200} className="object-cover" data-ai-hint="comment attachment" />
+        </div>
+      )}
+      {comment.fileUrl && (
+        <div className="mt-2">
+          <a
+            href={comment.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {comment.fileName || 'Télécharger le fichier'}
+          </a>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -249,8 +267,8 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 {dealer.brandSign && <DetailItem icon={Building2} label="Enseigne" value={dealer.brandSign} />}
                 {dealer.branchName && <DetailItem icon={Briefcase} label="Succursale" value={dealer.branchName} />}
                 <DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />
-                <DetailItem icon={Truck} label="Marques de Tracteurs" value={dealer.tractorBrands} />
-                <DetailItem icon={Power} label="Types de Machines" value={dealer.machineTypes} />
+                <DetailItem icon={Truck} label="Marques de Tracteurs Distribuées" value={dealer.tractorBrands?.map(value => TRACTOR_BRAND_OPTIONS.find(opt => opt.value === value)?.label || value)} />
+                <DetailItem icon={Power} label="Types de Machines Gérées" value={dealer.machineTypes?.map(value => MACHINE_TYPE_OPTIONS.find(opt => opt.value === value)?.label || value)} />
             </CardContent>
         </Card>
     </TabsContent>
@@ -273,6 +291,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                         </div>
                     </ScrollArea>
                 )}
+                 <Alert variant="default" className="mt-4 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                    <Info className="h-4 w-4 text-accent" />
+                    <AlertDescription>L'ajout de nouveaux commentaires avec médias sera possible via le formulaire de modification.</AlertDescription>
+                 </Alert>
             </CardContent>
         </Card>
     </TabsContent>
@@ -303,7 +325,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <ul className="space-y-2">
               {dealer.documentUris.map((uri, index) => (
                 <li key={index} className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <FileTextLucide className="h-4 w-4 text-muted-foreground" />
                   <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     Document {index + 1}
                   </a>
@@ -394,6 +416,11 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
   </Card>
 );
 
+// Define TRACTOR_BRAND_OPTIONS and MACHINE_TYPE_OPTIONS if not already globally available or imported.
+// For example, if they are part of your types.ts or a constants file:
+import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
+
+
 export default async function ItemDetailPage({ params }: ItemPageProps) {
   const { entityType, entityId } = params;
   let entity: AppEntity | null = null;
@@ -405,10 +432,8 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
   } else if (entityType === 'methanisation-site') {
     entity = await getMethanisationSiteById(entityId); 
   } else {
-    console.warn(`Unknown entity type: ${entityType}, falling back to mock data or notFound.`);
-    // Optionally, use mock data as a fallback if the service doesn't handle the type yet
-    // entity = findEntityByIdAndType(entityType, entityId) ?? null;
-    if (!entity) notFound(); // Or handle as you see fit
+    console.warn(`Unknown entity type: ${entityType}, falling back to notFound.`);
+    notFound();
   }
 
   if (!entity) {
@@ -427,8 +452,7 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
       case 'methanisation-site':
         return <MethanisationSiteDetailCard site={entity as MethanisationSite} />;
       default:
-        const _exhaustiveCheck: never = entity; // Ensures all cases are handled or ts errors
-        return <p className="text-muted-foreground">Type d'entité non pris en charge: {(_exhaustiveCheck as AppEntity).entityType}</p>;
+        return <p className="text-muted-foreground">Type d'entité non pris en charge pour l'affichage détaillé.</p>;
     }
   };
 
@@ -475,7 +499,7 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
         <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
             Les données des concessionnaires, engins et sites sont maintenant lues depuis Firebase Firestore.
-            Les fonctionnalités d'ajout sont connectées à Firestore. La modification et suppression pour Engins/Sites sont en cours d'implémentation.
+            Les fonctionnalités d'ajout sont connectées à Firestore. La modification des concessionnaires est implémentée. La modification et suppression pour Engins/Sites sont en cours.
         </AlertDescription>
     </Alert>
     </div>

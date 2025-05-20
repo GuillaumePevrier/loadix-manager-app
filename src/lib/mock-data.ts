@@ -1,5 +1,6 @@
 
-import type { Dealer, Client, LoadixUnit, MethanisationSite, AppEntity, Comment } from '@/types';
+import type { Dealer, LoadixUnit, MethanisationSite, AppEntity, Comment } from '@/types';
+import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types'; // Import options
 
 const commonAddressFrance = {
   address: '1 Rue de la Paix',
@@ -29,12 +30,25 @@ export const mockDealers: Dealer[] = [
     website: 'https://agritechparis.fr',
     contactPerson: 'Jean Dupont',
     servicesOffered: ['Vente', 'Maintenance', 'Conseil'],
-    tractorBrands: ['John Deere', 'Claas'],
-    machineTypes: ['Tracteurs', 'Moissonneuses-batteuses'],
+    tractorBrands: ['john_deere', 'claas'], 
+    machineTypes: ['tractor', 'combine_harvester'], 
     prospectionStatus: 'hot',
     comments: [
       { userName: 'Alice', date: new Date(Date.now() - 86400000 * 2).toISOString(), text: 'Premier contact établi, très intéressé par LOADIX Pro.' },
-      { userName: 'Bob', date: new Date(Date.now() - 86400000).toISOString(), text: 'Démonstration prévue la semaine prochaine.' },
+      { 
+        userName: 'Bob', 
+        date: new Date(Date.now() - 86400000).toISOString(), 
+        text: 'Démonstration prévue la semaine prochaine. Voir photo du site.',
+        imageUrl: 'https://placehold.co/300x200.png?text=Site+Demo',
+        dataAiHint: "demonstration site"
+      },
+      {
+        userName: 'Admin',
+        date: new Date().toISOString(),
+        text: 'Contrat de partenariat en pièce jointe.',
+        fileUrl: 'https://example.com/contrat_partenariat.pdf',
+        fileName: 'Contrat_Partenariat_AgriTech.pdf'
+      }
     ],
     galleryUris: [`https://placehold.co/300x200.png?text=AgriTech+Showroom`, `https://placehold.co/300x200.png?text=Atelier+Paris`],
     documentUris: ['https://example.com/brochure_agritech.pdf'],
@@ -54,8 +68,8 @@ export const mockDealers: Dealer[] = [
     website: 'https://lyonagri.com',
     contactPerson: 'Sophie Martin',
     servicesOffered: ['Vente', 'Réparations'],
-    tractorBrands: ['New Holland', 'Fendt'],
-    machineTypes: ['Ensileuses', 'Chargeurs'],
+    tractorBrands: ['new_holland', 'fendt'],
+    machineTypes: ['forage_harvester', 'loader'],
     prospectionStatus: 'warm',
     comments: [
       { userName: 'Charles', date: new Date().toISOString(), text: 'A demandé une documentation technique.' },
@@ -66,8 +80,6 @@ export const mockDealers: Dealer[] = [
     updatedAt: new Date().toISOString(),
   },
 ];
-
-// Client mock data is removed as Client type is removed
 
 export const mockLoadixUnits: LoadixUnit[] = [
   {
@@ -149,5 +161,14 @@ export const allMockEntities: AppEntity[] = [
 ];
 
 export function findEntityByIdAndType(entityType: EntityType, id: string): AppEntity | undefined {
-  return allMockEntities.find(entity => entity.entityType === entityType && entity.id === id);
+  switch (entityType) {
+    case 'dealer':
+      return mockDealers.find(d => d.id === id);
+    case 'loadix-unit':
+      return mockLoadixUnits.find(u => u.id === id);
+    case 'methanisation-site':
+      return mockMethanisationSites.find(s => s.id === id);
+    default:
+      return undefined;
+  }
 }

@@ -4,8 +4,8 @@
 
 import { db, storage, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
 import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, MethanisationSite, NewMethanisationSiteData, AppEntity } from '@/types';
-import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject as deleteFileFromStorage } from 'firebase/storage';
 
 // Helper function to convert Firestore document data to Dealer type
 const mapDocToDealer = (docId: string, data: any): Dealer => {
@@ -20,12 +20,12 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
   }
 
   const comments = Array.isArray(data.comments) ? data.comments.map((comment: any) => {
-    let commentDate = new Date().toISOString(); // Default to now
+    let commentDate = new Date().toISOString(); 
     if (comment.date instanceof Timestamp) {
       commentDate = comment.date.toDate().toISOString();
     } else if (typeof comment.date === 'string') {
       const parsedDate = new Date(comment.date);
-      if (!isNaN(parsedDate.getTime())) { // Check if date string is valid
+      if (!isNaN(parsedDate.getTime())) { 
         commentDate = parsedDate.toISOString();
       } else {
         console.warn(`Invalid date string for comment in dealer ${docId}:`, comment.date, "- defaulting to current date.");
@@ -41,6 +41,7 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
       imageUrl: comment.imageUrl,
       fileUrl: comment.fileUrl,
       fileName: comment.fileName,
+      prospectionStatusAtEvent: comment.prospectionStatusAtEvent,
     };
   }) : [];
 
@@ -174,7 +175,7 @@ export async function getDealerById(id: string): Promise<Dealer | null> {
     return mapDocToDealer(dealerDocSnap.id, dealerDocSnap.data());
   } catch (error) {
     console.error(`Error fetching dealer with ID ${id} from Firestore:`, error);
-    return null; // Return null on error to be handled by the caller
+    return null; 
   }
 }
 
@@ -199,15 +200,16 @@ export async function addDealer(dealerData: NewDealerData): Promise<Dealer | nul
       dataToSave.geoLocation = null;
     }
 
-    const initialCommentsArray: Comment[] = [];
+    const initialCommentsArray: Partial<Comment>[] = [];
     if (dealerData.initialCommentText && dealerData.initialCommentText.trim() !== '') {
         initialCommentsArray.push({
             userName: 'Admin ManuRob', 
-            date: Timestamp.now().toDate().toISOString(), 
+            date: new Date().toISOString(), 
             text: dealerData.initialCommentText.trim(),
+            prospectionStatusAtEvent: dealerData.prospectionStatus || 'none',
         });
     }
-    dataToSave.comments = initialCommentsArray.map(c => ({...c, date: Timestamp.fromDate(new Date(c.date)) })); // Store dates as Timestamps
+    dataToSave.comments = initialCommentsArray.map(c => ({...c, date: Timestamp.fromDate(new Date(c.date!)) }));
     delete dataToSave.initialCommentText;
 
 
@@ -250,10 +252,9 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
     if (dataToUpdate.geoLocation && typeof dataToUpdate.geoLocation.lat === 'number' && typeof dataToUpdate.geoLocation.lng === 'number') {
       updatePayload.geoLocation = new GeoPoint(dataToUpdate.geoLocation.lat, dataToUpdate.geoLocation.lng);
     } else if (dataToUpdate.hasOwnProperty('geoLocation') && dataToUpdate.geoLocation === undefined) {
-      updatePayload.geoLocation = null; // Explicitly set to null if address was cleared
+      updatePayload.geoLocation = null; 
     }
     
-    // Comments are handled by addCommentToDealer, do not update them directly here unless full array is provided and dates are Timestamps
     if (updatePayload.hasOwnProperty('comments')) {
       delete updatePayload.comments; 
     }
@@ -290,17 +291,24 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
   }
 }
 
-export async function addCommentToDealer(dealerId: string, userName: string, text: string, file?: File): Promise<void> {
+export async function addCommentToDealer(
+    dealerId: string, 
+    userName: string, 
+    text: string, 
+    file?: File,
+    prospectionStatusAtEvent?: Dealer['prospectionStatus']
+): Promise<void> {
   if (!firebaseConfigPresent || !db || !storage) {
     console.warn("Firebase (Firestore or Storage) not configured. Cannot add comment.");
     throw new Error("Firebase not configured. Cannot add comment.");
   }
   try {
     const dealerRef = doc(db, 'dealers', dealerId);
-    const newCommentData: Partial<Comment> & { date: Date } = { // Use Date for initial object
+    const newCommentData: Partial<Comment> = {
       userName: userName,
       text: text,
-      date: new Date(), // Current date as Date object
+      date: new Date().toISOString(),
+      prospectionStatusAtEvent: prospectionStatusAtEvent || 'none',
     };
 
     if (file) {
@@ -318,7 +326,7 @@ export async function addCommentToDealer(dealerId: string, userName: string, tex
     
     const commentToSaveFirestore = {
         ...newCommentData,
-        date: Timestamp.fromDate(newCommentData.date) // Convert Date to Firestore Timestamp for saving
+        date: Timestamp.fromDate(new Date(newCommentData.date!)) 
     };
 
     await updateDoc(dealerRef, {
@@ -332,6 +340,68 @@ export async function addCommentToDealer(dealerId: string, userName: string, tex
   }
 }
 
+export async function deleteCommentFromDealer(dealerId: string, commentToDelete: Comment): Promise<void> {
+    if (!firebaseConfigPresent || !db) {
+        console.warn("Firebase not configured. Cannot delete comment.");
+        throw new Error("Firebase not configured.");
+    }
+    try {
+        const dealerRef = doc(db, 'dealers', dealerId);
+        const dealerDocSnap = await getDoc(dealerRef);
+
+        if (!dealerDocSnap.exists()) {
+            throw new Error(`Dealer with ID ${dealerId} not found.`);
+        }
+
+        const dealerData = dealerDocSnap.data() as Dealer;
+        
+        // Convert commentToDelete date to Firestore Timestamp for accurate comparison if needed
+        // Or compare based on the ISO string date from our mapped Comment type
+        // For arrayRemove, Firestore needs the exact object as it is stored, including Timestamps for dates.
+        const commentToDeleteInFirestoreFormat = {
+            ...commentToDelete,
+            date: Timestamp.fromDate(new Date(commentToDelete.date)),
+            // Ensure all other fields match what's in Firestore exactly.
+            // If prospectionStatusAtEvent is undefined, it might not be in Firestore object.
+            // This might need adjustment based on how undefined fields are stored/retrieved.
+        };
+         // Clean up undefined fields that might cause issues with arrayRemove
+        Object.keys(commentToDeleteInFirestoreFormat).forEach(key => {
+          if (commentToDeleteInFirestoreFormat[key as keyof Comment] === undefined) {
+            delete commentToDeleteInFirestoreFormat[key as keyof Comment];
+          }
+        });
+
+
+        // Optional: Delete associated file from Storage
+        if (commentToDelete.imageUrl) {
+            try {
+                const fileRef = storageRef(storage, commentToDelete.imageUrl);
+                await deleteFileFromStorage(fileRef);
+            } catch (storageError) {
+                console.warn(`Failed to delete image from storage: ${commentToDelete.imageUrl}`, storageError);
+                // Continue even if storage deletion fails, to ensure Firestore comment is removed.
+            }
+        } else if (commentToDelete.fileUrl) {
+             try {
+                const fileRef = storageRef(storage, commentToDelete.fileUrl);
+                await deleteFileFromStorage(fileRef);
+            } catch (storageError) {
+                console.warn(`Failed to delete file from storage: ${commentToDelete.fileUrl}`, storageError);
+            }
+        }
+
+        await updateDoc(dealerRef, {
+            comments: arrayRemove(commentToDeleteInFirestoreFormat),
+            updatedAt: serverTimestamp(),
+        });
+
+    } catch (error) {
+        console.error(`Error deleting comment from dealer ${dealerId}:`, error);
+        throw error;
+    }
+}
+
 
 export async function deleteDealer(id: string): Promise<void> {
   if (!firebaseConfigPresent || !db) {
@@ -339,6 +409,7 @@ export async function deleteDealer(id: string): Promise<void> {
     throw new Error("Firebase not configured.");
   }
   try {
+    // TODO: Also delete associated files in Storage (e.g., comments media, gallery)
     await deleteDoc(doc(db, 'dealers', id));
   } catch (error) {
     console.error(`Error deleting dealer with ID ${id} from Firestore:`, error);
@@ -401,10 +472,10 @@ export async function addLoadixUnit(unitData: NewLoadixUnitData): Promise<Loadix
       dataToSave.geoLocation = null; 
     }
     
-    if (unitData.purchaseDate) dataToSave.purchaseDate = Timestamp.fromDate(new Date(unitData.purchaseDate));
+    if (unitData.purchaseDate && unitData.purchaseDate !== "") dataToSave.purchaseDate = Timestamp.fromDate(new Date(unitData.purchaseDate));
     else delete dataToSave.purchaseDate;
 
-    if (unitData.lastMaintenanceDate) dataToSave.lastMaintenanceDate = Timestamp.fromDate(new Date(unitData.lastMaintenanceDate));
+    if (unitData.lastMaintenanceDate && unitData.lastMaintenanceDate !== "") dataToSave.lastMaintenanceDate = Timestamp.fromDate(new Date(unitData.lastMaintenanceDate));
     else delete dataToSave.lastMaintenanceDate;
 
 
@@ -478,7 +549,7 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
       dataToSave.geoLocation = null;
     }
 
-    if (siteData.startDate) dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
+    if (siteData.startDate && siteData.startDate !== "") dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
     else delete dataToSave.startDate;
 
 
@@ -496,3 +567,4 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
 
 // TODO: Implement updateLoadixUnit, deleteLoadixUnit
 // TODO: Implement updateMethanisationSite, deleteMethanisationSite
+

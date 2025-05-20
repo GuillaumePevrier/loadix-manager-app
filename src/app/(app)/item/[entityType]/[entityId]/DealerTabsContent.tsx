@@ -1,3 +1,4 @@
+
 // src/app/(app)/item/[entityType]/[entityId]/DealerTabsContent.tsx
 "use client";
 
@@ -12,11 +13,37 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
-  MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory, PlusCircle, Trash2, Loader2, Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { BadgeProps } from '@/components/ui/badge'; 
+import type { BadgeProps } from '@/components/ui/badge';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { addCommentToDealer, deleteCommentFromDealer } from '@/services/dealerService';
+
 
 const DetailItem: React.FC<{
   icon: React.ElementType;
@@ -120,14 +147,30 @@ const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']
 };
 
 
-const CommentCard: React.FC<{ comment: Comment; className?: string; isSearchResult?: boolean }> = ({ comment, className, isSearchResult }) => {
+interface CommentCardProps {
+    comment: Comment;
+    className?: string;
+    isSearchResult?: boolean;
+    onDelete: () => void;
+}
+
+const CommentCard: React.FC<CommentCardProps> = ({ comment, className, isSearchResult, onDelete }) => {
   const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent); 
   return (
     <div className={cn(
-      "flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72 transition-all duration-150",
+      "relative flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72 transition-all duration-150 group",
       isSearchResult && "ring-2 ring-primary border-primary shadow-primary/30",
       className
     )}>
+       <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-1 right-1 h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+        title="Supprimer le commentaire"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
       <Avatar className="h-8 w-8 flex-shrink-0">
         <AvatarImage src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
         <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -169,9 +212,26 @@ const CommentCard: React.FC<{ comment: Comment; className?: string; isSearchResu
 };
 
 
-const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
+const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }> = ({ dealer, onDataRefresh }) => {
+    const { user } = useAuth();
+    const { toast } = useToast();
     const [timelineSearchTerm, setTimelineSearchTerm] = React.useState('');
     const statusInfo = getProspectionStatusBadgeInfo(dealer.prospectionStatus);
+
+    const [isAddCommentDialogOpen, setIsAddCommentDialogOpen] = React.useState(false);
+    const [newCommentText, setNewCommentText] = React.useState('');
+    const [newCommentFile, setNewCommentFile] = React.useState<File | null>(null);
+    const [isAddingComment, setIsAddingComment] = React.useState(false);
+
+    const [commentToDelete, setCommentToDelete] = React.useState<Comment | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+    const [isDeletingComment, setIsDeletingComment] = React.useState(false);
+
+    const timelineContainerRef = React.useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [startX, setStartX] = React.useState(0);
+    const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
+    const DRAG_SPEED_MULTIPLIER = 1.5;
 
     const sortedComments = React.useMemo(() =>
         (dealer.comments || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
@@ -188,15 +248,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         );
     }, [sortedComments, timelineSearchTerm]);
 
-    const timelineContainerRef = React.useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = React.useState(false);
-    const [startX, setStartX] = React.useState(0);
-    const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
-    const DRAG_SPEED_MULTIPLIER = 1.5;
 
     const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const el = timelineContainerRef.current;
-        if (!el ) return;
+        if (!el || !(e.target as HTMLElement).classList.contains('timeline-draggable-area')) return;
         
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
@@ -227,8 +282,54 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         }
         setIsDragging(false);
         document.body.style.userSelect = 'auto';
-        if (el) el.style.cursor = 'grab'; // Check if el is still valid
+        if (el) el.style.cursor = 'grab';
     }, [isDragging]);
+
+
+    const handleNewCommentSubmit = async () => {
+        if (!newCommentText.trim()) {
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Le commentaire ne peut pas être vide.' });
+            return;
+        }
+        setIsAddingComment(true);
+        try {
+            const userName = user?.name || "Utilisateur Anonyme";
+            const currentStatus = dealer.prospectionStatus;
+            await addCommentToDealer(dealer.id, userName, newCommentText, newCommentFile || undefined, currentStatus);
+            toast({ title: 'Succès', description: 'Commentaire ajouté.' });
+            setNewCommentText('');
+            setNewCommentFile(null);
+            setIsAddCommentDialogOpen(false);
+            onDataRefresh(); // Callback to refresh dealer data in parent
+        } catch (err) {
+            console.error("Erreur lors de l'ajout du commentaire :", err);
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Échec de l\'ajout du commentaire.' });
+        } finally {
+            setIsAddingComment(false);
+        }
+    };
+
+    const handleDeleteCommentRequest = (comment: Comment) => {
+        setCommentToDelete(comment);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const handleConfirmDeleteComment = async () => {
+        if (!commentToDelete) return;
+        setIsDeletingComment(true);
+        try {
+            await deleteCommentFromDealer(dealer.id, commentToDelete);
+            toast({ title: 'Succès', description: 'Commentaire supprimé.' });
+            setCommentToDelete(null);
+            onDataRefresh();
+        } catch (err) {
+            console.error("Erreur lors de la suppression du commentaire :", err);
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Échec de la suppression du commentaire.' });
+        } finally {
+            setIsDeletingComment(false);
+            setIsDeleteConfirmOpen(false);
+        }
+    };
 
 
     return (
@@ -294,14 +395,61 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 {dealer.prospectionStatus && <Badge variant={statusInfo.variant as any} className="text-sm px-3 py-1">{statusInfo.label}</Badge>}
             </CardHeader>
             <CardContent>
-                <div className="mb-4 relative">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Rechercher (texte, nom, date, statut)..."
-                        value={timelineSearchTerm}
-                        onChange={(e) => setTimelineSearchTerm(e.target.value)}
-                        className="pl-10 bg-input/50 focus:bg-input border-border/70"
-                    />
+                <div className="mb-4 flex items-center gap-3">
+                    <div className="relative flex-grow">
+                        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Rechercher (texte, nom, date, statut)..."
+                            value={timelineSearchTerm}
+                            onChange={(e) => setTimelineSearchTerm(e.target.value)}
+                            className="pl-10 bg-input/50 focus:bg-input border-border/70"
+                        />
+                    </div>
+                    <Dialog open={isAddCommentDialogOpen} onOpenChange={setIsAddCommentDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter un Suivi
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Ajouter un Nouveau Suivi</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div>
+                                    <Label htmlFor="newCommentTextDialog">Commentaire</Label>
+                                    <Textarea
+                                        id="newCommentTextDialog"
+                                        value={newCommentText}
+                                        onChange={(e) => setNewCommentText(e.target.value)}
+                                        placeholder="Votre commentaire..."
+                                        rows={4}
+                                        className="bg-input/70 focus:bg-input"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="newCommentFileDialog">Pièce jointe (Image/Document)</Label>
+                                    <Input
+                                        id="newCommentFileDialog"
+                                        type="file"
+                                        onChange={(e) => setNewCommentFile(e.target.files ? e.target.files[0] : null)}
+                                        className="bg-input/70 focus:bg-input file:text-primary file:font-medium"
+                                    />
+                                    {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier sélectionné: {newCommentFile.name}</p>}
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); setNewCommentFile(null); }}>Annuler</Button>
+                                </DialogClose>
+                                <Button onClick={handleNewCommentSubmit} disabled={isAddingComment || !newCommentText.trim()}>
+                                    {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                    {isAddingComment ? 'Ajout...' : 'Ajouter'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {filteredComments.length === 0 ? (
@@ -311,7 +459,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 ) : (
                     <div
                         ref={timelineContainerRef}
-                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none" 
+                        className="timeline-draggable-area w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none" 
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
@@ -320,7 +468,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                     >
                         
                         <div className="flex space-x-20 pl-8 pr-8 min-w-max relative"> 
-                            {/* Timeline central line - THEMED BLUE */}
                             <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div>
 
                             {filteredComments.map((comment, index) => {
@@ -340,19 +487,20 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                             index % 2 === 0 ? "mb-5" : "mt-5" 
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
+                                        onDelete={() => handleDeleteCommentRequest(comment)}
                                     />
                                    
-                                    <div className={cn( // Connector
+                                    <div className={cn( 
                                         "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
                                         timelineStatusColors.connectorClassName, 
                                         index % 2 === 0 ? "h-10" : "h-10" 
                                     )}></div>
                                     
-                                    <div className={cn( // Dot
+                                    <div className={cn( 
                                       "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
                                       timelineStatusColors.dotClassName
                                     )}></div>
-                                    <div className={cn( // Date
+                                    <div className={cn( 
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
                                         index % 2 === 0 ? "mt-2" : "mb-2" 
                                     )}>
@@ -364,12 +512,25 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                          <div className="h-1" /> 
                     </div>
                 )}
-                 <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
-                    <Info className="h-4 w-4 text-accent" />
-                    <AlertDescription>L'ajout de nouveaux commentaires avec médias se fait via le formulaire de modification du concessionnaire.</AlertDescription>
-                 </Alert>
             </CardContent>
         </Card>
+         <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setCommentToDelete(null)} disabled={isDeletingComment}>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDeleteComment} disabled={isDeletingComment} className="bg-destructive hover:bg-destructive/90">
+                        {isDeletingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        {isDeletingComment ? 'Suppression...' : 'Supprimer'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </TabsContent>
 
     <TabsContent value="media" className="space-y-4">

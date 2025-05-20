@@ -2,7 +2,7 @@
 import * as React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types'; // Removed Comment as it's used in DealerTabsContent
+import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types'; 
 import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService'; 
 import { cn } from '@/lib/utils';
 import {
@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import DealerTabsContent from './DealerTabsContent'; // Import the new client component
+import DealerTabsContent from './DealerTabsContent'; 
 
 interface ItemPageProps {
   params: {
@@ -91,7 +91,7 @@ const DetailItem: React.FC<{
   if (!value && typeof value !== 'boolean' && typeof value !== 'number' && !(Array.isArray(value) && value.length > 0)) return null;
 
   const renderValue = () => {
-    if (React.isValidElement(value)) { // React is used here, ensure it's imported
+    if (React.isValidElement(value)) { 
         return value;
     }
     if (Array.isArray(value)) {
@@ -225,36 +225,86 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
   </Card>
 );
 
-export default async function ItemDetailPage({ params }: ItemPageProps) {
+export default function ItemDetailPage({ params }: ItemPageProps) {
   const { entityType, entityId } = params;
-  let entity: AppEntity | null = null;
+  const [currentEntity, setCurrentEntity] = React.useState<AppEntity | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  if (entityType === 'dealer') {
-    entity = await getDealerById(entityId);
-  } else if (entityType === 'loadix-unit') {
-    entity = await getLoadixUnitById(entityId); 
-  } else if (entityType === 'methanisation-site') {
-    entity = await getMethanisationSiteById(entityId); 
-  } else {
-    console.warn(`Unknown entity type: ${entityType}, falling back to notFound.`);
-    notFound();
+  const fetchData = React.useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    let fetchedEntity: AppEntity | null = null;
+    try {
+      if (entityType === 'dealer') {
+        fetchedEntity = await getDealerById(entityId);
+      } else if (entityType === 'loadix-unit') {
+        fetchedEntity = await getLoadixUnitById(entityId);
+      } else if (entityType === 'methanisation-site') {
+        fetchedEntity = await getMethanisationSiteById(entityId);
+      } else {
+        console.warn(`Unknown entity type: ${entityType}, falling back to notFound.`);
+        notFound();
+        return;
+      }
+
+      if (!fetchedEntity) {
+        notFound();
+        return;
+      }
+      setCurrentEntity(fetchedEntity);
+    } catch (err) {
+        console.error(`Error fetching entity ${entityType}/${entityId}:`, err);
+        setError(err instanceof Error ? err.message : "Failed to load entity data.");
+    } finally {
+        setIsLoading(false);
+    }
+  }, [entityType, entityId]);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+
+  if (isLoading) {
+    return (
+        <div className="container mx-auto max-w-5xl py-6 px-4 text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <p className="mt-2 text-muted-foreground">Chargement des détails...</p>
+        </div>
+    );
   }
 
-  if (!entity) {
-    notFound();
+  if (error) {
+    return (
+        <div className="container mx-auto max-w-5xl py-6 px-4">
+            <Alert variant="destructive">
+                <CircleAlert className="h-5 w-5" />
+                <AlertTitle>Erreur de Chargement</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        </div>
+    );
   }
 
-  const entityTypeDisplay = getEntityTypeDisplayName(entity.entityType);
-  const editRoute = getEntityEditRoute(entity.entityType, entity.id);
+
+  if (!currentEntity) {
+    // This should ideally be caught by notFound() earlier, but as a fallback
+    notFound();
+    return null;
+  }
+
+  const entityTypeDisplay = getEntityTypeDisplayName(currentEntity.entityType);
+  const editRoute = getEntityEditRoute(currentEntity.entityType, currentEntity.id);
 
   const renderEntitySpecificDetails = () => {
-    switch (entity.entityType) {
+    switch (currentEntity.entityType) {
       case 'dealer':
-        return <DealerTabsContent dealer={entity as Dealer} />;
+        return <DealerTabsContent dealer={currentEntity as Dealer} onDataRefresh={fetchData} />;
       case 'loadix-unit':
-        return <LoadixUnitDetailCard unit={entity as LoadixUnit} />;
+        return <LoadixUnitDetailCard unit={currentEntity as LoadixUnit} />;
       case 'methanisation-site':
-        return <MethanisationSiteDetailCard site={entity as MethanisationSite} />;
+        return <MethanisationSiteDetailCard site={currentEntity as MethanisationSite} />;
       default:
         return <p className="text-muted-foreground">Type d'entité non pris en charge pour l'affichage détaillé.</p>;
     }
@@ -272,16 +322,16 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-primary/10 text-primary rounded-lg">
-                {getEntityIcon(entity.entityType, 'h-6 w-6')}
+                {getEntityIcon(currentEntity.entityType, 'h-6 w-6')}
             </div>
-            <h1 className="text-2xl md:text-3xl font-futura text-foreground leading-tight">{entity.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-futura text-foreground leading-tight">{currentEntity.name}</h1>
           </div>
           <Badge variant="secondary" className="text-xs px-2.5 py-1 self-start md:self-center">{entityTypeDisplay}</Badge>
         </div>
-        {(entity.city || entity.country) && (
+        {(currentEntity.city || currentEntity.country) && (
             <p className="text-sm text-muted-foreground mt-1.5 ml-1 flex items-center">
                 <MapPin className="h-3.5 w-3.5 mr-1.5 inline-block opacity-70" />
-                {entity.city}{entity.city && entity.country ? ', ' : ''}{entity.country}
+                {currentEntity.city}{currentEntity.city && currentEntity.country ? ', ' : ''}{currentEntity.country}
             </p>
         )}
       </header>
@@ -295,7 +345,7 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
                   Modifier
               </Link>
           </Button>
-          <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
+          <DeleteEntityButton entityType={currentEntity.entityType} entityId={currentEntity.id} />
       </CardFooter>
 
      <Alert variant="default" className="mt-8 bg-accent/10 border-accent/50 text-accent-foreground/90">

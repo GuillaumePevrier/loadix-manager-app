@@ -6,6 +6,8 @@ import { db, storage, allConfigPresent as firebaseConfigPresent } from '@/lib/fi
 import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, MethanisationSite, NewMethanisationSiteData, AppEntity } from '@/types';
 import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject as deleteFileFromStorage } from 'firebase/storage';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // For Tooltip in EditDealerPage
+
 
 // Helper function to convert Firestore document data to Dealer type
 const mapDocToDealer = (docId: string, data: any): Dealer => {
@@ -244,40 +246,44 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
   try {
     const dealerRef = doc(db, 'dealers', id);
 
-    const updatePayload: any = {
-        ...dataToUpdate,
-        updatedAt: serverTimestamp(),
-    };
+    // Create a mutable copy of dataToUpdate to avoid modifying the original object
+    const updatePayload: { [key: string]: any } = { ...dataToUpdate };
 
-    if (dataToUpdate.geoLocation && typeof dataToUpdate.geoLocation.lat === 'number' && typeof dataToUpdate.geoLocation.lng === 'number') {
-      updatePayload.geoLocation = new GeoPoint(dataToUpdate.geoLocation.lat, dataToUpdate.geoLocation.lng);
-    } else if (dataToUpdate.hasOwnProperty('geoLocation') && dataToUpdate.geoLocation === undefined) {
-      updatePayload.geoLocation = null; 
+    // Always set updatedAt
+    updatePayload.updatedAt = serverTimestamp();
+
+    // Handle GeoLocation
+    if (updatePayload.hasOwnProperty('geoLocation')) {
+        if (updatePayload.geoLocation && typeof updatePayload.geoLocation.lat === 'number' && typeof updatePayload.geoLocation.lng === 'number') {
+            updatePayload.geoLocation = new GeoPoint(updatePayload.geoLocation.lat, updatePayload.geoLocation.lng);
+        } else {
+            // If geoLocation is present but invalid or undefined, set it to null in Firestore
+            updatePayload.geoLocation = null;
+        }
     }
     
+    // Ensure comments are not directly updated via this function; they are managed by addCommentToDealer/deleteCommentFromDealer
     if (updatePayload.hasOwnProperty('comments')) {
       delete updatePayload.comments; 
     }
-
-    if (dataToUpdate.hasOwnProperty('initialCommentText')) {
+    if (updatePayload.hasOwnProperty('initialCommentText')) {
         delete updatePayload.initialCommentText; 
     }
     
-    if (dataToUpdate.hasOwnProperty('tractorBrands')) {
-      updatePayload.tractorBrands = Array.isArray(dataToUpdate.tractorBrands) ? dataToUpdate.tractorBrands : [];
-    }
-    if (dataToUpdate.hasOwnProperty('machineTypes')) {
-      updatePayload.machineTypes = Array.isArray(dataToUpdate.machineTypes) ? dataToUpdate.machineTypes : [];
-    }
-    if (dataToUpdate.hasOwnProperty('servicesOffered')) {
-      updatePayload.servicesOffered = Array.isArray(dataToUpdate.servicesOffered) ? dataToUpdate.servicesOffered : [];
-    }
-     if (dataToUpdate.hasOwnProperty('galleryUris')) {
-      updatePayload.galleryUris = Array.isArray(dataToUpdate.galleryUris) ? dataToUpdate.galleryUris : [];
-    }
-    if (dataToUpdate.hasOwnProperty('documentUris')) {
-      updatePayload.documentUris = Array.isArray(dataToUpdate.documentUris) ? dataToUpdate.documentUris : [];
-    }
+    // Ensure array fields are arrays, even if they come in empty from the form
+    const arrayFields: (keyof UpdateDealerData)[] = ['tractorBrands', 'machineTypes', 'servicesOffered', 'galleryUris', 'documentUris'];
+    arrayFields.forEach(field => {
+        if (updatePayload.hasOwnProperty(field)) {
+            updatePayload[field] = Array.isArray(updatePayload[field]) ? updatePayload[field] : [];
+        }
+    });
+
+    // Remove undefined fields to avoid errors with Firestore update
+    Object.keys(updatePayload).forEach(key => {
+        if (updatePayload[key] === undefined) {
+            delete updatePayload[key];
+        }
+    });
 
     await updateDoc(dealerRef, updatePayload);
     const updatedDocSnap = await getDoc(dealerRef);
@@ -295,8 +301,8 @@ export async function addCommentToDealer(
     dealerId: string, 
     userName: string, 
     text: string, 
-    file?: File,
-    prospectionStatusAtEvent?: Dealer['prospectionStatus']
+    prospectionStatusAtEvent: Dealer['prospectionStatus'], // Made non-optional as it's always passed
+    file?: File
 ): Promise<void> {
   if (!firebaseConfigPresent || !db || !storage) {
     console.warn("Firebase (Firestore or Storage) not configured. Cannot add comment.");
@@ -307,7 +313,7 @@ export async function addCommentToDealer(
     const newCommentData: Partial<Comment> = {
       userName: userName,
       text: text,
-      date: new Date().toISOString(),
+      date: new Date().toISOString(), // Will be converted to Timestamp for Firestore
       prospectionStatusAtEvent: prospectionStatusAtEvent || 'none',
     };
 
@@ -324,6 +330,7 @@ export async function addCommentToDealer(
       }
     }
     
+    // Convert date to Firestore Timestamp before saving
     const commentToSaveFirestore = {
         ...newCommentData,
         date: Timestamp.fromDate(new Date(newCommentData.date!)) 
@@ -347,47 +354,35 @@ export async function deleteCommentFromDealer(dealerId: string, commentToDelete:
     }
     try {
         const dealerRef = doc(db, 'dealers', dealerId);
-        const dealerDocSnap = await getDoc(dealerRef);
-
-        if (!dealerDocSnap.exists()) {
-            throw new Error(`Dealer with ID ${dealerId} not found.`);
-        }
-
-        const dealerData = dealerDocSnap.data() as Dealer;
         
-        // Convert commentToDelete date to Firestore Timestamp for accurate comparison if needed
-        // Or compare based on the ISO string date from our mapped Comment type
-        // For arrayRemove, Firestore needs the exact object as it is stored, including Timestamps for dates.
-        const commentToDeleteInFirestoreFormat = {
+        const commentToDeleteInFirestoreFormat: any = {
             ...commentToDelete,
             date: Timestamp.fromDate(new Date(commentToDelete.date)),
-            // Ensure all other fields match what's in Firestore exactly.
-            // If prospectionStatusAtEvent is undefined, it might not be in Firestore object.
-            // This might need adjustment based on how undefined fields are stored/retrieved.
         };
-         // Clean up undefined fields that might cause issues with arrayRemove
+        
         Object.keys(commentToDeleteInFirestoreFormat).forEach(key => {
           if (commentToDeleteInFirestoreFormat[key as keyof Comment] === undefined) {
             delete commentToDeleteInFirestoreFormat[key as keyof Comment];
           }
         });
 
-
-        // Optional: Delete associated file from Storage
-        if (commentToDelete.imageUrl) {
+        if (commentToDelete.imageUrl && storage) {
             try {
                 const fileRef = storageRef(storage, commentToDelete.imageUrl);
                 await deleteFileFromStorage(fileRef);
-            } catch (storageError) {
-                console.warn(`Failed to delete image from storage: ${commentToDelete.imageUrl}`, storageError);
-                // Continue even if storage deletion fails, to ensure Firestore comment is removed.
+            } catch (storageError: any) {
+                if (storageError.code !== 'storage/object-not-found') {
+                  console.warn(`Failed to delete image from storage: ${commentToDelete.imageUrl}`, storageError);
+                }
             }
-        } else if (commentToDelete.fileUrl) {
+        } else if (commentToDelete.fileUrl && storage) {
              try {
                 const fileRef = storageRef(storage, commentToDelete.fileUrl);
                 await deleteFileFromStorage(fileRef);
-            } catch (storageError) {
-                console.warn(`Failed to delete file from storage: ${commentToDelete.fileUrl}`, storageError);
+            } catch (storageError: any) {
+                if (storageError.code !== 'storage/object-not-found') {
+                  console.warn(`Failed to delete file from storage: ${commentToDelete.fileUrl}`, storageError);
+                }
             }
         }
 
@@ -568,3 +563,4 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
 // TODO: Implement updateLoadixUnit, deleteLoadixUnit
 // TODO: Implement updateMethanisationSite, deleteMethanisationSite
 
+    

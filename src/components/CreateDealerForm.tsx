@@ -10,12 +10,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addDealer } from '@/services/dealerService';
-import type { NewDealerData, Comment, Dealer } from '@/types';
+import type { NewDealerData, Comment, Dealer, GeoLocation } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useToast } from '@/hooks/use-toast';
+import { geocodeAddress } from '@/services/geocodingService'; // Import real geocoding service
 
 interface DealerFormData extends Omit<NewDealerData, 'tractorBrands' | 'machineTypes'> {
   tractorBrands: string[];
@@ -78,7 +79,7 @@ const CreateDealerForm: React.FC = () => {
     setFormData(prevData => ({ ...prevData, [name]: value }));
      if (['address', 'city', 'postalCode', 'country'].includes(name)) {
         setAddressValidated(null);
-        // Ne pas effacer geoLocation ici, l'utilisateur doit explicitement revalider
+        setFormData(prev => ({ ...prev, geoLocation: undefined }));
     }
   };
 
@@ -86,9 +87,9 @@ const CreateDealerForm: React.FC = () => {
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
 
-  const handleGeocodeAddress = async () => {
+  const handleRealGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
-      setSubmissionError("Veuillez remplir tous les champs d'adresse pour la validation.");
+      setSubmissionError("Veuillez remplir tous les champs d'adresse pour la géolocalisation.");
       toast({
         variant: "destructive",
         title: "Champs d'adresse incomplets",
@@ -99,41 +100,33 @@ const CreateDealerForm: React.FC = () => {
     setIsGeocoding(true);
     setAddressValidated(null);
     setSubmissionError(null);
+    setFormData(prev => ({ ...prev, geoLocation: undefined })); // Clear previous geo on new attempt
 
-    try {
-        // SIMULATION: Remplacer par un appel réel à l'API Google Geocoding
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const mockSuccess = Math.random() > 0.05; // Simule 95% de succès
+    const result = await geocodeAddress({
+      address: formData.address,
+      city: formData.city,
+      postalCode: formData.postalCode,
+      country: formData.country,
+    });
 
-        if (mockSuccess) {
-            // NE PAS GENERER DE FAUSSES COORDONNEES
-            // setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
-            setAddressValidated(true);
-            toast({
-                title: "Validation d'adresse simulée Réussie",
-                description: "Ceci est une simulation. Les coordonnées réelles ne sont pas générées.",
-            });
-        } else {
-            setAddressValidated(false);
-            setSubmissionError('Validation d\'adresse simulée échouée. Vérifiez l\'adresse.');
-            toast({
-                variant: "destructive",
-                title: "Échec de la validation (Simulation)",
-                description: "Veuillez vérifier l'adresse et réessayer.",
-            });
-        }
-    } catch (error) {
-        console.error('Erreur lors de la validation simulée :', error);
-        setAddressValidated(false);
-        setSubmissionError('Une erreur est survenue lors de la validation simulée.');
-        toast({
-            variant: "destructive",
-            title: "Erreur de Validation (Simulation)",
-            description: "Une erreur inattendue est survenue.",
-        });
-    } finally {
-        setIsGeocoding(false);
+    if (result.success && result.location) {
+      setFormData((prev) => ({ ...prev, geoLocation: result.location }));
+      setAddressValidated(true);
+      toast({
+        title: "Adresse Géocodée avec Succès",
+        description: `Coordonnées trouvées: Lat ${result.location.lat.toFixed(5)}, Lng ${result.location.lng.toFixed(5)}. Adresse formatée: ${result.formattedAddress || 'N/A'}`,
+      });
+    } else {
+      setAddressValidated(false);
+      const errorMessage = result.error || 'Échec du géocodage. Vérifiez l\'adresse et votre clé API Google.';
+      setSubmissionError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Échec du Géocodage",
+        description: errorMessage,
+      });
     }
+    setIsGeocoding(false);
   };
 
   const handleSubmit = async () => {
@@ -150,22 +143,33 @@ const CreateDealerForm: React.FC = () => {
       });
       return;
     }
+    
+    if (formData.address && formData.city && formData.postalCode && formData.country && addressValidated === false) {
+      setSubmissionError("L'adresse n'a pas pu être validée. Veuillez vérifier les informations ou réessayer.");
+      setIsSubmitting(false);
+       toast({
+        variant: "destructive",
+        title: "Adresse Non Validée",
+        description: "La validation de l'adresse a échoué. Veuillez corriger ou réessayer.",
+      });
+      return;
+    }
+
 
     const commentsArray: Comment[] = [];
     if (formData.initialCommentText && formData.initialCommentText.trim() !== '') {
       commentsArray.push({
-        userName: 'Admin ManuRob',
-        date: new Date().toISOString(),
-        text: formData.initialCommentText,
+        userName: 'Admin ManuRob', // TODO: Replace with actual user name from auth context
+        date: new Date().toISOString(), // Firestore will convert this to Timestamp via serverTimestamp in addDealer
+        text: formData.initialCommentText.trim(),
         prospectionStatusAtEvent: formData.prospectionStatus,
       });
     }
 
-    // Les données geoLocation ne sont pas modifiées par la simulation
     const dealerToSave: NewDealerData = {
       ...formData,
       comments: commentsArray,
-      // geoLocation reste undefined si la simulation n'en génère pas
+      // geoLocation is already set in formData if validation was successful
     };
 
     try {
@@ -177,7 +181,7 @@ const CreateDealerForm: React.FC = () => {
         });
         router.push(`/item/dealer/${newDealer.id}`);
       } else {
-        setSubmissionError("Échec de la création du concessionnaire.");
+        setSubmissionError("Échec de la création du concessionnaire. L'identifiant n'a pas été retourné ou une erreur serveur s'est produite.");
         toast({
           variant: "destructive",
           title: "Erreur de création",
@@ -186,7 +190,7 @@ const CreateDealerForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Erreur lors de la soumission du formulaire concessionnaire :", error);
-      const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+      const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue lors de la création.";
       setSubmissionError(errorMessage);
       toast({
         variant: "destructive",
@@ -231,16 +235,19 @@ const CreateDealerForm: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 mt-2">
-                <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
+                <Button type="button" onClick={handleRealGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
                     {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                    Valider l'Adresse (Simulation)
+                    Valider l'Adresse
                 </Button>
-                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée (simulation)"/>}
-                {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée (simulation)"/>}
+                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
+                {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
             </div>
+            {formData.geoLocation && addressValidated === true && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+            )}
             <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                 <Info className="h-4 w-4 text-accent" />
-                <AlertDescription>La validation d'adresse est simulée et ne génère pas de coordonnées réelles. La géolocalisation réelle devra être implémentée.</AlertDescription>
+                <AlertDescription>La validation de l'adresse utilise l'API Google Geocoding. Assurez-vous que votre clé API est configurée et dispose des autorisations nécessaires.</AlertDescription>
             </Alert>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -368,7 +375,7 @@ const CreateDealerForm: React.FC = () => {
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-center pt-4 md:pt-5 mt-4 md:mt-5 border-t border-border/30 gap-2">
-        <Button onClick={handleBack} disabled={currentStep === 0 || isSubmitting} variant="outline" size="lg" className="w-full sm:w-auto">
+        <Button onClick={handleBack} disabled={currentStep === 0 || isSubmitting || isGeocoding} variant="outline" size="lg" className="w-full sm:w-auto">
           Précédent
         </Button>
         <p className="text-xs sm:text-sm text-muted-foreground order-first sm:order-none">Étape {currentStep + 1} sur {totalSteps}</p>

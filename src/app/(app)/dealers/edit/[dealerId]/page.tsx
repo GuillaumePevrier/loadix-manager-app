@@ -1,14 +1,15 @@
-
-'use client';
+// This is a client component
+"use client";
 
 import React, { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter }
+from 'next/navigation'; // Corrected: notFound is not typically used directly in client components for this case
 import { getDealerById, updateDealer, addCommentToDealer } from '@/services/dealerService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import type { Dealer, UpdateDealerData, Comment } from '@/types';
+import type { Dealer, UpdateDealerData, Comment, GeoLocation } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -26,9 +27,10 @@ import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { geocodeAddress } from '@/services/geocodingService'; // Import real geocoding service
 
 interface EditDealerPageProps {
-  params: Promise<{
+  params: Promise<{ // params is a Promise
     dealerId: string;
   }>;
 }
@@ -37,7 +39,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const resolvedParams = React.use(paramsPromise);
+  const resolvedParams = React.use(paramsPromise); // Resolve the promise using React.use()
   const { dealerId } = resolvedParams;
 
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
@@ -92,7 +94,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           machineTypes: dealerData.machineTypes || [],
           tractorBrands: dealerData.tractorBrands || [],
           prospectionStatus: dealerData.prospectionStatus || 'none',
-          geoLocation: dealerData.geoLocation, // Keep existing geo data
+          geoLocation: dealerData.geoLocation, 
           comments: dealerData.comments || [],
           servicesOffered: dealerData.servicesOffered || [],
           galleryUris: dealerData.galleryUris || [],
@@ -100,7 +102,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         };
         setFormData(initialFormState);
         if (dealerData.geoLocation) {
-          setAddressValidated(true); // Assume address is validated if geo data exists
+          setAddressValidated(true); 
         }
       } else {
         setError('Concessionnaire non trouvé.');
@@ -126,8 +128,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
-        setAddressValidated(null); // Reset validation if address fields change
-        // Do not clear geoLocation here to preserve it unless explicitly re-validated
+        setAddressValidated(null); 
+        // Do not clear geoLocation here; re-validation will handle it
     }
   };
 
@@ -143,7 +145,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     }
   };
 
-  const handleGeocodeAddress = async () => {
+  const handleRealGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
       setError("Veuillez remplir tous les champs d'adresse pour la validation.");
       toast({
@@ -156,45 +158,33 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsGeocoding(true);
     setAddressValidated(null);
     setError(null);
+    setFormData(prev => ({ ...prev, geoLocation: undefined })); // Clear previous geo on new attempt
 
-    try {
-        // SIMULATION: Remplacer par un appel réel à l'API Google Geocoding
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const mockSuccess = Math.random() > 0.05; // Simule 95% de succès
+    const result = await geocodeAddress({
+      address: formData.address,
+      city: formData.city,
+      postalCode: formData.postalCode,
+      country: formData.country,
+    });
 
-        if (mockSuccess) {
-            // NE PAS GENERER DE FAUSSES COORDONNEES DANS LA SIMULATION
-            // Pour une vraie API:
-            // const realCoords = await callGoogleGeocodingAPI(formData.address, formData.city, ...);
-            // setFormData((prev) => ({ ...prev, geoLocation: realCoords }));
-            setAddressValidated(true);
-            toast({
-                title: "Validation d'adresse simulée Réussie",
-                description: "Ceci est une simulation. Les coordonnées réelles ne sont pas générées.",
-            });
-        } else {
-            setAddressValidated(false);
-            setError('Validation d\'adresse simulée échouée. Vérifiez l\'adresse.');
-            setFormData(prev => ({ ...prev, geoLocation: undefined })); // Clear geo if validation fails
-            toast({
-                variant: "destructive",
-                title: "Échec de la validation (Simulation)",
-                description: "Veuillez vérifier l'adresse et réessayer.",
-            });
-        }
-    } catch (error) {
-        console.error('Erreur lors de la validation simulée :', error);
-        setAddressValidated(false);
-        setFormData(prev => ({ ...prev, geoLocation: undefined }));
-        setError('Une erreur est survenue lors de la validation simulée.');
-        toast({
-            variant: "destructive",
-            title: "Erreur de Validation (Simulation)",
-            description: "Une erreur inattendue est survenue.",
-        });
-    } finally {
-        setIsGeocoding(false);
+    if (result.success && result.location) {
+      setFormData((prev) => ({ ...prev, geoLocation: result.location }));
+      setAddressValidated(true);
+      toast({
+        title: "Adresse Géocodée avec Succès",
+        description: `Coordonnées: Lat ${result.location.lat.toFixed(5)}, Lng ${result.location.lng.toFixed(5)}. ${result.formattedAddress || ''}`,
+      });
+    } else {
+      setAddressValidated(false);
+      const errorMessage = result.error || 'Échec du géocodage. Vérifiez l\'adresse et la configuration de la clé API.';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Échec du Géocodage",
+        description: errorMessage,
+      });
     }
+    setIsGeocoding(false);
   };
 
 
@@ -219,7 +209,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       });
       setNewCommentText('');
       setNewCommentFile(null);
-      await fetchDealerData();
+      await fetchDealerData(); // Refresh comments
     } catch (err) {
       console.error("Erreur lors de l'ajout du commentaire :", err);
       toast({
@@ -237,19 +227,18 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsSubmitting(true);
     setError(null);
 
-    // Check if address was changed and not re-validated
     const addressFieldsChanged = formData.address !== currentDealerData?.address ||
                                formData.city !== currentDealerData?.city ||
                                formData.postalCode !== currentDealerData?.postalCode ||
                                formData.country !== currentDealerData?.country;
 
-    if (addressFieldsChanged && !addressValidated && (formData.address || formData.city || formData.postalCode || formData.country)) {
-         setError("L'adresse a été modifiée. Veuillez la valider à nouveau (bouton à côté du champ adresse) ou assurez-vous que la validation a réussi.");
+    if (addressFieldsChanged && addressValidated !== true && (formData.address || formData.city || formData.postalCode || formData.country)) {
+         setError("L'adresse a été modifiée. Veuillez la valider à nouveau ou assurez-vous que la validation a réussi.");
          setIsSubmitting(false);
          toast({
             variant: "destructive",
             title: "Validation d'adresse requise",
-            description: "Si vous avez modifié l'adresse, veuillez la valider.",
+            description: "Si vous avez modifié l'adresse, veuillez la (re)valider.",
          });
          return;
     }
@@ -260,37 +249,30 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         throw new Error("L'ID du concessionnaire est manquant.");
       }
 
+      // Prepare data, ensuring geoLocation comes from formData if successfully re-geocoded
       const dataToUpdate: UpdateDealerData = {
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        comments: undefined, // Comments are managed separately
+        comments: undefined, 
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
         galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
         documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
       };
-
-      // If address fields were changed AND validation failed or wasn't re-attempted,
-      // we should not send the old geoLocation. We set it to undefined to be cleared.
-      if (addressFieldsChanged && addressValidated === false) {
-        dataToUpdate.geoLocation = undefined;
-      } else if (addressFieldsChanged && addressValidated === true && formData.geoLocation) {
-        // If address changed and new validation was successful, use the new (simulated) geo.
-        // For real geocoding, formData.geoLocation would have real coords.
-        // Since simulation doesn't set it, this path is unlikely to be taken by simulation.
-        // But if real geocoding sets formData.geoLocation, this is correct.
-        dataToUpdate.geoLocation = formData.geoLocation;
-      } else if (!addressFieldsChanged && currentDealerData?.geoLocation) {
-        // If address didn't change, keep the existing geoLocation
-        dataToUpdate.geoLocation = currentDealerData.geoLocation;
-      } else if (addressValidated === true && !formData.geoLocation) {
-        // Address was validated (simulated), but simulation doesn't set coords.
-        // If there was an old geoLocation, we might want to clear it if address changed.
-        // For now, if address didn't change, old geo is kept. If it did, and no new geo, it's cleared.
-        if(addressFieldsChanged) dataToUpdate.geoLocation = undefined;
-        else dataToUpdate.geoLocation = currentDealerData?.geoLocation;
+      
+      // Ensure geoLocation is correctly handled:
+      // If address changed and validation was successful, use formData.geoLocation.
+      // If address didn't change, keep currentDealerData.geoLocation.
+      // If address changed and validation failed, geoLocation in formData would be undefined (cleared by handleRealGeocodeAddress), so this gets passed correctly.
+      if (addressFieldsChanged && addressValidated === true) {
+        dataToUpdate.geoLocation = formData.geoLocation; // This is the new, validated location
+      } else if (!addressFieldsChanged) {
+        dataToUpdate.geoLocation = currentDealerData?.geoLocation; // Keep old if address not touched
       } else {
-        dataToUpdate.geoLocation = formData.geoLocation; // This covers new validation success (if it sets coords) or if it was undefined.
+        // Address changed, but validation not successful OR not re-attempted (but it was required by check above).
+        // formData.geoLocation would have been cleared by geocode attempt or if address parts changed.
+        // So, sending formData.geoLocation (which would be undefined) is correct to clear it.
+        dataToUpdate.geoLocation = formData.geoLocation;
       }
 
 
@@ -427,12 +409,12 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                      <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
+                      <Button type="button" onClick={handleRealGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
                           {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                          Valider l'Adresse (Simulation)
+                          Valider l'Adresse
                       </Button>
-                      {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée (simulation)"/>}
-                      {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée (simulation)"/>}
+                      {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
+                      {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
                       {addressValidated === null && currentDealerData?.geoLocation && (
                         <TooltipProvider>
                           <Tooltip>
@@ -440,7 +422,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                               <Info className="h-5 w-5 text-blue-500 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Adresse initialement géocodée. Validez à nouveau si modifiée (simulation).</p>
+                              <p>Adresse initialement géocodée. Validez à nouveau si modifiée.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -448,12 +430,12 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                   </div>
                   {formData.geoLocation && (
                     <div className="mt-1">
-                        <p className="text-xs text-muted-foreground">Coordonnées (si disponibles) : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+                        <p className="text-xs text-muted-foreground">Coordonnées (si validées) : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
                     </div>
                   )}
                    <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                        <Info className="h-4 w-4 text-accent" />
-                       <AlertDescription>La validation d'adresse est simulée et ne génère pas de coordonnées réelles. La géolocalisation réelle devra être implémentée.</AlertDescription>
+                       <AlertDescription>La validation d'adresse utilise l'API Google Geocoding. Assurez-vous que votre clé API est correctement configurée et autorisée.</AlertDescription>
                    </Alert>
 
                   <div>

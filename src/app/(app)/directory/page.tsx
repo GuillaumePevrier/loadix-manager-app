@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ListChecks } from 'lucide-react';
+import Link from 'next/link';
 import DirectoryClientContent from './directory-client-content';
 import { getDealers } from '@/services/dealerService'; // Import the new service
 import type { AppEntity } from '@/types';
@@ -31,7 +32,9 @@ export default async function DirectoryPage() {
               <CardTitle className="text-4xl font-futura">Répertoire des Entités</CardTitle>
               <CardDescription className="text-lg font-bebas-neue tracking-wide text-muted-foreground mt-1">
                 Visualisez, filtrez et recherchez parmi les concessionnaires, clients, engins et sites.
-              </CardDescription>
+ </CardDescription>
+            </div>
+ <div className="ml-auto flex items-center gap-4"> {/* Add this div for the button */}
             </div>
           </div>
         </CardHeader>

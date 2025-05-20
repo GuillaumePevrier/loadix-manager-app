@@ -3,7 +3,7 @@
 // For now, let's make it a simple page that suggests going to the main directory.
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, ListChecks } from 'lucide-react';
 
@@ -15,26 +15,24 @@ export const metadata: Metadata = {
 export default function DealersPage() {
   return (
     <div className="container mx-auto py-8 px-4">
-      <Card className="max-w-2xl mx-auto text-center shadow-lg">
+      <Card className="max-w-4xl mx-auto shadow-lg">
         <CardHeader>
-          <div className="mx-auto bg-primary/10 text-primary p-3 rounded-full w-fit mb-3">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center">
+            <div className="bg-primary/10 text-primary p-3 rounded-full w-fit mr-3">
             <Building size={28}/>
           </div>
           <CardTitle className="text-3xl font-futura">Gestion des Concessionnaires</CardTitle>
-          <CardDescription className="font-bebas-neue text-lg">
-            Cette section est en cours d'intégration dans le nouveau module "Répertoire".
-          </CardDescription>
+            </div>
+            <Link href="/dealers/create" className={buttonVariants({ variant: "default" })}>
+              Créer un nouveau concessionnaire
+            </Link>
+          </div>
+          <CardDescription className="font-bebas-neue text-lg">Liste des concessionnaires enregistrés.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-6 text-muted-foreground">
-            Pour visualiser et gérer les concessionnaires, ainsi que d'autres entités comme les clients, les engins LOADIX et les sites de méthanisation, veuillez utiliser la nouvelle page Répertoire.
-          </p>
-          <Button asChild size="lg">
-            <Link href="/directory">
-              <ListChecks className="mr-2 h-5 w-5" />
-              Accéder au Répertoire
-            </Link>
-          </Button>
+          {/* Placeholder for the dealer list table/component */}
+          <p className="text-center text-muted-foreground">La liste des concessionnaires sera affichée ici.</p>
         </CardContent>
       </Card>
     </div>

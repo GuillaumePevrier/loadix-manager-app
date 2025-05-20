@@ -16,12 +16,11 @@ import {
 import SidebarNav from './sidebar-nav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Settings, LogOut, Loader2, Search } from 'lucide-react'; // Removed MapIcon
+import { Settings, LogOut, Loader2, Search } from 'lucide-react'; 
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
 import GlobalSearchDialog from '@/components/search/global-search-dialog';
-// Removed import for TestMapDialog
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -32,12 +31,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Removed state for isTestMapOpen
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
+
+  // Ensure /dealers/create and /dealers/edit/[dealerId] are full width
+  const noPaddingRoutes = ['/map', '/directory', '/dealers/create'];
+  const isDealerEditPage = /^\/dealers\/edit\/[^/]+$/.test(pathname);
+
 
   return (
     <>
@@ -95,19 +98,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
               <span className="sr-only">Rechercher</span>
             </Button>
             <ThemeToggleButton />
-            {/* Removed Test Carte button */}
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <Settings className="w-5 h-5" />
               <span className="sr-only">Paramètres</span>
             </Button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto ${pathname === '/map' || pathname === '/directory' ? '' : 'p-4 md:p-6 lg:p-8'}`}>
+        <main className={`flex-1 overflow-y-auto ${(noPaddingRoutes.includes(pathname) || isDealerEditPage) ? '' : 'p-4 md:p-6 lg:p-8'}`}>
           {children}
         </main>
       </SidebarInset>
       <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
-      {/* Removed TestMapDialog instance */}
     </>
   );
 }

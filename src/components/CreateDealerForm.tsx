@@ -1,0 +1,405 @@
+
+// This is a client component
+"use client";
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input'; 
+import { Label } from '@/components/ui/label'; 
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { addDealer } from '@/services/dealerService'; 
+import type { NewDealerData, Comment, Dealer } from '@/types';
+import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Define the structure for dealer form data, aligning with NewDealerData
+interface DealerFormData {
+  name: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  department: string;
+  
+  phone: string;
+  fax: string;
+  email: string;
+  website: string;
+  contactPerson: string;
+  brandSign: string; 
+  branchName: string; 
+
+  machineTypes: string[]; // Placeholder for multi-select
+  tractorBrands: string[]; // Placeholder for multi-select
+  
+  prospectionStatus: Dealer['prospectionStatus'];
+  initialCommentText: string; 
+  
+  geoLocation?: { lat: number; lng: number };
+}
+
+const initialFormData: DealerFormData = {
+  name: '',
+  address: '',
+  city: '',
+  postalCode: '',
+  country: 'France', 
+  department: '',
+  phone: '',
+  fax: '',
+  email: '',
+  website: '',
+  contactPerson: '',
+  brandSign: '',
+  branchName: '',
+  machineTypes: [],
+  tractorBrands: [],
+  prospectionStatus: 'none',
+  initialCommentText: '',
+  geoLocation: undefined,
+};
+
+// Mock data for select options - these should ideally come from a config or API
+const machineTypeOptionsList = [
+  { value: 'tracteurs', label: 'Tracteurs' },
+  { value: 'moissonneuses-batteuses', label: 'Moissonneuses-batteuses' },
+  { value: 'chargeurs', label: 'Chargeurs' },
+  { value: 'ensileuses', label: 'Ensileuses' },
+  { value: 'ramasseuses-presses', label: 'Ramasseuses-presses' },
+  { value: 'recolte-betteraves', label: 'Récolte betteraves' },
+  { value: 'machines-a-traire', label: 'Machines à traire' },
+  { value: 'machines-a-vendanger', label: 'Machines à Vendanger' },
+];
+
+const tractorBrandOptionsList = [
+    { value: "john_deere", label: "John Deere" }, { value: "case_ih", label: "Case IH" },
+    { value: "new_holland", label: "New Holland" }, { value: "fendt", label: "Fendt" },
+    { value: "massey_ferguson", label: "Massey Ferguson" }, { value: "claas", label: "Claas" },
+    { value: "deutz_fahr", label: "Deutz-Fahr" }, { value: "valtra", label: "Valtra" },
+    // This list needs to be comprehensive
+];
+
+
+const CreateDealerForm: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState<DealerFormData>(initialFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [addressValidated, setAddressValidated] = useState<boolean | null>(null);
+  const router = useRouter();
+  
+  const totalSteps = 3; 
+
+  const handleNext = () => {
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prevData => ({ ...prevData, [name]: value }));
+     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
+        setAddressValidated(null); 
+        setFormData(prev => ({ ...prev, geoLocation: undefined }));
+    }
+  };
+
+  const handleSelectChange = (name: keyof DealerFormData, value: string) => {
+    setFormData(prevData => ({ ...prevData, [name]: value as any })); // Cast as any for prospectionStatus union type
+  };
+  
+  const handleGeocodeAddress = async () => {
+    if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
+      setSubmissionError("Veuillez remplir tous les champs d'adresse pour la géolocalisation.");
+      return;
+    }
+    const fullAddress = `${formData.address}, ${formData.postalCode} ${formData.city}, ${formData.country}`;
+    setIsGeocoding(true);
+    setAddressValidated(null);
+    setSubmissionError(null);
+
+    try {
+        // NOTE: Actual Geocoding API call is needed here.
+        // Ensure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set and Geocoding API is enabled.
+        // const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
+        // const data = await response.json();
+        // if (data.status === 'OK' && data.results[0]) {
+        //   const location = data.results[0].geometry.location; 
+        //   setFormData((prev) => ({ ...prev, geoLocation: location }));
+        //   setAddressValidated(true);
+        // } else {
+        //   setAddressValidated(false);
+        //   setSubmissionError(`Échec du géocodage : ${data.error_message || data.status}`);
+        // }
+
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        const mockSuccess = Math.random() > 0.1; 
+        if (mockSuccess) {
+            const mockLocation = { lat: 48.8566 + (Math.random() - 0.5) * 0.2, lng: 2.3522 + (Math.random() - 0.5) * 0.2 };
+            setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
+            setAddressValidated(true);
+        } else {
+            setAddressValidated(false);
+            setSubmissionError('Géocodage simulé échoué. Vérifiez l\'adresse.');
+        }
+    } catch (error) {
+        console.error('Erreur lors du géocodage :', error);
+        setAddressValidated(false);
+        setSubmissionError('Une erreur est survenue lors du géocodage.');
+    } finally {
+        setIsGeocoding(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmissionError(null);
+
+    if (formData.address && !formData.geoLocation && addressValidated !== true) {
+      setSubmissionError("Veuillez valider l'adresse (bouton à côté du champ adresse) ou assurez-vous que le géocodage a réussi.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const commentsArray: Comment[] = [];
+    if (formData.initialCommentText.trim() !== '') {
+      commentsArray.push({
+        userName: 'Admin ManuRob', // Placeholder for actual user
+        date: new Date().toISOString(),
+        text: formData.initialCommentText,
+      });
+    }
+
+    const dealerToSave: NewDealerData = {
+      name: formData.name,
+      address: formData.address,
+      city: formData.city,
+      postalCode: formData.postalCode,
+      country: formData.country,
+      department: formData.department,
+      phone: formData.phone,
+      fax: formData.fax,
+      email: formData.email,
+      website: formData.website,
+      contactPerson: formData.contactPerson,
+      brandSign: formData.brandSign,
+      branchName: formData.branchName,
+      machineTypes: formData.machineTypes, 
+      tractorBrands: formData.tractorBrands, 
+      prospectionStatus: formData.prospectionStatus,
+      comments: commentsArray,
+      geoLocation: formData.geoLocation,
+      servicesOffered: [], 
+      galleryUris: [],
+      documentUris: [],
+      relatedProspectIds: [],
+      relatedSiteIds: [],
+    };
+
+    try {
+      const newDealer = await addDealer(dealerToSave);
+      if (newDealer && newDealer.id) {
+        router.push(`/item/dealer/${newDealer.id}`); 
+      } else {
+        setSubmissionError("Échec de la création du concessionnaire. L'identifiant n'a pas été retourné ou une erreur s'est produite.");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la soumission du formulaire concessionnaire :", error);
+      setSubmissionError(error instanceof Error ? error.message : "Une erreur inconnue est survenue lors de la création.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 0: 
+        return (
+          <div className="space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Informations Générales et Localisation</h3>
+            <div>
+              <Label htmlFor="name">Nom du concessionnaire *</Label>
+              <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: AgriServices Nord" />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div>
+                    <Label htmlFor="address">Adresse *</Label>
+                    <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required />
+                </div>
+                <div>
+                    <Label htmlFor="postalCode">Code Postal *</Label>
+                    <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Ex: 75001" required />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div>
+                <Label htmlFor="city">Ville *</Label>
+                <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Ex: Paris" required />
+              </div>
+              <div>
+                <Label htmlFor="country">Pays *</Label>
+                <Input id="country" name="country" value={formData.country} onChange={handleChange} placeholder="Ex: France" required/>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
+                    {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                    Valider l'Adresse
+                </Button>
+                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
+                {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
+            </div>
+            {formData.geoLocation && addressValidated === true && (
+                <p className="text-xs text-green-600 dark:text-green-400">Coordonnées géographiques obtenues : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="department">Département</Label>
+                    <Input id="department" name="department" value={formData.department} onChange={handleChange} placeholder="Ex: 75 - Paris ou Nord" />
+                </div>
+                <div>
+                    <Label htmlFor="machineTypes">Types de machines gérées</Label>
+                    <Input type="text" value={formData.machineTypes.join(', ')} onChange={(e) => handleMultiSelectChange('machineTypes', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="Tracteurs, Moissonneuses..."  />
+                    <div className="mt-1 text-xs text-muted-foreground">Séparez par des virgules. Sera un multi-select.</div>
+                </div>
+            </div>
+          </div>
+        );
+      case 1: 
+        return (
+          <div className="space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Contact et Informations Commerciales</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="phone">Téléphone</Label>
+                    <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" />
+                </div>
+                <div>
+                    <Label htmlFor="fax">Fax</Label>
+                    <Input id="fax" name="fax" type="tel" value={formData.fax} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="Ex: contact@example.com" />
+                </div>
+                <div>
+                    <Label htmlFor="website">Site Web</Label>
+                    <Input id="website" name="website" type="url" value={formData.website} onChange={handleChange} placeholder="Ex: https://www.example.com" />
+                </div>
+            </div>
+             <div>
+                <Label htmlFor="contactPerson">Personne à contacter</Label>
+                <Input id="contactPerson" name="contactPerson" value={formData.contactPerson} onChange={handleChange} placeholder="Ex: Jean Dupont" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="tractorBrands">Marques d'engins représentées</Label>
+                    <Input type="text" value={formData.tractorBrands.join(', ')} onChange={(e) => handleMultiSelectChange('tractorBrands', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="John Deere, Claas..." />
+                    <div className="mt-1 text-xs text-muted-foreground">Séparez par des virgules. Sera un multi-select.</div>
+                </div>
+                <div>
+                    <Label htmlFor="brandSign">Enseigne</Label>
+                    <Input id="brandSign" name="brandSign" value={formData.brandSign} onChange={handleChange} placeholder="Ex: Groupe AgriPro" />
+                </div>
+            </div>
+             <div>
+                <Label htmlFor="branchName">Nom de la succursale (si applicable)</Label>
+                <Input id="branchName" name="branchName" value={formData.branchName} onChange={handleChange} placeholder="Ex: Agence de Lille" />
+            </div>
+          </div>
+        );
+      case 2: 
+        return (
+          <div className="space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Prospection et Commentaires</h3>
+            <div>
+              <Label htmlFor="prospectionStatus">Statut de prospection</Label>
+              <Select name="prospectionStatus" onValueChange={(value) => handleSelectChange('prospectionStatus', value)} value={formData.prospectionStatus || 'none'}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun</SelectItem>
+                  <SelectItem value="cold">Froid</SelectItem>
+                  <SelectItem value="warm">Tiède</SelectItem>
+                  <SelectItem value="hot">Chaud</SelectItem>
+                  <SelectItem value="converted">Converti</SelectItem>
+                  <SelectItem value="lost">Perdu</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+                <Label htmlFor="initialCommentText">Commentaire initial</Label>
+                <Textarea id="initialCommentText" name="initialCommentText" value={formData.initialCommentText} onChange={handleChange} rows={4} placeholder="Ajoutez un premier commentaire ou une note sur ce concessionnaire..." />
+            </div>
+            <Alert variant="default" className="mt-6 bg-accent/10 border-accent/50 text-accent-foreground/90">
+              <AlertTriangle className="h-5 w-5 text-accent" />
+              <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
+              <AlertDescription className="text-xs">
+                La galerie d'images, la gestion des documents et la liaison avec d'autres entités (clients, sites) seront ajoutées ultérieurement.
+                Les champs pour "Types de machines" et "Marques d'engins" seront améliorés avec des sélections multiples et affichage en tags.
+              </AlertDescription>
+            </Alert>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const progressValue = Math.max(5, ((currentStep + 1) / totalSteps) * 100); 
+
+  return (
+    <div className="space-y-6">
+      <Progress value={progressValue} className="w-full h-2" />
+      
+      <div className="min-h-[300px]">{renderStepContent()}</div>
+
+      {submissionError && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Erreur</AlertTitle>
+          <AlertDescription>{submissionError}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex justify-between items-center pt-5 mt-5 border-t border-border/30">
+        <Button onClick={handleBack} disabled={currentStep === 0 || isSubmitting} variant="outline" size="lg">
+          Précédent
+        </Button>
+        <p className="text-sm text-muted-foreground">Étape {currentStep + 1} sur {totalSteps}</p>
+        {currentStep < totalSteps - 1 ? (
+          <Button onClick={handleNext} disabled={isSubmitting} size="lg">
+            Suivant
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit} disabled={isSubmitting || isGeocoding} size="lg">
+            {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+            {isSubmitting ? 'Création...' : 'Créer le concessionnaire'}
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-2 text-center">
+        Note: Le géocodage nécessite l'activation de l'API Google Geocoding.
+      </p>
+    </div>
+  );
+};
+
+export default CreateDealerForm;

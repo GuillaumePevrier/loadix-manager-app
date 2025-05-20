@@ -1,4 +1,3 @@
-
 // This is a client component
 "use client";
 
@@ -6,20 +5,21 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/ui/input'; 
-import { Label } from '@/components/ui/label'; 
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { addDealer } from '@/services/dealerService'; 
+import { addDealer } from '@/services/dealerService';
 import type { NewDealerData, Comment, Dealer } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { useToast } from '@/hooks/use-toast';
 
 interface DealerFormData extends Omit<NewDealerData, 'tractorBrands' | 'machineTypes'> {
-  tractorBrands: string[]; // Storing array of values for MultiSelect
-  machineTypes: string[];  // Storing array of values for MultiSelect
+  tractorBrands: string[];
+  machineTypes: string[];
 }
 
 const initialFormData: DealerFormData = {
@@ -27,7 +27,7 @@ const initialFormData: DealerFormData = {
   address: '',
   city: '',
   postalCode: '',
-  country: 'France', 
+  country: 'France',
   department: '',
   phone: '',
   fax: '',
@@ -36,8 +36,8 @@ const initialFormData: DealerFormData = {
   contactPerson: '',
   brandSign: '',
   branchName: '',
-  machineTypes: [], 
-  tractorBrands: [], 
+  machineTypes: [],
+  tractorBrands: [],
   prospectionStatus: 'none',
   initialCommentText: '',
   geoLocation: undefined,
@@ -57,8 +57,9 @@ const CreateDealerForm: React.FC = () => {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [addressValidated, setAddressValidated] = useState<boolean | null>(null);
   const router = useRouter();
-  
-  const totalSteps = 3; 
+  const { toast } = useToast();
+
+  const totalSteps = 3;
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
@@ -76,40 +77,60 @@ const CreateDealerForm: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prevData => ({ ...prevData, [name]: value }));
      if (['address', 'city', 'postalCode', 'country'].includes(name)) {
-        setAddressValidated(null); 
-        setFormData(prev => ({ ...prev, geoLocation: undefined }));
+        setAddressValidated(null);
+        // Ne pas effacer geoLocation ici, l'utilisateur doit explicitement revalider
     }
   };
 
   const handleSelectChange = (name: keyof DealerFormData, value: string | string[]) => {
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
-  
+
   const handleGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
-      setSubmissionError("Veuillez remplir tous les champs d'adresse pour la géolocalisation.");
+      setSubmissionError("Veuillez remplir tous les champs d'adresse pour la validation.");
+      toast({
+        variant: "destructive",
+        title: "Champs d'adresse incomplets",
+        description: "L'adresse, le code postal, la ville et le pays sont requis.",
+      });
       return;
     }
-    const fullAddress = `${formData.address}, ${formData.postalCode} ${formData.city}, ${formData.country}`;
     setIsGeocoding(true);
     setAddressValidated(null);
     setSubmissionError(null);
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        const mockSuccess = Math.random() > 0.1; 
+        // SIMULATION: Remplacer par un appel réel à l'API Google Geocoding
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const mockSuccess = Math.random() > 0.05; // Simule 95% de succès
+
         if (mockSuccess) {
-            const mockLocation = { lat: 48.8566 + (Math.random() - 0.5) * 0.2, lng: 2.3522 + (Math.random() - 0.5) * 0.2 };
-            setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
+            // NE PAS GENERER DE FAUSSES COORDONNEES
+            // setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
             setAddressValidated(true);
+            toast({
+                title: "Validation d'adresse simulée Réussie",
+                description: "Ceci est une simulation. Les coordonnées réelles ne sont pas générées.",
+            });
         } else {
             setAddressValidated(false);
-            setSubmissionError('Géocodage simulé échoué. Vérifiez l\'adresse.');
+            setSubmissionError('Validation d\'adresse simulée échouée. Vérifiez l\'adresse.');
+            toast({
+                variant: "destructive",
+                title: "Échec de la validation (Simulation)",
+                description: "Veuillez vérifier l'adresse et réessayer.",
+            });
         }
     } catch (error) {
-        console.error('Erreur lors du géocodage :', error);
+        console.error('Erreur lors de la validation simulée :', error);
         setAddressValidated(false);
-        setSubmissionError('Une erreur est survenue lors du géocodage.');
+        setSubmissionError('Une erreur est survenue lors de la validation simulée.');
+        toast({
+            variant: "destructive",
+            title: "Erreur de Validation (Simulation)",
+            description: "Une erreur inattendue est survenue.",
+        });
     } finally {
         setIsGeocoding(false);
     }
@@ -119,37 +140,59 @@ const CreateDealerForm: React.FC = () => {
     setIsSubmitting(true);
     setSubmissionError(null);
 
-    if (formData.address && !formData.geoLocation && addressValidated !== true) {
-      setSubmissionError("Veuillez valider l'adresse (bouton à côté du champ adresse) ou assurez-vous que le géocodage a réussi.");
+    if (formData.address && formData.city && formData.postalCode && formData.country && !addressValidated) {
+      setSubmissionError("Veuillez valider l'adresse avant de créer le concessionnaire.");
       setIsSubmitting(false);
+      toast({
+        variant: "destructive",
+        title: "Validation d'adresse requise",
+        description: "Cliquez sur 'Valider l'Adresse'.",
+      });
       return;
     }
 
     const commentsArray: Comment[] = [];
     if (formData.initialCommentText && formData.initialCommentText.trim() !== '') {
       commentsArray.push({
-        userName: 'Admin ManuRob', 
+        userName: 'Admin ManuRob',
         date: new Date().toISOString(),
         text: formData.initialCommentText,
         prospectionStatusAtEvent: formData.prospectionStatus,
       });
     }
 
+    // Les données geoLocation ne sont pas modifiées par la simulation
     const dealerToSave: NewDealerData = {
-      ...formData, // tractorBrands and machineTypes are already string[]
+      ...formData,
       comments: commentsArray,
+      // geoLocation reste undefined si la simulation n'en génère pas
     };
 
     try {
       const newDealer = await addDealer(dealerToSave);
       if (newDealer && newDealer.id) {
-        router.push(`/item/dealer/${newDealer.id}`); 
+        toast({
+          title: "Succès",
+          description: `Concessionnaire "${newDealer.name}" créé.`,
+        });
+        router.push(`/item/dealer/${newDealer.id}`);
       } else {
-        setSubmissionError("Échec de la création du concessionnaire. L'identifiant n'a pas été retourné ou une erreur s'est produite.");
+        setSubmissionError("Échec de la création du concessionnaire.");
+        toast({
+          variant: "destructive",
+          title: "Erreur de création",
+          description: "L'identifiant n'a pas été retourné ou une erreur s'est produite.",
+        });
       }
     } catch (error) {
       console.error("Erreur lors de la soumission du formulaire concessionnaire :", error);
-      setSubmissionError(error instanceof Error ? error.message : "Une erreur inconnue est survenue lors de la création.");
+      const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+      setSubmissionError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Erreur de création",
+        description: errorMessage,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -157,7 +200,7 @@ const CreateDealerForm: React.FC = () => {
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 0: 
+      case 0:
         return (
           <div className="space-y-4 md:space-y-5">
             <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Informations Générales et Localisation</h3>
@@ -165,7 +208,7 @@ const CreateDealerForm: React.FC = () => {
               <Label htmlFor="name">Nom du concessionnaire *</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: AgriServices Nord" />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
                 <div>
                     <Label htmlFor="address">Adresse *</Label>
@@ -190,14 +233,15 @@ const CreateDealerForm: React.FC = () => {
             <div className="flex items-center gap-2 mt-2">
                 <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
                     {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                    Valider l'Adresse
+                    Valider l'Adresse (Simulation)
                 </Button>
-                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
-                {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
+                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée (simulation)"/>}
+                {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée (simulation)"/>}
             </div>
-            {formData.geoLocation && addressValidated === true && (
-                <p className="text-xs text-green-600 dark:text-green-400">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
-            )}
+            <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                <Info className="h-4 w-4 text-accent" />
+                <AlertDescription>La validation d'adresse est simulée et ne génère pas de coordonnées réelles. La géolocalisation réelle devra être implémentée.</AlertDescription>
+            </Alert>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
@@ -216,7 +260,7 @@ const CreateDealerForm: React.FC = () => {
             </div>
           </div>
         );
-      case 1: 
+      case 1:
         return (
           <div className="space-y-4 md:space-y-5">
             <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Contact et Informations Commerciales</h3>
@@ -265,7 +309,7 @@ const CreateDealerForm: React.FC = () => {
             </div>
           </div>
         );
-      case 2: 
+      case 2:
         return (
           <div className="space-y-4 md:space-y-5">
             <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Prospection et Commentaires</h3>
@@ -307,13 +351,13 @@ const CreateDealerForm: React.FC = () => {
     }
   };
 
-  const progressValue = Math.max(5, ((currentStep + 1) / totalSteps) * 100); 
+  const progressValue = Math.max(5, ((currentStep + 1) / totalSteps) * 100);
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <Progress value={progressValue} className="w-full h-1.5 md:h-2" /> {/* Adjusted height */}
-      
-      <div className="min-h-[250px] md:min-h-[300px]">{renderStepContent()}</div> {/* Adjusted min-height */}
+      <Progress value={progressValue} className="w-full h-1.5 md:h-2" />
+
+      <div className="min-h-[250px] md:min-h-[300px]">{renderStepContent()}</div>
 
       {submissionError && (
         <Alert variant="destructive" className="mt-3 md:mt-4">
@@ -329,7 +373,7 @@ const CreateDealerForm: React.FC = () => {
         </Button>
         <p className="text-xs sm:text-sm text-muted-foreground order-first sm:order-none">Étape {currentStep + 1} sur {totalSteps}</p>
         {currentStep < totalSteps - 1 ? (
-          <Button onClick={handleNext} disabled={isSubmitting} size="lg" className="w-full sm:w-auto">
+          <Button onClick={handleNext} disabled={isSubmitting || isGeocoding} size="lg" className="w-full sm:w-auto">
             Suivant
           </Button>
         ) : (
@@ -339,9 +383,6 @@ const CreateDealerForm: React.FC = () => {
           </Button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mt-1 text-center">
-        Note: Le géocodage est actuellement simulé.
-      </p>
     </div>
   );
 };

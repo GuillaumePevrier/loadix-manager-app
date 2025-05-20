@@ -11,20 +11,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import type { Dealer, UpdateDealerData, Comment } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CircleAlert, ChevronLeft, Loader2, MapPin, Info, Image as ImageIconLucide, FileText as FileTextLucide, PlusCircle, Trash2, Send, CheckCircle, XCircle } from 'lucide-react';
+import {
+    CircleAlert, ChevronLeft, Loader2, MapPin, Info, Image as ImageIconLucide,
+    FileText as FileTextLucide, PlusCircle, Trash2, Send, CheckCircle, XCircle
+} from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface EditDealerPageProps {
-  params: Promise<{ 
+  params: Promise<{
     dealerId: string;
   }>;
 }
@@ -33,13 +37,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const resolvedParams = React.use(paramsPromise); 
+  const resolvedParams = React.use(paramsPromise);
   const { dealerId } = resolvedParams;
 
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
     tractorBrands: [],
     machineTypes: [],
-    comments: [], 
+    comments: [],
     servicesOffered: [],
     galleryUris: [],
     documentUris: [],
@@ -47,7 +51,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentFile, setNewCommentFile] = useState<File | null>(null);
   const [isAddingComment, setIsAddingComment] = useState(false);
@@ -61,7 +65,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     try {
       setLoading(true);
       setError(null);
-      
+
       if (!dealerId) {
           setError('ID de concessionnaire non valide ou manquant après résolution.');
           setLoading(false);
@@ -88,7 +92,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           machineTypes: dealerData.machineTypes || [],
           tractorBrands: dealerData.tractorBrands || [],
           prospectionStatus: dealerData.prospectionStatus || 'none',
-          geoLocation: dealerData.geoLocation,
+          geoLocation: dealerData.geoLocation, // Keep existing geo data
           comments: dealerData.comments || [],
           servicesOffered: dealerData.servicesOffered || [],
           galleryUris: dealerData.galleryUris || [],
@@ -122,8 +126,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
-        setAddressValidated(null); 
-        setFormData(prev => ({ ...prev, geoLocation: undefined }));
+        setAddressValidated(null); // Reset validation if address fields change
+        // Do not clear geoLocation here to preserve it unless explicitly re-validated
     }
   };
 
@@ -138,14 +142,14 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       setNewCommentFile(null);
     }
   };
-  
+
   const handleGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
-      setError("Veuillez remplir tous les champs d'adresse pour la géolocalisation.");
+      setError("Veuillez remplir tous les champs d'adresse pour la validation.");
       toast({
         variant: "destructive",
         title: "Champs d'adresse incomplets",
-        description: "Veuillez remplir l'adresse, le code postal, la ville et le pays.",
+        description: "L'adresse, le code postal, la ville et le pays sont requis.",
       });
       return;
     }
@@ -154,37 +158,38 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setError(null);
 
     try {
-        // Simulate API call delay for geocoding
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        // Simulate success/failure
-        const mockSuccess = Math.random() > 0.1; // 90% chance of success for demo
+        // SIMULATION: Remplacer par un appel réel à l'API Google Geocoding
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const mockSuccess = Math.random() > 0.05; // Simule 95% de succès
+
         if (mockSuccess) {
-            const mockLocation = { 
-                lat: 48.8566 + (Math.random() - 0.5) * 0.2, // Near Paris
-                lng: 2.3522 + (Math.random() - 0.5) * 0.2 
-            };
-            setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
+            // NE PAS GENERER DE FAUSSES COORDONNEES DANS LA SIMULATION
+            // Pour une vraie API:
+            // const realCoords = await callGoogleGeocodingAPI(formData.address, formData.city, ...);
+            // setFormData((prev) => ({ ...prev, geoLocation: realCoords }));
             setAddressValidated(true);
             toast({
-                title: "Adresse validée (Simulation)",
-                description: `Coordonnées simulées: Lat ${mockLocation.lat.toFixed(5)}, Lng ${mockLocation.lng.toFixed(5)}`,
+                title: "Validation d'adresse simulée Réussie",
+                description: "Ceci est une simulation. Les coordonnées réelles ne sont pas générées.",
             });
         } else {
             setAddressValidated(false);
-            setError('Géocodage simulé échoué. Vérifiez l\'adresse.');
+            setError('Validation d\'adresse simulée échouée. Vérifiez l\'adresse.');
+            setFormData(prev => ({ ...prev, geoLocation: undefined })); // Clear geo if validation fails
             toast({
                 variant: "destructive",
-                title: "Échec de la validation d'adresse (Simulation)",
+                title: "Échec de la validation (Simulation)",
                 description: "Veuillez vérifier l'adresse et réessayer.",
             });
         }
     } catch (error) {
-        console.error('Erreur lors du géocodage simulé :', error);
+        console.error('Erreur lors de la validation simulée :', error);
         setAddressValidated(false);
-        setError('Une erreur est survenue lors du géocodage simulé.');
+        setFormData(prev => ({ ...prev, geoLocation: undefined }));
+        setError('Une erreur est survenue lors de la validation simulée.');
         toast({
             variant: "destructive",
-            title: "Erreur de Géocodage (Simulation)",
+            title: "Erreur de Validation (Simulation)",
             description: "Une erreur inattendue est survenue.",
         });
     } finally {
@@ -214,7 +219,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       });
       setNewCommentText('');
       setNewCommentFile(null);
-      await fetchDealerData(); 
+      await fetchDealerData();
     } catch (err) {
       console.error("Erreur lors de l'ajout du commentaire :", err);
       toast({
@@ -232,46 +237,77 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsSubmitting(true);
     setError(null);
 
-    if (formData.address && !formData.geoLocation && addressValidated !== true && !currentDealerData?.geoLocation) {
-      setError("Veuillez valider l'adresse (bouton à côté du champ adresse) ou assurez-vous que le géocodage a réussi si l'adresse a été modifiée.");
-      setIsSubmitting(false);
-      toast({
-        variant: "destructive",
-        title: "Validation d'adresse requise",
-        description: "Si vous avez modifié l'adresse, veuillez la valider.",
-      });
-      return;
+    // Check if address was changed and not re-validated
+    const addressFieldsChanged = formData.address !== currentDealerData?.address ||
+                               formData.city !== currentDealerData?.city ||
+                               formData.postalCode !== currentDealerData?.postalCode ||
+                               formData.country !== currentDealerData?.country;
+
+    if (addressFieldsChanged && !addressValidated && (formData.address || formData.city || formData.postalCode || formData.country)) {
+         setError("L'adresse a été modifiée. Veuillez la valider à nouveau (bouton à côté du champ adresse) ou assurez-vous que la validation a réussi.");
+         setIsSubmitting(false);
+         toast({
+            variant: "destructive",
+            title: "Validation d'adresse requise",
+            description: "Si vous avez modifié l'adresse, veuillez la valider.",
+         });
+         return;
     }
+
 
     try {
       if (!dealerId) {
         throw new Error("L'ID du concessionnaire est manquant.");
       }
-      
-      const dataToUpdate: UpdateDealerData = { 
+
+      const dataToUpdate: UpdateDealerData = {
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        comments: undefined, 
+        comments: undefined, // Comments are managed separately
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
         galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
         documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
-        // geoLocation will be part of formData if validated
       };
-      
+
+      // If address fields were changed AND validation failed or wasn't re-attempted,
+      // we should not send the old geoLocation. We set it to undefined to be cleared.
+      if (addressFieldsChanged && addressValidated === false) {
+        dataToUpdate.geoLocation = undefined;
+      } else if (addressFieldsChanged && addressValidated === true && formData.geoLocation) {
+        // If address changed and new validation was successful, use the new (simulated) geo.
+        // For real geocoding, formData.geoLocation would have real coords.
+        // Since simulation doesn't set it, this path is unlikely to be taken by simulation.
+        // But if real geocoding sets formData.geoLocation, this is correct.
+        dataToUpdate.geoLocation = formData.geoLocation;
+      } else if (!addressFieldsChanged && currentDealerData?.geoLocation) {
+        // If address didn't change, keep the existing geoLocation
+        dataToUpdate.geoLocation = currentDealerData.geoLocation;
+      } else if (addressValidated === true && !formData.geoLocation) {
+        // Address was validated (simulated), but simulation doesn't set coords.
+        // If there was an old geoLocation, we might want to clear it if address changed.
+        // For now, if address didn't change, old geo is kept. If it did, and no new geo, it's cleared.
+        if(addressFieldsChanged) dataToUpdate.geoLocation = undefined;
+        else dataToUpdate.geoLocation = currentDealerData?.geoLocation;
+      } else {
+        dataToUpdate.geoLocation = formData.geoLocation; // This covers new validation success (if it sets coords) or if it was undefined.
+      }
+
+
       await updateDealer(dealerId, dataToUpdate);
       toast({
         title: "Succès",
         description: "Concessionnaire mis à jour avec succès.",
       });
-      router.push(`/item/dealer/${dealerId}`); 
+      router.push(`/item/dealer/${dealerId}`);
     } catch (err) {
       console.error('Erreur lors de la mise à jour du concessionnaire :', err);
-      setError(err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.');
+      const errorMessage = err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.';
+      setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Erreur de Mise à Jour",
-        description: err instanceof Error ? err.message : 'Échec de la mise à jour du concessionnaire.',
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
@@ -321,7 +357,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       </div>
     );
   }
-  
+
   const currentCommentsForDisplay = currentDealerData?.comments || [];
 
 
@@ -346,7 +382,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-2 md:p-3 flex-grow overflow-y-auto"> 
+        <CardContent className="p-2 md:p-3 flex-grow overflow-y-auto">
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
             {error && (
               <Alert variant="destructive" className="mb-4">
@@ -371,7 +407,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                     <Label htmlFor="name">Nom du concessionnaire *</Label>
                     <Input id="name" name="name" value={formData.name || ''} onChange={handleInputChange} required />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="address">Adresse</Label>
                     <Input id="address" name="address" value={formData.address || ''} onChange={handleInputChange} />
@@ -393,10 +429,10 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                   <div className="flex items-center gap-2 mt-1">
                       <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
                           {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-                          Valider l'Adresse
+                          Valider l'Adresse (Simulation)
                       </Button>
-                      {addressValidated === true && formData.geoLocation && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
-                      {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
+                      {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée (simulation)"/>}
+                      {addressValidated === false && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée (simulation)"/>}
                       {addressValidated === null && currentDealerData?.geoLocation && (
                         <TooltipProvider>
                           <Tooltip>
@@ -404,17 +440,21 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                               <Info className="h-5 w-5 text-blue-500 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Adresse initialement géocodée. Validez à nouveau si modifiée.</p>
+                              <p>Adresse initialement géocodée. Validez à nouveau si modifiée (simulation).</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       )}
                   </div>
-                   {formData.geoLocation && (
+                  {formData.geoLocation && (
                     <div className="mt-1">
-                        <p className="text-xs text-muted-foreground">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+                        <p className="text-xs text-muted-foreground">Coordonnées (si disponibles) : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
                     </div>
                   )}
+                   <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                       <Info className="h-4 w-4 text-accent" />
+                       <AlertDescription>La validation d'adresse est simulée et ne génère pas de coordonnées réelles. La géolocalisation réelle devra être implémentée.</AlertDescription>
+                   </Alert>
 
                   <div>
                       <Label htmlFor="department">Département</Label>
@@ -478,7 +518,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                   </div>
                 </div>
               </TabsContent>
-              
+
               <TabsContent value="prospection" className="space-y-3 md:space-y-4 p-1">
                  <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Suivi de Prospection</h3>
@@ -520,9 +560,9 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         <h4 className="text-md font-semibold text-foreground/90">Ajouter un nouveau suivi</h4>
                         <div>
                             <Label htmlFor="newCommentText">Nouveau commentaire</Label>
-                            <Textarea 
-                                id="newCommentText" 
-                                value={newCommentText} 
+                            <Textarea
+                                id="newCommentText"
+                                value={newCommentText}
                                 onChange={(e) => setNewCommentText(e.target.value)}
                                 placeholder="Votre commentaire..."
                                 rows={3}
@@ -531,10 +571,10 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         </div>
                         <div>
                             <Label htmlFor="newCommentFile">Pièce jointe (Image/Document)</Label>
-                            <Input 
-                                id="newCommentFile" 
-                                type="file" 
-                                onChange={handleNewCommentFileChange} 
+                            <Input
+                                id="newCommentFile"
+                                type="file"
+                                onChange={handleNewCommentFileChange}
                                 className="bg-input/70 focus:bg-input file:text-primary file:font-medium text-sm h-9"
                             />
                              {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier : {newCommentFile.name}</p>}
@@ -552,7 +592,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Médias</h3>
                     <Alert variant="default" className="mt-1 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                         <ImageIconLucide className="h-4 w-4 text-accent" />
-                        <AlertDescription>La gestion de la galerie d'images et des documents sera implémentée ultérieurement.</AlertDescription>
+                        <AlertDescription>La gestion de la galerie d'images et des documents (téléversement/suppression) sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
                  </div>
               </TabsContent>
@@ -562,7 +602,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Relations</h3>
                      <Alert variant="default" className="mt-1 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                         <Info className="h-4 w-4 text-accent" />
-                        <AlertDescription>La gestion des entités liées sera implémentée ultérieurement.</AlertDescription>
+                        <AlertDescription>La gestion des entités liées (sélection/liaison) sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
                  </div>
               </TabsContent>
@@ -581,5 +621,3 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     </div>
   );
 }
-
-    

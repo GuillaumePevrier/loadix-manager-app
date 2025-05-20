@@ -106,19 +106,24 @@ const getProspectionStatusBadgeInfo = (
 };
 
 const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']): { dotClassName: string; connectorClassName: string; badgeVariant: BadgeProps['variant']; label: string } => {
+  // Timeline structural elements are now blue themed
+  const blueDot = 'bg-primary border-background shadow-md'; 
+  const blueConnector = 'bg-primary';
+
+  // Badge variant and label still depend on the actual status for the CommentCard
   switch (status) {
-    case 'hot': return { dotClassName: 'bg-red-500 border-red-700', connectorClassName: 'bg-red-500', badgeVariant: 'destructive', label: 'Chaud 🔥' };
-    case 'warm': return { dotClassName: 'bg-orange-500 border-orange-700', connectorClassName: 'bg-orange-500', badgeVariant: 'default', label: 'Tiède 🌤️' };
-    case 'cold': return { dotClassName: 'bg-blue-500 border-blue-700', connectorClassName: 'bg-blue-500', badgeVariant: 'secondary', label: 'Froid ❄️' };
-    case 'converted': return { dotClassName: 'bg-green-500 border-green-700', connectorClassName: 'bg-green-500', badgeVariant: 'success' as any, label: 'Converti ✅' };
-    case 'lost': return { dotClassName: 'bg-gray-500 border-gray-700', connectorClassName: 'bg-gray-500', badgeVariant: 'outline', label: 'Perdu ❌' };
-    default: return { dotClassName: 'bg-muted border-border', connectorClassName: 'bg-border', badgeVariant: 'outline', label: 'Aucun' };
+    case 'hot':       return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'destructive', label: 'Chaud 🔥' };
+    case 'warm':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'default',     label: 'Tiède 🌤️' };
+    case 'cold':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'secondary',   label: 'Froid ❄️' };
+    case 'converted': return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'success' as any, label: 'Converti ✅' };
+    case 'lost':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'outline',     label: 'Perdu ❌' };
+    default:          return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'outline',     label: 'Aucun' };
   }
 };
 
 
 const CommentCard: React.FC<{ comment: Comment; className?: string; isSearchResult?: boolean }> = ({ comment, className, isSearchResult }) => {
-  const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
+  const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent); // This will provide correct badgeVariant and label
   return (
     <div className={cn(
       "flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72 transition-all duration-150",
@@ -195,6 +200,12 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         const el = timelineContainerRef.current;
         if (!el) return;
 
+        // Check if the click is on a scrollbar (though this div itself is the scrollbar target now)
+        // This check might be less relevant now but doesn't hurt.
+        if (e.target instanceof HTMLElement && e.target.clientWidth < e.currentTarget.clientWidth && e.offsetX >= e.target.clientWidth - 10) { // approx scrollbar width
+            return;
+        }
+        
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
         setStartX(e.pageX);
@@ -216,7 +227,12 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         if (!isDragging || !el) return;
         
         try {
-          el.releasePointerCapture(e.pointerId);
+          // Only release if the pointerId matches the one we captured
+          // This check might not be strictly necessary if pointer events behave as expected
+          // but it's a safeguard against potential issues.
+          if (el.hasPointerCapture(e.pointerId)) {
+            el.releasePointerCapture(e.pointerId);
+          }
         } catch (error) {
           // console.warn("Failed to release pointer capture:", error);
         }
@@ -306,15 +322,15 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 ) : (
                     <div
                         ref={timelineContainerRef}
-                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10"
+                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none" // Added select-none
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
-                        onPointerCancel={onPointerUpOrCancel}
-                        style={{ userSelect: isDragging ? 'none' : 'auto' }}
+                        onPointerCancel={onPointerUpOrCancel} // Handles case where pointer leaves window
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Overrides select-none during drag if needed by other logic
                     >
-                        {/* Timeline central line - more visible */}
-                        <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2 z-0"></div>
+                        {/* Timeline central line - themed blue */}
+                        <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2 z-0"></div>
 
                         <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10"> {/* Ensure cards are above the line */}
                             {filteredComments.map((comment, index) => {
@@ -335,15 +351,16 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
+                                    {/* Connector - themed blue */}
                                     <div className={cn(
-                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", // Made connector always opaque
-                                        timelineStatusColors.connectorClassName,
+                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
+                                        timelineStatusColors.connectorClassName, // This will now be blue
                                         index % 2 === 0 ? "h-8" : "h-8" 
                                     )}></div>
-                                    {/* Dot - more visible */}
+                                    {/* Dot - themed blue and more visible */}
                                     <div className={cn(
-                                      "w-4 h-4 rounded-full border-2 border-background shadow-md z-10 group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150",
-                                      timelineStatusColors.dotClassName
+                                      "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", // shadow-primary for blue glow
+                                      timelineStatusColors.dotClassName // This will now be blue with border-background
                                     )}></div>
                                     <div className={cn(
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",

@@ -1,4 +1,6 @@
 
+"use client"; // Add this directive
+
 import * as React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -9,7 +11,7 @@ import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  CircleAlert, Printer
+  CircleAlert, Printer, Loader2
 } from 'lucide-react'; 
 import DeleteEntityButton from './DeleteEntityButton';
 import Image from 'next/image'; 
@@ -55,7 +57,7 @@ const getEntityEditRoute = (type: EntityType, id: string): string => {
     }
 };
 
-
+// generateMetadata will still run on the server
 export async function generateMetadata(
   { params }: ItemPageProps,
   parent: ResolvingMetadata
@@ -321,7 +323,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
       <header className="mb-6 md:mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 text-primary rounded-lg">
+            <div className="p-2.5 bg-primary/10 text-primary rounded-lg shadow-sm">
                 {getEntityIcon(currentEntity.entityType, 'h-6 w-6')}
             </div>
             <h1 className="text-2xl md:text-3xl font-futura text-foreground leading-tight">{currentEntity.name}</h1>

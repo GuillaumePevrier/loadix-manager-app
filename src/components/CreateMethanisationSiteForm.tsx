@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; // If needed for detailed descriptions
 import { useRouter } from 'next/navigation';
-import { addMethanisationSite } from '@/services/dealerService'; // Using dealerService for now
+import { addMethanisationSite } from '@/services/dealerService'; 
 import type { NewMethanisationSiteData, GeoLocation } from '@/types';
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,6 +22,7 @@ const initialFormData: NewMethanisationSiteData = {
   capacity: '',
   operator: '',
   startDate: undefined,
+  // siteClients and technologies will be handled later if needed for form
 };
 
 export default function CreateMethanisationSiteForm() {
@@ -75,13 +76,11 @@ export default function CreateMethanisationSiteForm() {
     }
 
     try {
-      // TODO: Replace with actual addMethanisationSite service call to Firestore
-      console.log("Submitting Methanisation Site Data:", formData);
-      const newSite = await addMethanisationSite(formData); // This is a mock for now
+      const newSite = await addMethanisationSite(formData); 
       if (newSite && newSite.id) {
         router.push(`/item/methanisation-site/${newSite.id}`);
       } else {
-        setSubmissionError("Échec de la création du site. L'ID n'a pas été retourné.");
+        setSubmissionError("Échec de la création du site. L'ID n'a pas été retourné ou une erreur est survenue.");
       }
     } catch (error) {
       console.error("Erreur lors de la soumission du formulaire de site :", error);
@@ -146,12 +145,11 @@ export default function CreateMethanisationSiteForm() {
         <Input id="startDate" name="startDate" type="date" value={formData.startDate || ''} onChange={handleChange} />
       </div>
       
-      {/* Placeholders for more complex fields like siteClients, technologies, relatedDealerIds */}
       <Alert variant="default" className="mt-6 bg-accent/10 border-accent/50 text-accent-foreground/90">
           <AlertTriangle className="h-5 w-5 text-accent" />
           <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
           <AlertDescription className="text-xs">
-            La gestion des clients du site, des technologies utilisées et des concessionnaires liés sera ajoutée ultérieurement.
+            La gestion des clients du site, des technologies utilisées et des concessionnaires liés (via des menus déroulants dynamiques) sera ajoutée ultérieurement.
           </AlertDescription>
       </Alert>
 

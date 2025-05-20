@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
-import { addLoadixUnit } from '@/services/dealerService'; // Using dealerService for now, can be split later
+import { addLoadixUnit } from '@/services/dealerService'; 
 import type { NewLoadixUnitData, LoadixUnit, GeoLocation } from '@/types';
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -100,13 +100,11 @@ export default function CreateLoadixUnitForm() {
     }
 
     try {
-      // TODO: Replace with actual addLoadixUnit service call to Firestore
-      console.log("Submitting Loadix Unit Data:", formData);
-      const newUnit = await addLoadixUnit(formData); // This is a mock for now
+      const newUnit = await addLoadixUnit(formData); 
       if (newUnit && newUnit.id) {
          router.push(`/item/loadix-unit/${newUnit.id}`);
       } else {
-        setSubmissionError("Échec de la création de l'engin. L'ID n'a pas été retourné.");
+        setSubmissionError("Échec de la création de l'engin. L'ID n'a pas été retourné ou une erreur est survenue.");
       }
     } catch (error) {
       console.error("Erreur lors de la soumission du formulaire d'engin LOADIX :", error);

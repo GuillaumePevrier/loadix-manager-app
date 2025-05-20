@@ -59,6 +59,16 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
 
 // Helper to convert Firestore document data to LoadixUnit
 const mapDocToLoadixUnit = (docId: string, data: any): LoadixUnit => {
+    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString();
+    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString();
+    
+    let geoLocation: GeoLocation | undefined = undefined;
+    if (data.geoLocation instanceof GeoPoint) {
+        geoLocation = { lat: data.geoLocation.latitude, lng: data.geoLocation.longitude };
+    } else if (data.geoLocation && typeof data.geoLocation.lat === 'number' && typeof data.geoLocation.lng === 'number') {
+        geoLocation = data.geoLocation;
+    }
+
     return {
         id: docId,
         name: data.name || '',
@@ -70,18 +80,28 @@ const mapDocToLoadixUnit = (docId: string, data: any): LoadixUnit => {
         city: data.city || '',
         postalCode: data.postalCode || '',
         country: data.country || '',
-        geoLocation: data.geoLocation instanceof GeoPoint ? { lat: data.geoLocation.latitude, lng: data.geoLocation.longitude } : data.geoLocation,
+        geoLocation,
         purchaseDate: data.purchaseDate instanceof Timestamp ? data.purchaseDate.toDate().toISOString() : data.purchaseDate,
         lastMaintenanceDate: data.lastMaintenanceDate instanceof Timestamp ? data.lastMaintenanceDate.toDate().toISOString() : data.lastMaintenanceDate,
         dealerId: data.dealerId,
         methanisationSiteId: data.methanisationSiteId,
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
+        createdAt,
+        updatedAt,
     };
 };
 
 // Helper to convert Firestore document data to MethanisationSite
 const mapDocToMethanisationSite = (docId: string, data: any): MethanisationSite => {
+    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString();
+    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString();
+
+    let geoLocation: GeoLocation | undefined = undefined;
+    if (data.geoLocation instanceof GeoPoint) {
+        geoLocation = { lat: data.geoLocation.latitude, lng: data.geoLocation.longitude };
+    } else if (data.geoLocation && typeof data.geoLocation.lat === 'number' && typeof data.geoLocation.lng === 'number') {
+        geoLocation = data.geoLocation;
+    }
+
     return {
         id: docId,
         name: data.name || '',
@@ -90,15 +110,15 @@ const mapDocToMethanisationSite = (docId: string, data: any): MethanisationSite 
         city: data.city || '',
         postalCode: data.postalCode || '',
         country: data.country || '',
-        geoLocation: data.geoLocation instanceof GeoPoint ? { lat: data.geoLocation.latitude, lng: data.geoLocation.longitude } : data.geoLocation,
+        geoLocation,
         capacity: data.capacity,
         operator: data.operator,
         startDate: data.startDate instanceof Timestamp ? data.startDate.toDate().toISOString() : data.startDate,
         siteClients: Array.isArray(data.siteClients) ? data.siteClients : [],
         technologies: Array.isArray(data.technologies) ? data.technologies : [],
         relatedDealerIds: Array.isArray(data.relatedDealerIds) ? data.relatedDealerIds : [],
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString(),
+        createdAt,
+        updatedAt,
     };
 };
 
@@ -160,17 +180,16 @@ export async function addDealer(dealerData: NewDealerData): Promise<Dealer | nul
       dataToSave.geoLocation = null;
     }
 
-    // Handle initialCommentText to comments array
     if (dealerData.initialCommentText && dealerData.initialCommentText.trim() !== '') {
         dataToSave.comments = [{
-            userName: 'Admin ManuRob', // Placeholder
-            date: Timestamp.now(), // Use Firestore Timestamp for new comment
+            userName: 'Admin ManuRob', 
+            date: Timestamp.now(), 
             text: dealerData.initialCommentText.trim(),
         }];
-    } else {
+    } else if (!dealerData.comments) { // Ensure comments is an array if not provided
         dataToSave.comments = [];
     }
-    delete dataToSave.initialCommentText; // Remove temporary field
+    delete dataToSave.initialCommentText; 
 
 
     const arrayFields: (keyof NewDealerData)[] = ['servicesOffered', 'tractorBrands', 'machineTypes', 'galleryUris', 'documentUris', 'relatedProspectIds', 'relatedSiteIds'];
@@ -211,7 +230,6 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
       updatePayload.geoLocation = null;
     }
     
-    // Handle comments - this might need more complex logic if adding/editing individual comments
     if (dataToUpdate.comments) {
       updatePayload.comments = dataToUpdate.comments.map(comment => ({
         ...comment,
@@ -221,7 +239,6 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
     if (dataToUpdate.hasOwnProperty('initialCommentText')) {
         delete updatePayload.initialCommentText;
     }
-
 
     await updateDoc(dealerRef, updatePayload);
     const updatedDocSnap = await getDoc(dealerRef);
@@ -248,57 +265,147 @@ export async function deleteDealer(id: string): Promise<void> {
   }
 }
 
-// --- Placeholder functions for LoadixUnit and MethanisationSite ---
-// These will be expanded to interact with Firestore in a future step.
+// --- LoadixUnit Functions ---
+export async function getLoadixUnits(): Promise<LoadixUnit[]> {
+  if (!firebaseConfigPresent || !db) {
+    console.warn("Firebase not configured. Returning empty Loadix unit list.");
+    return [];
+  }
+  try {
+    const unitsCol = collection(db, 'loadixUnits');
+    const unitSnapshot = await getDocs(unitsCol);
+    return unitSnapshot.docs.map(docSnap => mapDocToLoadixUnit(docSnap.id, docSnap.data()));
+  } catch (error) {
+    console.error("Error fetching Loadix units from Firestore:", error);
+    return [];
+  }
+}
+
+export async function getLoadixUnitById(id: string): Promise<LoadixUnit | null> {
+  if (!firebaseConfigPresent || !db) {
+    console.warn("Firebase not configured. Cannot fetch Loadix unit.");
+    return null;
+  }
+  try {
+    const unitRef = doc(db, 'loadixUnits', id);
+    const unitDocSnap = await getDoc(unitRef);
+    if (!unitDocSnap.exists()) {
+      console.log(`No Loadix unit found with ID: ${id}`);
+      return null;
+    }
+    return mapDocToLoadixUnit(unitDocSnap.id, unitDocSnap.data());
+  } catch (error) {
+    console.error(`Error fetching Loadix unit with ID ${id} from Firestore:`, error);
+    return null;
+  }
+}
 
 export async function addLoadixUnit(unitData: NewLoadixUnitData): Promise<LoadixUnit | null> {
-  console.log("Simulating addLoadixUnit:", unitData);
   if (!firebaseConfigPresent || !db) {
     console.warn("Firebase not configured. Cannot add Loadix Unit.");
     throw new Error("Firebase not configured.");
   }
-  // Simulate Firestore add
-  const mockId = `unit-${Date.now()}`;
-  const now = new Date().toISOString();
-  const newUnit: LoadixUnit = {
-    ...unitData,
-    id: mockId,
-    entityType: 'loadix-unit',
-    createdAt: now,
-    updatedAt: now,
-  };
-  // For now, add to mock data if you want it to appear in lists immediately
-  // import { allMockEntities, mockLoadixUnits } from '@/lib/mock-data'; // This would cause circular dependency here
-  // mockLoadixUnits.push(newUnit);
-  // allMockEntities.push(newUnit);
-  return newUnit;
+  try {
+    const unitsCol = collection(db, 'loadixUnits');
+    const dataToSave: any = {
+      ...unitData,
+      entityType: 'loadix-unit',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    if (unitData.geoLocation) {
+      dataToSave.geoLocation = new GeoPoint(unitData.geoLocation.lat, unitData.geoLocation.lng);
+    } else {
+      dataToSave.geoLocation = null; 
+    }
+    
+    if (unitData.purchaseDate) dataToSave.purchaseDate = Timestamp.fromDate(new Date(unitData.purchaseDate));
+    if (unitData.lastMaintenanceDate) dataToSave.lastMaintenanceDate = Timestamp.fromDate(new Date(unitData.lastMaintenanceDate));
+
+
+    const docRef = await addDoc(unitsCol, dataToSave);
+    const newDocSnap = await getDoc(docRef);
+    if (newDocSnap.exists()) {
+      return mapDocToLoadixUnit(newDocSnap.id, newDocSnap.data());
+    }
+    return null;
+  } catch (error) {
+    console.error("Error adding Loadix Unit to Firestore:", error);
+    throw error;
+  }
+}
+
+// --- MethanisationSite Functions ---
+export async function getMethanisationSites(): Promise<MethanisationSite[]> {
+  if (!firebaseConfigPresent || !db) {
+    console.warn("Firebase not configured. Returning empty Methanisation site list.");
+    return [];
+  }
+  try {
+    const sitesCol = collection(db, 'methanisationSites');
+    const siteSnapshot = await getDocs(sitesCol);
+    return siteSnapshot.docs.map(docSnap => mapDocToMethanisationSite(docSnap.id, docSnap.data()));
+  } catch (error) {
+    console.error("Error fetching Methanisation sites from Firestore:", error);
+    return [];
+  }
+}
+
+export async function getMethanisationSiteById(id: string): Promise<MethanisationSite | null> {
+  if (!firebaseConfigPresent || !db) {
+    console.warn("Firebase not configured. Cannot fetch Methanisation site.");
+    return null;
+  }
+  try {
+    const siteRef = doc(db, 'methanisationSites', id);
+    const siteDocSnap = await getDoc(siteRef);
+    if (!siteDocSnap.exists()) {
+      console.log(`No Methanisation site found with ID: ${id}`);
+      return null;
+    }
+    return mapDocToMethanisationSite(siteDocSnap.id, siteDocSnap.data());
+  } catch (error) {
+    console.error(`Error fetching Methanisation site with ID ${id} from Firestore:`, error);
+    return null;
+  }
 }
 
 export async function addMethanisationSite(siteData: NewMethanisationSiteData): Promise<MethanisationSite | null> {
-  console.log("Simulating addMethanisationSite:", siteData);
    if (!firebaseConfigPresent || !db) {
     console.warn("Firebase not configured. Cannot add Methanisation Site.");
     throw new Error("Firebase not configured.");
   }
-  // Simulate Firestore add
-  const mockId = `site-${Date.now()}`;
-  const now = new Date().toISOString();
-  const newSite: MethanisationSite = {
-    ...siteData,
-    id: mockId,
-    entityType: 'methanisation-site',
-    siteClients: [], // Initialize if not part of form
-    technologies: [], // Initialize
-    relatedDealerIds: [], // Initialize
-    createdAt: now,
-    updatedAt: now,
-  };
-  // For now, add to mock data
-  // import { allMockEntities, mockMethanisationSites } from '@/lib/mock-data'; // Circular dependency
-  // mockMethanisationSites.push(newSite);
-  // allMockEntities.push(newSite);
-  return newSite;
+  try {
+    const sitesCol = collection(db, 'methanisationSites');
+    const dataToSave: any = {
+      ...siteData,
+      entityType: 'methanisation-site',
+      siteClients: [], // Initialize default empty arrays
+      technologies: [],
+      relatedDealerIds: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    
+    if (siteData.geoLocation) {
+      dataToSave.geoLocation = new GeoPoint(siteData.geoLocation.lat, siteData.geoLocation.lng);
+    } else {
+      dataToSave.geoLocation = null;
+    }
+    if (siteData.startDate) dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
+
+    const docRef = await addDoc(sitesCol, dataToSave);
+    const newDocSnap = await getDoc(docRef);
+    if (newDocSnap.exists()) {
+      return mapDocToMethanisationSite(newDocSnap.id, newDocSnap.data());
+    }
+    return null;
+  } catch (error) {
+    console.error("Error adding Methanisation Site to Firestore:", error);
+    throw error;
+  }
 }
 
-// TODO: Implement getLoadixUnits, getLoadixUnitById, updateLoadixUnit, deleteLoadixUnit
-// TODO: Implement getMethanisationSites, getMethanisationSiteById, updateMethanisationSite, deleteMethanisationSite
+// TODO: Implement updateLoadixUnit, deleteLoadixUnit
+// TODO: Implement updateMethanisationSite, deleteMethanisationSite

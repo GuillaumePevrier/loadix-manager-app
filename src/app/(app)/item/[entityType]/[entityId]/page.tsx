@@ -3,14 +3,14 @@ import * as React from 'react';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite, Comment } from '@/types';
-import { findEntityByIdAndType } from '@/lib/mock-data';
-import { getDealerById } from '@/services/dealerService'; // Assuming other getById functions will be added here or new services
+import { findEntityByIdAndType } from '@/lib/mock-data'; // Fallback for unmigrated types
+import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService'; 
 import { cn } from '@/lib/utils';
 import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText // Added FileText
+  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText 
 } from 'lucide-react';
 import DeleteEntityButton from './DeleteEntityButton';
 import Image from 'next/image';
@@ -52,8 +52,8 @@ const getEntityIcon = (type: EntityType, className?: string): React.ReactNode =>
 const getEntityEditRoute = (type: EntityType, id: string): string => {
     switch (type) {
         case 'dealer': return `/dealers/edit/${id}`;
-        case 'loadix-unit': return `/loadix-units/edit/${id}`; // To be created
-        case 'methanisation-site': return `/methanisation-sites/edit/${id}`; // To be created
+        case 'loadix-unit': return `/loadix-units/edit/${id}`; 
+        case 'methanisation-site': return `/methanisation-sites/edit/${id}`; 
         default: return '/directory';
     }
 };
@@ -66,8 +66,11 @@ export async function generateMetadata(
   let entity: AppEntity | null = null;
   if (params.entityType === 'dealer') {
     entity = await getDealerById(params.entityId);
+  } else if (params.entityType === 'loadix-unit') {
+    entity = await getLoadixUnitById(params.entityId);
+  } else if (params.entityType === 'methanisation-site') {
+    entity = await getMethanisationSiteById(params.entityId);
   } else {
-    // For other types, use mock data for now, or implement their respective getById service functions
     entity = findEntityByIdAndType(params.entityType, params.entityId) ?? null;
   }
 
@@ -167,7 +170,7 @@ const getProspectionStatusBadgeInfo = (
 const getLoadixStatusBadgeVariant = (status?: LoadixUnit['status']): "default" | "secondary" | "destructive" | "outline" | "success" => {
     switch (status) {
         case 'active': return 'success' as any;
-        case 'maintenance': return 'default'; // Using primary for maintenance
+        case 'maintenance': return 'default'; 
         case 'inactive': return 'outline';
         case 'in_stock': return 'secondary';
         case 'sold': return 'destructive';
@@ -317,12 +320,9 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <CardHeader><CardTitle className="font-bebas-neue text-primary text-xl">Entités Liées</CardTitle></CardHeader>
             <CardContent className="space-y-3">
                 <p className="text-muted-foreground italic">Fonctionnalité de liaison à implémenter.</p>
-                {/* Example for related sites, adapt for prospects, clients (now part of sites), units */}
                 {dealer.relatedSiteIds && dealer.relatedSiteIds.length > 0 && (
                     <DetailItem icon={Factory} label="Sites de Méthanisation Liés" value={dealer.relatedSiteIds.map(id => <Link key={id} href={`/item/methanisation-site/${id}`} className="text-primary hover:underline block">Site {id.substring(0,8)}...</Link>)} />
                 )}
-                 {/* Placeholder for related Loadix Units */}
-                 {/* Placeholder for related Prospects */}
             </CardContent>
         </Card>
     </TabsContent>
@@ -398,16 +398,17 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
   const { entityType, entityId } = params;
   let entity: AppEntity | null = null;
 
-  // Fetch entity data based on type
-  // This will be expanded with actual service calls for each type
   if (entityType === 'dealer') {
     entity = await getDealerById(entityId);
   } else if (entityType === 'loadix-unit') {
-    entity = findEntityByIdAndType(entityType, entityId) as LoadixUnit || null; // Using mock for now
+    entity = await getLoadixUnitById(entityId); 
   } else if (entityType === 'methanisation-site') {
-    entity = findEntityByIdAndType(entityType, entityId) as MethanisationSite || null; // Using mock for now
+    entity = await getMethanisationSiteById(entityId); 
   } else {
-    notFound();
+    console.warn(`Unknown entity type: ${entityType}, falling back to mock data or notFound.`);
+    // Optionally, use mock data as a fallback if the service doesn't handle the type yet
+    // entity = findEntityByIdAndType(entityType, entityId) ?? null;
+    if (!entity) notFound(); // Or handle as you see fit
   }
 
   if (!entity) {
@@ -426,8 +427,7 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
       case 'methanisation-site':
         return <MethanisationSiteDetailCard site={entity as MethanisationSite} />;
       default:
-        // This should not happen if types are handled above
-        const _exhaustiveCheck: never = entity;
+        const _exhaustiveCheck: never = entity; // Ensures all cases are handled or ts errors
         return <p className="text-muted-foreground">Type d'entité non pris en charge: {(_exhaustiveCheck as AppEntity).entityType}</p>;
     }
   };
@@ -460,38 +460,22 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
 
       {renderEntitySpecificDetails()}
 
-       {/* Common Footer for all entity types if not handled within specific tabs/cards */}
-      {entity.entityType !== 'dealer' && ( // Dealer has its own footer within tabs
-        <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
-            <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={editRoute}>
-                    <Edit2 className="mr-2 h-4 w-4" />
-                    Modifier
-                </Link>
-            </Button>
-            <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
-        </CardFooter>
-      )}
-      {entity.entityType === 'dealer' && ( // Specific footer actions for Dealer are inside DealerTabsContent
-         <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
-            <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href={editRoute}>
-                    <Edit2 className="mr-2 h-4 w-4" />
-                    Modifier
-                </Link>
-            </Button>
-            <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
-        </CardFooter>
-      )}
-
+      <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href={editRoute}>
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Modifier
+              </Link>
+          </Button>
+          <DeleteEntityButton entityType={entity.entityType} entityId={entity.id} />
+      </CardFooter>
 
      <Alert variant="default" className="mt-8 bg-accent/10 border-accent/50 text-accent-foreground/90">
         <CircleAlert className="h-5 w-5 text-accent" />
         <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
-            Les données des concessionnaires sont lues depuis Firebase Firestore.
-            Les autres types d'entités (Engins, Sites) utilisent encore des données simulées et leurs fonctions d'ajout/modification sont pour l'instant simulées.
-            La création et la modification pour tous les types sont en cours d'implémentation.
+            Les données des concessionnaires, engins et sites sont maintenant lues depuis Firebase Firestore.
+            Les fonctionnalités d'ajout sont connectées à Firestore. La modification et suppression pour Engins/Sites sont en cours d'implémentation.
         </AlertDescription>
     </Alert>
     </div>

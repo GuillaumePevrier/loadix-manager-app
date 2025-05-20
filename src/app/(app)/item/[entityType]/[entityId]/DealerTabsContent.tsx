@@ -6,7 +6,7 @@ import * as React from 'react';
 import type { Dealer, Comment } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import Link from 'next/link';
-import Image from 'next/image';
+// import Image from 'next/image'; // No longer needed for the map
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,10 @@ import type { BadgeProps } from '@/components/ui/badge';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { addCommentToDealer, deleteCommentFromDealer } from '@/services/dealerService';
+import Image from 'next/image'; // Keep for comment images
+
+// Import Google Maps components
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
 
 const DetailItem: React.FC<{
@@ -103,8 +107,8 @@ const DetailItem: React.FC<{
   };
 
   return (
-    <div className={cn('flex items-start space-x-2 md:space-x-3 py-1 md:py-1.5', className)}> {/* Adjusted spacing */}
-      <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary flex-shrink-0 mt-0.5 md:mt-1" /> {/* Adjusted icon size */}
+    <div className={cn('flex items-start space-x-2 md:space-x-3 py-1 md:py-1.5', className)}>
+      <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary flex-shrink-0 mt-0.5 md:mt-1" />
       <div>
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         {renderValue()}
@@ -158,20 +162,20 @@ const CommentCard: React.FC<CommentCardProps> = ({ comment, className, isSearchR
   const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent); 
   return (
     <div className={cn(
-      "relative flex items-start space-x-2 md:space-x-3 p-2 md:p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-64 md:w-72 transition-all duration-150 group", // Adjusted width for mobile
+      "relative flex items-start space-x-2 md:space-x-3 p-2 md:p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-64 md:w-72 transition-all duration-150 group", 
       isSearchResult && "ring-2 ring-primary border-primary shadow-primary/30",
       className
     )}>
        <Button
         variant="ghost"
         size="icon"
-        className="absolute top-0.5 right-0.5 md:top-1 md:right-1 h-5 w-5 md:h-6 md:w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" // Adjusted size/pos
+        className="absolute top-0.5 right-0.5 md:top-1 md:right-1 h-5 w-5 md:h-6 md:w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={onDelete}
         title="Supprimer le commentaire"
       >
         <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
       </Button>
-      <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0"> {/* Adjusted size */}
+      <Avatar className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
         <AvatarImage src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
         <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
       </Avatar>
@@ -183,13 +187,13 @@ const CommentCard: React.FC<CommentCardProps> = ({ comment, className, isSearchR
           {new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
          {comment.prospectionStatusAtEvent && (
-          <Badge variant={statusColors.badgeVariant} className="mt-1 text-xs px-1.5 py-0.5 md:mt-1.5 md:px-2"> {/* Adjusted padding/margin */}
+          <Badge variant={statusColors.badgeVariant} className="mt-1 text-xs px-1.5 py-0.5 md:mt-1.5 md:px-2">
             Statut: {statusColors.label}
           </Badge>
         )}
         <p className="text-xs md:text-sm text-foreground/80 whitespace-pre-line mt-1 md:mt-1.5 break-words">{comment.text}</p>
         {comment.imageUrl && (
-          <div className="mt-1.5 md:mt-2 rounded-md overflow-hidden border border-border/40 w-full max-w-[150px] md:max-w-xs"> {/* Adjusted max-width */}
+          <div className="mt-1.5 md:mt-2 rounded-md overflow-hidden border border-border/40 w-full max-w-[150px] md:max-w-xs">
             <Image src={comment.imageUrl} alt="Image de commentaire" width={300} height={200} className="object-cover" data-ai-hint="comment attachment" />
           </div>
         )}
@@ -232,6 +236,9 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
     const [startX, setStartX] = React.useState(0);
     const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
     const DRAG_SPEED_MULTIPLIER = 1.5;
+    
+    const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
 
     const sortedComments = React.useMemo(() =>
         (dealer.comments || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
@@ -251,7 +258,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
 
     const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const el = timelineContainerRef.current;
-        if (!el ) return; // Removed (e.target as HTMLElement).classList.contains('timeline-draggable-area') as the whole container is draggable
+        if (!el) return;
         
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
@@ -294,7 +301,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
         setIsAddingComment(true);
         try {
             const userName = user?.name || "Utilisateur Anonyme";
-            const currentStatus = dealer.prospectionStatus;
+            const currentStatus = dealer.prospectionStatus || 'none';
             await addCommentToDealer(dealer.id, userName, newCommentText, currentStatus, newCommentFile || undefined);
             toast({ title: 'Succès', description: 'Commentaire ajouté.' });
             setNewCommentText('');
@@ -348,19 +355,38 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
             <CardContent className="space-y-2 md:space-y-3 p-3 md:p-4 pt-0">
                 <DetailItem icon={MapPin} label="Adresse Complète" value={`${dealer.address || ''}, ${dealer.postalCode || ''} ${dealer.city || ''}, ${dealer.country || ''}`} />
                 {dealer.department && <DetailItem icon={MapIcon} label="Département" value={dealer.department} />}
-                 {dealer.geoLocation && (
-                    <div className="h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30" data-ai-hint="map preview">
-                        <Image
-                        src={`https://placehold.co/800x300.png?text=Carte+pour+${encodeURIComponent(dealer.name)}`}
-                        alt={`Carte pour ${dealer.name}`}
-                        width={800}
-                        height={300}
-                        className="object-cover h-full w-full"
-                        data-ai-hint="map location"
-                        />
-                    </div>
+                 {dealer.geoLocation && googleMapsApiKey ? (
+                    <APIProvider apiKey={googleMapsApiKey}>
+                        <div className="h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30" data-ai-hint="map preview">
+                            <Map
+                                defaultCenter={{ lat: dealer.geoLocation.lat, lng: dealer.geoLocation.lng }}
+                                defaultZoom={14}
+                                gestureHandling={'none'}
+                                disableDefaultUI={true}
+                                mapId={`dealerDetailMap-${dealer.id}`}
+                                className="w-full h-full"
+                            >
+                                <AdvancedMarker
+                                    position={{ lat: dealer.geoLocation.lat, lng: dealer.geoLocation.lng }}
+                                    title={dealer.name}
+                                >
+                                   <Pin
+                                      background={'hsl(var(--primary))'}
+                                      borderColor={'hsl(var(--primary-foreground))'}
+                                      glyphColor={'hsl(var(--primary-foreground))'}
+                                    />
+                                </AdvancedMarker>
+                            </Map>
+                        </div>
+                    </APIProvider>
+                ) : dealer.geoLocation && !googleMapsApiKey ? (
+                     <Alert variant="destructive" className="mt-1 text-xs">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>Clé API Google Maps non configurée. Impossible d'afficher la carte.</AlertDescription>
+                    </Alert>
+                ) : (
+                    <p className="text-sm text-muted-foreground italic">Géolocalisation non disponible.</p>
                 )}
-                 {!dealer.geoLocation && <p className="text-sm text-muted-foreground italic">Géolocalisation non disponible.</p>}
             </CardContent>
         </Card>
     </TabsContent>
@@ -459,53 +485,55 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                 ) : (
                     <div
                         ref={timelineContainerRef}
-                        className="w-full pb-3 md:pb-4 cursor-grab overflow-x-auto relative pt-8 md:pt-10 select-none" 
+                        className="w-full pb-3 md:pb-4 pt-8 md:pt-10 select-none overflow-x-auto cursor-grab" 
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
                         onPointerCancel={onPointerUpOrCancel} 
                         style={{ userSelect: isDragging ? 'none' : 'auto' }} 
                     >
-                        <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div>
-                        <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 min-w-max relative"> {/* Adjusted spacing */}
-                            {filteredComments.map((comment, index) => {
-                                const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
-                                return (
-                                <div
-                                    key={comment.date + index} 
-                                    className={cn(
-                                        "relative flex items-center group z-10", 
-                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-6 md:mt-8" // Adjusted margin for alternating items
-                                    )}
-                                >
-                                    <CommentCard
-                                        comment={comment}
+                        <div className="relative min-w-max"> {/* Parent for absolute line */}
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div> {/* The blue line */}
+                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10"> {/* Comments container */}
+                                {filteredComments.map((comment, index) => {
+                                    const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
+                                    return (
+                                    <div
+                                        key={comment.date + index} 
                                         className={cn(
-                                            "shadow-xl", 
-                                            index % 2 === 0 ? "mb-4 md:mb-5" : "mt-4 md:mt-5" // Adjusted margin
+                                            "relative flex items-center group z-10", 
+                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8" 
                                         )}
-                                        isSearchResult={timelineSearchTerm.trim() !== ''}
-                                        onDelete={() => handleDeleteCommentRequest(comment)}
-                                    />
-                                   
-                                    <div className={cn( 
-                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
-                                        timelineStatusColors.connectorClassName, 
-                                        index % 2 === 0 ? "h-8 md:h-10" : "h-8 md:h-10" // Adjusted height
-                                    )}></div>
+                                    >
+                                        <CommentCard
+                                            comment={comment}
+                                            className={cn(
+                                                "shadow-xl", 
+                                                index % 2 === 0 ? "mb-5" : "mt-5" 
+                                            )}
+                                            isSearchResult={timelineSearchTerm.trim() !== ''}
+                                            onDelete={() => handleDeleteCommentRequest(comment)}
+                                        />
                                     
-                                    <div className={cn( 
-                                      "w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", // Adjusted size
-                                      timelineStatusColors.dotClassName
-                                    )}></div>
-                                    <div className={cn( 
-                                        "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
-                                        index % 2 === 0 ? "mt-1.5 md:mt-2" : "mb-1.5 md:mb-2" // Adjusted margin
-                                    )}>
-                                        {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        <div className={cn( 
+                                            "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
+                                            timelineStatusColors.connectorClassName, 
+                                            index % 2 === 0 ? "h-10" : "h-10"
+                                        )}></div>
+                                        
+                                        <div className={cn( 
+                                        "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
+                                        timelineStatusColors.dotClassName
+                                        )}></div>
+                                        <div className={cn( 
+                                            "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
+                                            index % 2 === 0 ? "mt-2" : "mb-2" 
+                                        )}>
+                                            {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
                                     </div>
-                                </div>
-                            )})}
+                                )})}
+                            </div>
                         </div>
                          <div className="h-1" /> 
                     </div>
@@ -585,3 +613,4 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
 
 export default DealerTabsContent;
     
+

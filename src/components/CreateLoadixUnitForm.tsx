@@ -28,7 +28,6 @@ const initialFormData: NewLoadixUnitData = {
   methanisationSiteId: undefined,
 };
 
-// Mock data for select options - these should ideally come from a config or API
 const loadixModelOptions = [
   { value: 'LOADIX Pro v1', label: 'LOADIX Pro v1' },
   { value: 'LOADIX Pro v2', label: 'LOADIX Pro v2' },
@@ -74,9 +73,8 @@ export default function CreateLoadixUnitForm() {
     setIsGeocoding(true);
     setAddressValidated(null);
     setSubmissionError(null);
-    // Simulate Geocoding
     await new Promise(resolve => setTimeout(resolve, 1500));
-    const mockSuccess = Math.random() > 0.2; // Simulate 80% success
+    const mockSuccess = Math.random() > 0.2; 
     if (mockSuccess) {
         const mockLocation = { lat: 48.8566 + (Math.random() - 0.5) * 0.2, lng: 2.3522 + (Math.random() - 0.5) * 0.2 };
         setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
@@ -115,13 +113,13 @@ export default function CreateLoadixUnitForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Informations de l'Engin LOADIX</h3>
+    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Informations de l'Engin LOADIX</h3>
       <div>
         <Label htmlFor="name">Nom de l'engin (ou Identifiant) *</Label>
         <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: LOADIX #003 - Chantier A" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div>
           <Label htmlFor="serialNumber">Numéro de Série *</Label>
           <Input id="serialNumber" name="serialNumber" value={formData.serialNumber} onChange={handleChange} required placeholder="Ex: LDX-2024-003" />
@@ -146,12 +144,12 @@ export default function CreateLoadixUnitForm() {
         </Select>
       </div>
 
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-4 pt-2">Localisation</h3>
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-3 md:my-4 pt-1 md:pt-2">Localisation</h3>
        <div>
           <Label htmlFor="address">Adresse de Localisation *</Label>
           <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <div>
             <Label htmlFor="postalCode">Code Postal *</Label>
             <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Ex: 75001" required />
@@ -165,7 +163,7 @@ export default function CreateLoadixUnitForm() {
             <Input id="country" name="country" value={formData.country} onChange={handleChange} placeholder="Ex: France" required/>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-2">
           <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
               {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
               Valider l'Adresse
@@ -174,11 +172,11 @@ export default function CreateLoadixUnitForm() {
           {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
       </div>
       {formData.geoLocation && addressValidated === true && (
-          <p className="text-xs text-green-600 dark:text-green-400">Coordonnées géographiques : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
       )}
 
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-4 pt-2">Informations Complémentaires</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-3 md:my-4 pt-1 md:pt-2">Informations Complémentaires</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
                 <Label htmlFor="purchaseDate">Date d'achat</Label>
                 <Input id="purchaseDate" name="purchaseDate" type="date" value={formData.purchaseDate || ''} onChange={handleChange} />
@@ -188,27 +186,26 @@ export default function CreateLoadixUnitForm() {
                 <Input id="lastMaintenanceDate" name="lastMaintenanceDate" type="date" value={formData.lastMaintenanceDate || ''} onChange={handleChange} />
             </div>
         </div>
-        {/* Placeholder for relational selects */}
         <div>
             <Label htmlFor="dealerId">Concessionnaire (Vendeur/Maintenance)</Label>
-            <Input id="dealerId" name="dealerId" value={formData.dealerId || ''} onChange={handleChange} placeholder="ID Concessionnaire (ex: dealer-1) - Sera un Select" />
+            <Input id="dealerId" name="dealerId" value={formData.dealerId || ''} onChange={handleChange} placeholder="ID Concessionnaire - Sera un Select" />
         </div>
         <div>
-            <Label htmlFor="methanisationSiteId">Site de Méthanisation (Propriétaire/Opérateur)</Label>
-            <Input id="methanisationSiteId" name="methanisationSiteId" value={formData.methanisationSiteId || ''} onChange={handleChange} placeholder="ID Site (ex: site-1) - Sera un Select" />
+            <Label htmlFor="methanisationSiteId">Site de Méthanisation (Opérateur)</Label>
+            <Input id="methanisationSiteId" name="methanisationSiteId" value={formData.methanisationSiteId || ''} onChange={handleChange} placeholder="ID Site - Sera un Select" />
         </div>
 
 
       {submissionError && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="mt-3 md:mt-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Erreur</AlertTitle>
           <AlertDescription>{submissionError}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex justify-end items-center pt-5 mt-5 border-t border-border/30">
-        <Button type="submit" disabled={isSubmitting || isGeocoding} size="lg">
+      <div className="flex flex-col sm:flex-row justify-end items-center pt-4 md:pt-5 mt-4 md:mt-5 border-t border-border/30 gap-2">
+        <Button type="submit" disabled={isSubmitting || isGeocoding} size="lg" className="w-full sm:w-auto">
           {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
           {isSubmitting ? 'Création...' : 'Créer l\'Engin LOADIX'}
         </Button>

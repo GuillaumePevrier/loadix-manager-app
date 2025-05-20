@@ -16,10 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe,
   CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter,
-  Briefcase, Maximize, Minimize
+  Maximize, Minimize
 } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image'; // For mini-map placeholder
+import Image from 'next/image';
 
 // Dynamically import Google Maps components
 const APIProvider = dynamic(() =>
@@ -53,9 +53,9 @@ const entityTypeTranslations: Record<EntityType, string> = {
 };
 
 const entityPinColors: Record<EntityType, { background: string; glyphColor: string; borderColor?: string }> = {
-    'dealer': { background: "hsl(var(--primary))", glyphColor: "hsl(var(--primary-foreground))", borderColor: "hsl(var(--primary-foreground))" }, // Blue
-    'loadix-unit': { background: "hsl(var(--destructive))", glyphColor: "hsl(var(--destructive-foreground))", borderColor: "hsl(var(--destructive-foreground))" }, // Red
-    'methanisation-site': { background: "hsl(var(--accent))", glyphColor: "hsl(var(--accent-foreground))", borderColor: "hsl(var(--accent-foreground))" }, // Violet (using accent for this)
+    'dealer': { background: "hsl(var(--primary))", glyphColor: "hsl(var(--primary-foreground))", borderColor: "hsl(var(--primary-foreground))" },
+    'loadix-unit': { background: "hsl(var(--destructive))", glyphColor: "hsl(var(--destructive-foreground))", borderColor: "hsl(var(--destructive-foreground))" },
+    'methanisation-site': { background: "hsl(var(--accent))", glyphColor: "hsl(var(--accent-foreground))", borderColor: "hsl(var(--accent-foreground))" },
 };
 
 
@@ -70,21 +70,21 @@ const getEntityIcon = (type: EntityType, className?: string): React.ReactNode =>
 };
 
 const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: string | string[] | null | React.ReactNode; isLink?: boolean; isEmail?: boolean }> = ({ icon: Icon, label, value, isLink, isEmail }) => {
-  if (!value && typeof value !== 'boolean' && typeof value !== 'number') return null;
+  if (!value && typeof value !== 'boolean' && typeof value !== 'number' && !(Array.isArray(value) && value.length > 0)) return null;
 
   const renderValue = () => {
     if (React.isValidElement(value)) return value;
-    if (Array.isArray(value)) return <div className="flex flex-wrap gap-2">{value.map((v, i) => <Badge key={i} variant="secondary">{v}</Badge>)}</div>;
+    if (Array.isArray(value)) return <div className="flex flex-wrap gap-1">{value.map((v, i) => <Badge key={i} variant="secondary" className="text-xs">{v}</Badge>)}</div>;
     if (typeof value === 'string') {
-      if (isLink) return <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">{value}</a>;
-      if (isEmail) return <a href={`mailto:${value}`} className="text-primary hover:underline break-all">{value}</a>;
+      if (isLink) return <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all text-sm">{value}</a>;
+      if (isEmail) return <a href={`mailto:${value}`} className="text-primary hover:underline break-all text-sm">{value}</a>;
     }
-    return <span className="text-foreground/90 break-words">{String(value)}</span>;
+    return <span className="text-foreground/90 break-words text-sm">{String(value)}</span>;
   };
 
   return (
-    <div className="flex items-start space-x-3 py-1.5">
-      <Icon className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+    <div className="flex items-start space-x-2 py-1">
+      <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
       <div>
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         {renderValue()}
@@ -94,7 +94,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 };
 
 const DealerDetailContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => ( <> <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} /> <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail /> <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink /> <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} /> {dealer.servicesOffered && dealer.servicesOffered.length > 0 && (<DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />)} </> );
-const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'default' : unit.status === 'maintenance' ? 'outline' : 'destructive'}>{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
+const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'success' : unit.status === 'maintenance' ? 'default' : unit.status === 'in_stock' ? 'secondary' : 'destructive'} className="text-xs">{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
 const MethanisationSiteDetailContent: React.FC<{ site: MethanisationSite }> = ({ site }) => ( <> <DetailItem icon={Info} label="Capacité" value={site.capacity} /> <DetailItem icon={User} label="Opérateur" value={site.operator} /> <DetailItem icon={CalendarDays} label="Date de mise en service" value={site.startDate ? new Date(site.startDate).toLocaleDateString() : undefined} /> </>);
 
 
@@ -131,7 +131,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
-    setIsSearchFocused(false); // Close search results when an entity is selected
+    setIsSearchFocused(false); 
   };
 
   const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'methanisation-site'];
@@ -168,12 +168,12 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
 
   if (!googleMapsApiKey) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-background">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive mb-4">
+      <div className="flex flex-col items-center justify-center h-full text-center p-4 md:p-8 bg-background">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive mb-3">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
         </svg>
-        <h2 className="text-2xl font-semibold mb-2">Clé API Google Maps Manquante</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-xl md:text-2xl font-semibold mb-1 md:mb-2">Clé API Google Maps Manquante</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
           Veuillez configurer <code className="bg-muted px-1 py-0.5 rounded-sm text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>.
         </p>
       </div>
@@ -185,15 +185,15 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
       <div className="relative h-full w-full" ref={mapContainerRef}>
         <div className="absolute inset-0 z-0">
           <Map
-            defaultCenter={{ lat: 46.2276, lng: 2.2137 }} // Centered on France
+            defaultCenter={{ lat: 46.2276, lng: 2.2137 }} 
             defaultZoom={6}
             gestureHandling={'greedy'}
             disableDefaultUI={true}
-            mapId="loadixManagerMainMap" // It's good practice to provide a mapId
+            mapId="loadixManagerMainMap" 
             style={{ width: '100%', height: '100%' }}
           >
             {entitiesForMarkers.map((entity) => {
-              if (entity.geoLocation && entity.geoLocation.lat && entity.geoLocation.lng) {
+              if (entity.geoLocation && typeof entity.geoLocation.lat === 'number' && typeof entity.geoLocation.lng === 'number') {
                 const pinStyle = entityPinColors[entity.entityType] || entityPinColors['dealer'];
                 return (
                   <AdvancedMarker
@@ -215,58 +215,59 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </Map>
         </div>
 
-        <div className="absolute top-4 left-1/2 z-20 w-full max-w-3xl -translate-x-1/2 px-4">
-          <Card className="p-3 bg-card/80 backdrop-blur-xl rounded-xl shadow-2xl border border-border/50">
-            <div className="flex flex-col md:flex-row items-center gap-3">
+        <div className="absolute top-2 md:top-3 left-1/2 z-20 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0"> {/* Responsive width and padding */}
+          <Card className="p-2 md:p-3 bg-card/80 backdrop-blur-xl rounded-lg md:rounded-xl shadow-xl border border-border/50">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="relative flex-grow w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Rechercher une entité, ville, ID..."
+                  placeholder="Rechercher..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
-                  // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Add a small delay to allow click on results
-                  className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
+                  className="pl-9 w-full h-10 text-sm md:h-11 md:text-base bg-background/70 border-border/60 focus:bg-background"
                 />
               </div>
-              <Select
-                value={selectedEntityType}
-                onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
-              >
-                <SelectTrigger className="w-full md:w-[220px] h-12 bg-background/70 border-border/60 focus:bg-background text-base">
-                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder="Filtrer par type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  {entityTypes.map(type => (
-                    <SelectItem key={type} value={type}>
-                      {entityTypeTranslations[type]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center w-full sm:w-auto gap-2">
+                <Select
+                    value={selectedEntityType}
+                    onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
+                >
+                    <SelectTrigger className="w-full sm:w-[180px] md:w-[200px] h-10 text-sm md:h-11 md:text-base bg-background/70 border-border/60 focus:bg-background flex-shrink-0">
+                    <Filter className="mr-1.5 h-3.5 w-3.5 text-muted-foreground hidden sm:inline-block" />
+                    <SelectValue placeholder="Filtrer type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    {entityTypes.map(type => (
+                        <SelectItem key={type} value={type}>
+                        {entityTypeTranslations[type]}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+              </div>
             </div>
           </Card>
         </div>
 
         {(isSearchFocused || searchTerm) && searchResultsEntities.length > 0 && (
-          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2">
-            <Card className="max-h-[calc(50vh-6rem)] md:max-h-[calc(50vh-3rem)] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
-              <CardContent className="p-2">
-                <ul className="space-y-1">
+          <div className="absolute top-16 md:top-20 left-1/2 z-10 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0 mt-1">
+            <Card className="max-h-[40vh] md:max-h-[50vh] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
+              <CardContent className="p-1.5 md:p-2">
+                <ul className="space-y-0.5 md:space-y-1">
                   {searchResultsEntities.slice(0, 10).map((entity) => (
                     <li key={entity.id}>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start text-left h-auto py-2.5 px-3 hover:bg-primary/10"
+                        className="w-full justify-start text-left h-auto py-2 px-2.5 md:py-2.5 md:px-3 hover:bg-primary/10"
                         onClick={() => handleEntityClick(entity)}
                       >
-                        <div className="flex items-center gap-3">
-                          {getEntityIcon(entity.entityType, "h-5 w-5 text-primary/80")}
+                        <div className="flex items-center gap-2 md:gap-3">
+                          {getEntityIcon(entity.entityType, "h-4 w-4 md:h-5 md:w-5 text-primary/80")}
                           <div>
-                            <p className="font-medium text-sm text-foreground">{entity.name}</p>
+                            <p className="font-medium text-xs md:text-sm text-foreground">{entity.name}</p>
                             <p className="text-xs text-muted-foreground">{entityTypeTranslations[entity.entityType]} - {entity.city}</p>
                           </div>
                         </div>
@@ -279,24 +280,24 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </div>
         )}
         {(isSearchFocused || searchTerm) && searchResultsEntities.length === 0 && searchTerm.length > 0 && (
-          <div className="absolute top-20 left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 px-4 mt-1 md:mt-2">
+          <div className="absolute top-16 md:top-20 left-1/2 z-10 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0 mt-1">
             <Card className="bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
-              <CardContent className="p-4 text-center text-muted-foreground">
+              <CardContent className="p-3 md:p-4 text-center text-sm text-muted-foreground">
                 Aucun résultat pour "{searchTerm}" {selectedEntityType !== 'all' ? `dans "${entityTypeTranslations[selectedEntityType]}"` : ''}.
               </CardContent>
             </Card>
           </div>
         )}
 
-        <div className="absolute bottom-4 right-4 z-30">
+        <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-30">
           <Button
             variant="outline"
             size="icon"
             onClick={toggleFullscreen}
-            className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground"
+            className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10"
             title={isFullscreen ? "Quitter le mode plein écran" : "Passer en mode plein écran"}
           >
-            {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+            {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:w-5" /> : <Maximize className="h-4 w-4 md:h-5 md:w-5" />}
           </Button>
         </div>
 
@@ -304,59 +305,54 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setSelectedEntity(null); }}>
             <SheetContent
               side="bottom"
-              className="h-[75vh] md:h-[60vh] flex flex-col rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl p-0"
+              className="h-[70vh] md:h-[60vh] flex flex-col rounded-t-lg md:rounded-t-xl bg-card/95 backdrop-blur-2xl border-t-border/50 shadow-2xl p-0"
             >
-              <SheetHeader className="p-4 border-b border-border/30">
+              <SheetHeader className="p-3 md:p-4 border-b border-border/30">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 text-primary p-2.5 rounded-lg shadow-sm">
-                      {getEntityIcon(selectedEntity.entityType, "h-6 w-6")}
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className="bg-primary/10 text-primary p-2 md:p-2.5 rounded-md md:rounded-lg shadow-sm">
+                      {getEntityIcon(selectedEntity.entityType, "h-5 w-5 md:h-6 md:w-6")}
                     </div>
                     <div>
-                      <SheetTitle className="text-2xl font-futura">{selectedEntity.name}</SheetTitle>
-                      <SheetDescription className="text-sm font-bebas-neue tracking-wide text-primary/90">
+                      <SheetTitle className="text-lg md:text-2xl font-futura">{selectedEntity.name}</SheetTitle>
+                      <SheetDescription className="text-xs md:text-sm font-bebas-neue tracking-wide text-primary/90">
                         {entityTypeTranslations[selectedEntity.entityType]}
                       </SheetDescription>
                     </div>
                   </div>
                   <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                      <X className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
+                      <X className="h-4 w-4 md:h-5 md:w-5" />
                     </Button>
                   </SheetClose>
                 </div>
               </SheetHeader>
 
-              <ScrollArea className="flex-grow p-4">
-                <div className="space-y-4">
+              <ScrollArea className="flex-grow p-3 md:p-4">
+                <div className="space-y-3 md:space-y-4">
                   <Card className="bg-background/50 border-border/40">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-bebas-neue text-primary">Informations Générales</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-1">
+                    <CardHeader className="p-3"><CardTitle className="text-md md:text-lg font-bebas-neue text-primary">Informations Générales</CardTitle></CardHeader>
+                    <CardContent className="text-sm space-y-1 p-3 pt-0">
                       <DetailItem icon={LocationIcon} label="Adresse" value={`${selectedEntity.address || 'N/A'}, ${selectedEntity.postalCode || ''} ${selectedEntity.city || ''}, ${selectedEntity.country || ''}`} />
-                      <Badge variant="outline" className="text-xs">ID: {selectedEntity.id}</Badge>
+                      <Badge variant="outline" className="text-xs">ID: {selectedEntity.id.substring(0,12)}...</Badge>
                       <Badge variant="outline" className="ml-2 text-xs">Créé le: {new Date(selectedEntity.createdAt).toLocaleDateString()}</Badge>
                     </CardContent>
                   </Card>
 
                   <Card className="bg-background/50 border-border/40">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-bebas-neue text-primary">Détails Spécifiques</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-1">
+                    <CardHeader className="p-3"><CardTitle className="text-md md:text-lg font-bebas-neue text-primary">Détails Spécifiques</CardTitle></CardHeader>
+                    <CardContent className="text-sm space-y-1 p-3 pt-0">
                       {renderEntitySpecificDetails(selectedEntity)}
                     </CardContent>
                   </Card>
 
                   {selectedEntity.geoLocation && selectedEntity.geoLocation.lat && selectedEntity.geoLocation.lng && (
                     <Card className="bg-background/50 border-border/40">
-                      <CardHeader>
-                          <CardTitle className="text-lg font-bebas-neue text-primary">Localisation (Mini-carte)</CardTitle>
+                      <CardHeader className="p-3">
+                          <CardTitle className="text-md md:text-lg font-bebas-neue text-primary">Localisation (Mini-carte)</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                          <div className="h-40 w-full rounded-md overflow-hidden">
-                            {/* Using an Image placeholder for the mini-map inside the sheet to avoid nested APIProviders or complex map instances */}
+                      <CardContent className="p-3 pt-0">
+                          <div className="h-32 md:h-40 w-full rounded-md overflow-hidden">
                             <Image
                                 src={`https://placehold.co/600x200.png?text=Mini-carte+${encodeURIComponent(selectedEntity.name)}`}
                                 alt={`Mini-carte de ${selectedEntity.name}`}
@@ -371,14 +367,14 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                   )}
                 </div>
               </ScrollArea>
-              <SheetFooter className="p-4 border-t border-border/30">
-                  <Button variant="outline" asChild>
+              <SheetFooter className="p-3 md:p-4 border-t border-border/30 flex flex-col sm:flex-row gap-2">
+                  <Button variant="outline" asChild className="w-full sm:w-auto text-sm">
                       <Link href={`/item/${selectedEntity.entityType}/${selectedEntity.id}`}>
                           Voir la fiche complète <ChevronsRight className="ml-2 h-4 w-4" />
                       </Link>
                   </Button>
                   <SheetClose asChild>
-                      <Button variant="default">Fermer</Button>
+                      <Button variant="default" className="w-full sm:w-auto text-sm">Fermer</Button>
                   </SheetClose>
               </SheetFooter>
             </SheetContent>

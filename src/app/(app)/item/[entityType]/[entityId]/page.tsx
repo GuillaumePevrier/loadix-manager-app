@@ -1,7 +1,8 @@
-"use client"; // This is now the Client Component
+
+"use client"; 
 
 import * as React from 'react';
-import { notFound, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Keep notFound if needed elsewhere, or remove
 import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types';
 import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService';
 import { cn } from '@/lib/utils';
@@ -9,7 +10,7 @@ import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  CircleAlert, Loader2
+  CircleAlert, Loader2, Printer // Added Printer for Fax
 } from 'lucide-react';
 import DeleteEntityButton from './DeleteEntityButton';
 import Image from 'next/image';
@@ -28,8 +29,9 @@ interface ItemPageProps {
   };
 }
 
-// Helper function used by the component
-const getEntityTypeDisplayNameForClient = (type: EntityType): string => {
+// This function can remain here or be moved to utils if used elsewhere.
+// It's not dependent on client/server context by itself.
+const getEntityTypeDisplayName = (type: EntityType): string => {
   const names: Record<EntityType, string> = {
     dealer: 'Concessionnaire',
     'loadix-unit': 'Engin LOADIX',
@@ -142,17 +144,17 @@ const LoadixUnitDetailCard: React.FC<{ unit: LoadixUnit }> = ({ unit }) => (
     <CardHeader>
       <CardTitle className="font-bebas-neue text-primary text-xl">Détails de l'Engin</CardTitle>
     </CardHeader>
-    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 md:gap-y-3">
       <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} />
       <DetailItem icon={Truck} label="Modèle" value={unit.model} />
-      <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={getLoadixStatusBadgeVariant(unit.status)}>{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} />
+      <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={getLoadixStatusBadgeVariant(unit.status)} className="text-xs">{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} />
       <DetailItem icon={MapPin} label="Localisation" value={`${unit.address || 'N/A'}, ${unit.postalCode || ''} ${unit.city || ''}, ${unit.country || ''}`} />
       {unit.purchaseDate && <DetailItem icon={CalendarDays} label="Date d'achat" value={new Date(unit.purchaseDate).toLocaleDateString()} />}
       {unit.lastMaintenanceDate && <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={new Date(unit.lastMaintenanceDate).toLocaleDateString()} />}
       {unit.dealerId && <DetailItem icon={Building} label="Concessionnaire Associé" value={<Link href={`/item/dealer/${unit.dealerId}`} className="text-primary hover:underline">Voir Concessionnaire</Link>} />}
       {unit.methanisationSiteId && <DetailItem icon={Factory} label="Site de Méthanisation Associé" value={<Link href={`/item/methanisation-site/${unit.methanisationSiteId}`} className="text-primary hover:underline">Voir Site</Link>} />}
        {unit.geoLocation && (
-          <div className="md:col-span-2 h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
+          <div className="md:col-span-2 h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
               <Image
               src={`https://placehold.co/800x300.png?text=Carte+Engin+${encodeURIComponent(unit.name)}`}
               alt={`Carte pour ${unit.name}`}
@@ -172,7 +174,7 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
     <CardHeader>
       <CardTitle className="font-bebas-neue text-primary text-xl">Détails du Site</CardTitle>
     </CardHeader>
-    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 md:gap-y-3">
       <DetailItem icon={MapPin} label="Adresse" value={`${site.address || 'N/A'}, ${site.postalCode || ''} ${site.city || ''}, ${site.country || ''}`} />
       {site.capacity && <DetailItem icon={Info} label="Capacité" value={site.capacity} />}
       {site.operator && <DetailItem icon={User} label="Opérateur" value={site.operator} />}
@@ -187,7 +189,7 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
         <DetailItem icon={Building} label="Concessionnaires Liés" value={site.relatedDealerIds.map(id => <Link key={id} href={`/item/dealer/${id}`} className="text-primary hover:underline block">Concessionnaire {id.substring(0,8)}...</Link>)} />
       )}
        {site.geoLocation && (
-          <div className="md:col-span-2 h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
+          <div className="md:col-span-2 h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
               <Image
               src={`https://placehold.co/800x300.png?text=Carte+Site+${encodeURIComponent(site.name)}`}
               alt={`Carte pour ${site.name}`}
@@ -202,42 +204,27 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
   </Card>
 );
 
-/*
-// generateMetadata is a server function and cannot be used in a client component.
-// It needs to be handled differently, e.g., in a separate (default) page.tsx that wraps this client component.
-export async function generateMetadata(
-  { params }: ItemPageProps,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  // This is a placeholder. Real implementation would fetch entity for title.
-  // const entity = await getEntity(params.entityType, params.entityId); // Hypothetical
-  const entityTypeDisplay = params.entityType.replace('-', ' ');
-  const entityName = params.entityId; // Placeholder
-  return {
-    title: `${entityTypeDisplay}: ${entityName} | LOADIX Manager`,
-    description: `Détail de ${entityName}.`,
-  };
-}
-*/
 
 export default function ItemDetailPage({ params }: ItemPageProps) {
-  const { entityType, entityId } = params;
+  const { entityType, entityId } = params; // Access params directly
   const [currentEntity, setCurrentEntity] = React.useState<AppEntity | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const router = useRouter();
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     let fetchedEntity: AppEntity | null = null;
-    try {
-      if (!entityType || !entityId) {
-        console.warn('EntityType or EntityId is undefined in fetchData. Params:', params);
-        setError('Paramètres de route invalides.');
-        setIsLoading(false);
-        return;
-      }
 
+    if (!entityType || !entityId) {
+      console.warn('ItemDetailPage: EntityType or EntityId is undefined. Params:', params);
+      setError('Paramètres de route invalides.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
       if (entityType === 'dealer') {
         fetchedEntity = await getDealerById(entityId);
       } else if (entityType === 'loadix-unit') {
@@ -245,25 +232,21 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
       } else if (entityType === 'methanisation-site') {
         fetchedEntity = await getMethanisationSiteById(entityId);
       } else {
-        console.warn(`Unknown entity type: ${entityType}, falling back to notFound.`);
-        // notFound(); // Calling notFound() here triggers full 404, show error message instead
+        console.warn(`ItemDetailPage: Unknown entity type: ${entityType}, rendering not found.`);
         setError(`Type d'entité inconnu: ${entityType}`);
-        setIsLoading(false);
-        return;
       }
 
-      if (!fetchedEntity) {
-        // notFound(); // Avoid calling notFound() to prevent generic 404 page
-        setError(`Entité ${getEntityTypeDisplayNameForClient(entityType)} avec ID ${entityId} non trouvée.`);
+      if (!fetchedEntity && entityType && (entityType === 'dealer' || entityType === 'loadix-unit' || entityType === 'methanisation-site')) {
+         setError(`Entité ${getEntityTypeDisplayName(entityType)} avec ID ${entityId} non trouvée.`);
       }
       setCurrentEntity(fetchedEntity);
     } catch (err) {
-        console.error(`Error fetching entity ${entityType}/${entityId}:`, err);
+        console.error(`ItemDetailPage: Error fetching entity ${entityType}/${entityId}:`, err);
         setError(err instanceof Error ? err.message : "Échec du chargement des données de l'entité.");
     } finally {
         setIsLoading(false);
     }
-  }, [entityType, entityId, params]); // Added params to dependency array
+  }, [entityType, entityId]); // Removed params from dependency array as entityType & entityId are stable after initial destructuring
 
   React.useEffect(() => {
     fetchData();
@@ -272,16 +255,16 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
 
   if (isLoading) {
     return (
-        <div className="container mx-auto max-w-5xl py-6 px-4 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="mt-2 text-muted-foreground">Chargement des détails...</p>
+        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4 text-center">
+            <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
+            <p className="mt-2 text-sm md:text-base text-muted-foreground">Chargement...</p>
         </div>
     );
   }
 
-  if (error && !currentEntity) { // Show error if loading failed and no entity is present
+  if (error && !currentEntity) { 
     return (
-        <div className="container mx-auto max-w-5xl py-6 px-4">
+        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
             <Alert variant="destructive">
                 <CircleAlert className="h-5 w-5" />
                 <AlertTitle>Erreur de Chargement</AlertTitle>
@@ -298,16 +281,13 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
   }
 
   if (!currentEntity) {
-     // This case should ideally be handled by the error state above if fetchData completes
-     // Or it might mean fetchData hasn't completed or an issue with params.
-     // Fallback to a more generic not found message if no error was explicitly set but entity is still null.
     return (
-        <div className="container mx-auto max-w-5xl py-6 px-4">
+        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
             <Alert variant="destructive">
                 <CircleAlert className="h-5 w-5" />
                 <AlertTitle>Entité Non Trouvée</AlertTitle>
                 <AlertDescription>
-                    L'entité que vous recherchez n'a pas pu être trouvée ou les paramètres de route sont invalides.
+                    L'entité que vous recherchez n'a pas pu être trouvée.
                 </AlertDescription>
             </Alert>
              <Button asChild variant="outline" className="mt-4">
@@ -320,7 +300,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     );
   }
 
-  const entityTypeDisplay = getEntityTypeDisplayNameForClient(currentEntity.entityType);
+  const entityTypeDisplay = getEntityTypeDisplayName(currentEntity.entityType);
   const editRoute = getEntityEditRoute(currentEntity.entityType, currentEntity.id);
 
   const renderEntitySpecificDetails = () => {
@@ -332,32 +312,31 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
       case 'methanisation-site':
         return <MethanisationSiteDetailCard site={currentEntity as MethanisationSite} />;
       default:
-        // This case should ideally not be reached if entityType was validated earlier
         return <p className="text-muted-foreground">Type d'entité non pris en charge pour l'affichage détaillé.</p>;
     }
   };
 
   return (
-    <div className="container mx-auto max-w-5xl py-6 px-4">
-      <Button asChild variant="outline" className="mb-6 group">
+    <div className="container mx-auto max-w-5xl py-4 md:py-6 px-3 md:px-4">
+      <Button asChild variant="outline" className="mb-4 md:mb-6 group text-xs sm:text-sm">
         <Link href="/directory">
-          <ChevronsRight className="h-4 w-4 mr-2 rotate-180 transition-transform group-hover:-translate-x-1" />
+          <ChevronsRight className="h-4 w-4 mr-1.5 md:mr-2 rotate-180 transition-transform group-hover:-translate-x-1" />
           Retour au Répertoire
         </Link>
       </Button>
-      <header className="mb-6 md:mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 text-primary rounded-lg shadow-sm">
-                {getEntityIcon(currentEntity.entityType, 'h-6 w-6')}
+      <header className="mb-4 md:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-2 bg-primary/10 text-primary rounded-lg shadow-sm">
+                {getEntityIcon(currentEntity.entityType, 'h-5 w-5 md:h-6 md:w-6')}
             </div>
-            <h1 className="text-2xl md:text-3xl font-futura text-foreground leading-tight">{currentEntity.name}</h1>
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-futura text-foreground leading-tight">{currentEntity.name}</h1>
           </div>
-          <Badge variant="secondary" className="text-xs px-2.5 py-1 self-start md:self-center">{entityTypeDisplay}</Badge>
+          <Badge variant="secondary" className="text-xs px-2 py-0.5 md:px-2.5 md:py-1 self-start sm:self-center">{entityTypeDisplay}</Badge>
         </div>
         {(currentEntity.city || currentEntity.country) && (
-            <p className="text-sm text-muted-foreground mt-1.5 ml-1 flex items-center">
-                <MapPin className="h-3.5 w-3.5 mr-1.5 inline-block opacity-70" />
+            <p className="text-xs md:text-sm text-muted-foreground mt-1 ml-1 flex items-center">
+                <MapPin className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-1.5 inline-block opacity-70" />
                 {currentEntity.city}{currentEntity.city && currentEntity.country ? ', ' : ''}{currentEntity.country}
             </p>
         )}
@@ -365,8 +344,8 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
 
       {renderEntitySpecificDetails()}
 
-      <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-6 border-t border-border/20 mt-6">
-          <Button asChild variant="outline" className="w-full sm:w-auto">
+      <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 md:pt-6 border-t border-border/20 mt-4 md:mt-6 px-0">
+          <Button asChild variant="outline" className="w-full sm:w-auto text-sm">
               <Link href={editRoute}>
                   <Edit2 className="mr-2 h-4 w-4" />
                   Modifier
@@ -375,16 +354,13 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
           <DeleteEntityButton entityType={currentEntity.entityType} entityId={currentEntity.id} />
       </CardFooter>
 
-     <Alert variant="default" className="mt-8 bg-accent/10 border-accent/50 text-accent-foreground/90">
-        <CircleAlert className="h-5 w-5 text-accent" />
-        <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
+     <Alert variant="default" className="mt-6 md:mt-8 bg-muted/20 border-border/30 text-muted-foreground/90">
+        <CircleAlert className="h-5 w-5 text-muted-foreground/70" />
+        <AlertTitle className="font-bebas-neue text-md md:text-lg text-muted-foreground/80">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
-            Les données des concessionnaires, engins LOADIX et sites de méthanisation sont maintenant lues et écrites depuis/vers Firebase Firestore.
-            La modification et suppression pour Engins/Sites sont en cours d'implémentation.
+            Les données sont lues depuis Firebase Firestore. La modification et la suppression sont en cours d'implémentation pour tous les types.
         </AlertDescription>
     </Alert>
     </div>
   );
 }
-
-    

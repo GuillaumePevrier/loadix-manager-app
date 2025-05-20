@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // If needed for detailed descriptions
+import { Textarea } from '@/components/ui/textarea'; 
 import { useRouter } from 'next/navigation';
 import { addMethanisationSite } from '@/services/dealerService'; 
 import type { NewMethanisationSiteData, GeoLocation } from '@/types';
@@ -50,9 +50,8 @@ export default function CreateMethanisationSiteForm() {
     setIsGeocoding(true);
     setAddressValidated(null);
     setSubmissionError(null);
-    // Simulate Geocoding
     await new Promise(resolve => setTimeout(resolve, 1500));
-    const mockSuccess = Math.random() > 0.2; // Simulate 80% success
+    const mockSuccess = Math.random() > 0.2; 
     if (mockSuccess) {
         const mockLocation = { lat: 48.8566 + (Math.random() - 0.5) * 0.2, lng: 2.3522 + (Math.random() - 0.5) * 0.2 };
         setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
@@ -91,19 +90,19 @@ export default function CreateMethanisationSiteForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Informations du Site de Méthanisation</h3>
+    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Informations du Site de Méthanisation</h3>
       <div>
         <Label htmlFor="name">Nom du Site *</Label>
         <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: BioEnergie Ouest" />
       </div>
       
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-4 pt-2">Localisation</h3>
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-3 md:my-4 pt-1 md:pt-2">Localisation</h3>
       <div>
           <Label htmlFor="address">Adresse *</Label>
           <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <div>
             <Label htmlFor="postalCode">Code Postal *</Label>
             <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Ex: 75001" required />
@@ -117,7 +116,7 @@ export default function CreateMethanisationSiteForm() {
             <Input id="country" name="country" value={formData.country} onChange={handleChange} placeholder="Ex: France" required/>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-2">
           <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
               {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
               Valider l'Adresse
@@ -126,11 +125,11 @@ export default function CreateMethanisationSiteForm() {
           {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
       </div>
        {formData.geoLocation && addressValidated === true && (
-          <p className="text-xs text-green-600 dark:text-green-400">Coordonnées géographiques : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
       )}
 
-      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-4 pt-2">Détails Opérationnels</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <h3 className="text-lg font-semibold text-primary border-b pb-2 my-3 md:my-4 pt-1 md:pt-2">Détails Opérationnels</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
         <div>
           <Label htmlFor="operator">Opérateur</Label>
           <Input id="operator" name="operator" value={formData.operator || ''} onChange={handleChange} placeholder="Ex: Valorem SAS" />
@@ -145,24 +144,24 @@ export default function CreateMethanisationSiteForm() {
         <Input id="startDate" name="startDate" type="date" value={formData.startDate || ''} onChange={handleChange} />
       </div>
       
-      <Alert variant="default" className="mt-6 bg-accent/10 border-accent/50 text-accent-foreground/90">
-          <AlertTriangle className="h-5 w-5 text-accent" />
-          <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
+      <Alert variant="default" className="mt-4 bg-muted/50 border-border/50 text-muted-foreground">
+          <AlertTriangle className="h-5 w-5 text-muted-foreground/80" />
+          <AlertTitle className="font-semibold">Fonctionnalités à venir</AlertTitle>
           <AlertDescription className="text-xs">
             La gestion des clients du site, des technologies utilisées et des concessionnaires liés (via des menus déroulants dynamiques) sera ajoutée ultérieurement.
           </AlertDescription>
       </Alert>
 
       {submissionError && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="mt-3 md:mt-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Erreur</AlertTitle>
           <AlertDescription>{submissionError}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex justify-end items-center pt-5 mt-5 border-t border-border/30">
-        <Button type="submit" disabled={isSubmitting || isGeocoding} size="lg">
+      <div className="flex flex-col sm:flex-row justify-end items-center pt-4 md:pt-5 mt-4 md:mt-5 border-t border-border/30 gap-2">
+        <Button type="submit" disabled={isSubmitting || isGeocoding} size="lg" className="w-full sm:w-auto">
           {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
           {isSubmitting ? 'Création...' : 'Créer le Site'}
         </Button>

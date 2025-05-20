@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MultiSelect } from '@/components/ui/multi-select';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
@@ -33,13 +33,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const resolvedParams = React.use(paramsPromise);
+  const resolvedParams = React.use(paramsPromise); // Resolve the promise for params
   const { dealerId } = resolvedParams;
 
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
     tractorBrands: [],
     machineTypes: [],
-    comments: [],
+    comments: [], // Comments are handled separately for additions
     servicesOffered: [],
     galleryUris: [],
     documentUris: [],
@@ -67,7 +67,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
 
       const dealerData = await getDealerById(dealerId);
       if (dealerData) {
-        setCurrentDealerData(dealerData); // Store fetched data
+        setCurrentDealerData(dealerData);
         const initialFormState: Partial<UpdateDealerData> = {
           name: dealerData.name || '',
           address: dealerData.address || '',
@@ -82,11 +82,11 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           contactPerson: dealerData.contactPerson || '',
           brandSign: dealerData.brandSign || '',
           branchName: dealerData.branchName || '',
-          machineTypes: dealerData.machineTypes || [],
-          tractorBrands: dealerData.tractorBrands || [],
+          machineTypes: dealerData.machineTypes || [], // Already string[]
+          tractorBrands: dealerData.tractorBrands || [], // Already string[]
           prospectionStatus: dealerData.prospectionStatus || 'none',
           geoLocation: dealerData.geoLocation,
-          comments: dealerData.comments || [],
+          comments: dealerData.comments || [], // For display, not direct edit
           servicesOffered: dealerData.servicesOffered || [],
           galleryUris: dealerData.galleryUris || [],
           documentUris: dealerData.documentUris || [],
@@ -141,7 +141,9 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsAddingComment(true);
     try {
       const userName = user?.name || "Utilisateur Anonyme";
-      await addCommentToDealer(dealerId, userName, newCommentText, newCommentFile || undefined);
+      const currentStatus = formData.prospectionStatus || currentDealerData?.prospectionStatus || 'none';
+
+      await addCommentToDealer(dealerId, userName, newCommentText, currentStatus, newCommentFile || undefined);
       toast({
         title: "Succès",
         description: "Commentaire ajouté avec succès.",
@@ -171,17 +173,24 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         throw new Error("L'ID du concessionnaire est manquant.");
       }
       
+      // Prepare data for Firestore, comments are handled by addCommentToDealer
       const dataToUpdate: UpdateDealerData = { 
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        // Comments are now handled by addCommentToDealer, so we don't submit them here
-        // unless we want to allow direct editing of existing comments, which is not implemented.
-        // For safety, remove comments from formData before submitting general dealer updates if they are not directly editable.
-        // Or, ensure `updateDealer` service function knows how to handle the full comments array if it's just for re-saving.
-        // For now, assuming `updateDealer` will not modify comments unless explicitly changed.
-        // If we keep comments in formData, ensure dates are correct.
-        comments: currentDealerData?.comments?.map(c => ({...c, date: new Date(c.date).toISOString()})) || [],
+        // Comments array from formData is for display, not direct submission via updateDealer
+        // They are added/deleted via separate functions. So, we can omit it here or ensure
+        // updateDealer knows not to overwrite based on this potentially stale/display-only array.
+        // To be safe, let's remove it if it's not meant to be updated here.
+        // However, if updateDealer is smart enough to only update other fields, it's fine.
+        // For simplicity, if the service function `updateDealer` is well-behaved and only updates fields explicitly present in UpdateDealerData,
+        // and ignores `comments` if not part of that direct update path (or if it's handled internally), this is fine.
+        // Let's assume updateDealer handles its fields correctly and we submit all of formData.
+        // If comments are not directly editable here, we should actually set comments to `currentDealerData.comments`
+        // to avoid accidental overwriting, but since they're managed via add/delete, it might be best to just let `updateDealer`
+        // handle what it needs from formData.
+        // The current `updateDealer` doesn't even expect `comments` in `UpdateDealerData` type.
+        comments: undefined, // Explicitly remove comments from this update payload
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
         galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
         documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
@@ -214,7 +223,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     );
   }
 
-  if (error && !currentDealerData) { // Only show full page error if dealer data couldn't be loaded at all
+  if (error && !currentDealerData) {
     return (
       <div className="container mx-auto max-w-3xl py-8 px-4">
         <Alert variant="destructive">
@@ -232,7 +241,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     );
   }
 
-  if (!currentDealerData || Object.keys(formData).length === 0) { // formData check is also important
+  if (!currentDealerData || Object.keys(formData).length === 0) {
     return (
       <div className="container mx-auto max-w-3xl py-8 px-4">
         <Alert>
@@ -249,6 +258,9 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       </div>
     );
   }
+  
+  const currentCommentsForDisplay = currentDealerData?.comments || [];
+
 
   return (
     <div className="h-full w-full flex flex-col bg-background">
@@ -271,9 +283,9 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-3 md:p-4 flex-grow overflow-y-auto">
+        <CardContent className="p-2 md:p-3 flex-grow overflow-y-auto"> {/* Reduced padding */}
           <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-            {error && ( // Display non-critical errors here
+            {error && (
               <Alert variant="destructive" className="mb-4">
                 <CircleAlert className="h-5 w-5" />
                 <AlertTitle>Erreur</AlertTitle>
@@ -281,7 +293,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
               </Alert>
             )}
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4 bg-muted/50 p-1 h-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-3 md:mb-4 bg-muted/50 p-1 h-auto">
                 <TabsTrigger value="details" className="text-xs sm:text-sm px-2 py-1.5">Détails</TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs sm:text-sm px-2 py-1.5">Contact & Commercial</TabsTrigger>
                 <TabsTrigger value="prospection" className="text-xs sm:text-sm px-2 py-1.5">Suivi Prospection</TabsTrigger>
@@ -289,8 +301,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                 <TabsTrigger value="relations" className="text-xs sm:text-sm px-2 py-1.5">Relations</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="space-y-4 p-1">
-                <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
+              <TabsContent value="details" className="space-y-3 md:space-y-4 p-1">
+                <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                   <h3 className="text-lg font-semibold text-primary border-b pb-2">Informations Générales</h3>
                   <div>
                     <Label htmlFor="name">Nom du concessionnaire *</Label>
@@ -300,7 +312,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                     <Label htmlFor="address">Adresse</Label>
                     <Input id="address" name="address" value={formData.address || ''} onChange={handleInputChange} />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                     <div>
                       <Label htmlFor="postalCode">Code Postal</Label>
                       <Input id="postalCode" name="postalCode" value={formData.postalCode || ''} onChange={handleInputChange} />
@@ -324,17 +336,17 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         <p className="text-sm text-muted-foreground">Lat: {formData.geoLocation.lat.toFixed(5)}, Lng: {formData.geoLocation.lng.toFixed(5)}</p>
                          <Alert variant="default" className="mt-1 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                             <Info className="h-4 w-4 text-accent" />
-                            <AlertDescription>La géolocalisation est mise à jour via la validation d'adresse. Modifiez l'adresse et validez-la à nouveau pour mettre à jour (fonctionnalité future).</AlertDescription>
+                            <AlertDescription>La géolocalisation est mise à jour via la validation d'adresse. (Fonctionnalité future)</AlertDescription>
                         </Alert>
                     </div>
                   )}
                 </div>
               </TabsContent>
 
-              <TabsContent value="contact" className="space-y-4 p-1">
-                <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
+              <TabsContent value="contact" className="space-y-3 md:space-y-4 p-1">
+                <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                   <h3 className="text-lg font-semibold text-primary border-b pb-2">Contact et Informations Commerciales</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     <div>
                       <Label htmlFor="phone">Téléphone</Label>
                       <Input id="phone" name="phone" value={formData.phone || ''} onChange={handleInputChange} />
@@ -344,7 +356,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                       <Input id="fax" name="fax" value={formData.fax || ''} onChange={handleInputChange} />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     <div>
                       <Label htmlFor="email">Email</Label>
                       <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleInputChange} />
@@ -381,14 +393,14 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         options={MACHINE_TYPE_OPTIONS}
                         selected={formData.machineTypes || []}
                         onChange={(selected) => handleSelectChange('machineTypes', selected)}
-                        placeholder="Sélectionner types de machines..."
+                        placeholder="Sélectionner types..."
                     />
                   </div>
                 </div>
               </TabsContent>
               
-              <TabsContent value="prospection" className="space-y-4 p-1">
-                 <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
+              <TabsContent value="prospection" className="space-y-3 md:space-y-4 p-1">
+                 <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Suivi de Prospection</h3>
                     <div>
                         <Label htmlFor="prospectionStatus">Statut de prospection</Label>
@@ -406,17 +418,17 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-3 md:mt-4">
                         <h4 className="text-md font-semibold text-foreground/90 mb-2">Commentaires Existants</h4>
-                        {(!currentDealerData?.comments || currentDealerData.comments.length === 0) ? (
+                        {(!currentCommentsForDisplay || currentCommentsForDisplay.length === 0) ? (
                             <p className="text-sm text-muted-foreground italic mt-1">Aucun commentaire.</p>
                         ) : (
-                            <ScrollArea className="h-[200px] mt-1 p-3 border rounded-md bg-muted/20 space-y-3">
-                                {currentDealerData.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
-                                    <div key={index} className="text-xs p-2 rounded bg-background/50 border">
+                            <ScrollArea className="h-[150px] md:h-[200px] mt-1 p-2 md:p-3 border rounded-md bg-muted/20 space-y-2 md:space-y-3">
+                                {currentCommentsForDisplay.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
+                                    <div key={index} className="text-xs p-1.5 md:p-2 rounded bg-background/50 border">
                                         <p className="font-medium text-foreground/90">{comment.userName} - <span className="text-muted-foreground">{new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></p>
                                         <p className="text-foreground/80 whitespace-pre-line mt-0.5">{comment.text}</p>
-                                        {comment.imageUrl && <Image src={comment.imageUrl} alt="Image commentaire" width={100} height={100} className="mt-1 rounded-md object-cover" data-ai-hint="comment image" />}
+                                        {comment.imageUrl && <Image src={comment.imageUrl} alt="Image commentaire" width={80} height={80} className="mt-1 rounded-md object-cover" data-ai-hint="comment image" />}
                                         {comment.fileUrl && <a href={comment.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs mt-1 inline-block">{comment.fileName || 'Fichier attaché'}</a>}
                                     </div>
                                 ))}
@@ -424,7 +436,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                         )}
                     </div>
 
-                    <div className="mt-6 space-y-3 p-4 border rounded-md shadow-sm bg-card/50">
+                    <div className="mt-4 md:mt-6 space-y-2 md:space-y-3 p-3 md:p-4 border rounded-md shadow-sm bg-card/50">
                         <h4 className="text-md font-semibold text-foreground/90">Ajouter un nouveau suivi</h4>
                         <div>
                             <Label htmlFor="newCommentText">Nouveau commentaire</Label>
@@ -434,7 +446,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 onChange={(e) => setNewCommentText(e.target.value)}
                                 placeholder="Votre commentaire..."
                                 rows={3}
-                                className="bg-input/70 focus:bg-input"
+                                className="bg-input/70 focus:bg-input text-sm"
                             />
                         </div>
                         <div>
@@ -443,42 +455,42 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 id="newCommentFile" 
                                 type="file" 
                                 onChange={handleNewCommentFileChange} 
-                                className="bg-input/70 focus:bg-input file:text-primary file:font-medium"
+                                className="bg-input/70 focus:bg-input file:text-primary file:font-medium text-sm h-9"
                             />
-                             {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier sélectionné: {newCommentFile.name}</p>}
+                             {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier : {newCommentFile.name}</p>}
                         </div>
                         <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">
                             {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                            {isAddingComment ? 'Ajout en cours...' : 'Ajouter le suivi'}
+                            {isAddingComment ? 'Ajout...' : 'Ajouter Suivi'}
                         </Button>
                     </div>
                  </div>
               </TabsContent>
 
-               <TabsContent value="media" className="space-y-4 p-1">
-                 <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
+               <TabsContent value="media" className="space-y-3 md:space-y-4 p-1">
+                 <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Médias</h3>
                     <Alert variant="default" className="mt-1 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                         <ImageIconLucide className="h-4 w-4 text-accent" />
-                        <AlertDescription>La gestion de la galerie d'images et des documents (ajout, suppression) sera implémentée ultérieurement.</AlertDescription>
+                        <AlertDescription>La gestion de la galerie d'images et des documents sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
                  </div>
               </TabsContent>
 
-              <TabsContent value="relations" className="space-y-4 p-1">
-                 <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
+              <TabsContent value="relations" className="space-y-3 md:space-y-4 p-1">
+                 <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Relations</h3>
                      <Alert variant="default" className="mt-1 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                         <Info className="h-4 w-4 text-accent" />
-                        <AlertDescription>La gestion des entités liées (clients, prospects, sites) sera implémentée ultérieurement.</AlertDescription>
+                        <AlertDescription>La gestion des entités liées sera implémentée ultérieurement.</AlertDescription>
                     </Alert>
                  </div>
               </TabsContent>
 
             </Tabs>
 
-            <CardFooter className="flex justify-end pt-6 mt-4 border-t">
-              <Button type="submit" disabled={isSubmitting || loading || isAddingComment} size="lg">
+            <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 md:pt-6 mt-3 md:mt-4 border-t">
+              <Button type="submit" disabled={isSubmitting || loading || isAddingComment} size="lg" className="w-full sm:w-auto">
                 {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                 {isSubmitting ? 'Enregistrement...' : 'Enregistrer les modifications'}
               </Button>

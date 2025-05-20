@@ -12,12 +12,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addDealer } from '@/services/dealerService'; 
 import type { NewDealerData, Comment, Dealer } from '@/types';
-import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types'; // Import options
+import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { MultiSelect } from '@/components/ui/multi-select'; 
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 
-interface DealerFormData extends NewDealerData {} // Use NewDealerData directly as it matches
+interface DealerFormData extends Omit<NewDealerData, 'tractorBrands' | 'machineTypes'> {
+  tractorBrands: string[]; // Storing array of values for MultiSelect
+  machineTypes: string[];  // Storing array of values for MultiSelect
+}
 
 const initialFormData: DealerFormData = {
   name: '',
@@ -128,15 +131,14 @@ const CreateDealerForm: React.FC = () => {
         userName: 'Admin ManuRob', 
         date: new Date().toISOString(),
         text: formData.initialCommentText,
+        prospectionStatusAtEvent: formData.prospectionStatus,
       });
     }
 
     const dealerToSave: NewDealerData = {
-      ...formData,
-      comments: commentsArray, // Add the initial comment if present
+      ...formData, // tractorBrands and machineTypes are already string[]
+      comments: commentsArray,
     };
-    // initialCommentText is part of DealerFormData but not directly NewDealerData
-    // it is handled above to create the first comment.
 
     try {
       const newDealer = await addDealer(dealerToSave);
@@ -157,14 +159,14 @@ const CreateDealerForm: React.FC = () => {
     switch (currentStep) {
       case 0: 
         return (
-          <div className="space-y-5">
-            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Informations Générales et Localisation</h3>
+          <div className="space-y-4 md:space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Informations Générales et Localisation</h3>
             <div>
               <Label htmlFor="name">Nom du concessionnaire *</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: AgriServices Nord" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
                 <div>
                     <Label htmlFor="address">Adresse *</Label>
                     <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required />
@@ -175,7 +177,7 @@ const CreateDealerForm: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
               <div>
                 <Label htmlFor="city">Ville *</Label>
                 <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Ex: Paris" required />
@@ -185,7 +187,7 @@ const CreateDealerForm: React.FC = () => {
                 <Input id="country" name="country" value={formData.country} onChange={handleChange} placeholder="Ex: France" required/>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-2">
                 <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
                     {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
                     Valider l'Adresse
@@ -194,21 +196,21 @@ const CreateDealerForm: React.FC = () => {
                 {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
             </div>
             {formData.geoLocation && addressValidated === true && (
-                <p className="text-xs text-green-600 dark:text-green-400">Coordonnées géographiques obtenues : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
+                <p className="text-xs text-green-600 dark:text-green-400">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <Label htmlFor="department">Département</Label>
                     <Input id="department" name="department" value={formData.department || ''} onChange={handleChange} placeholder="Ex: 75 - Paris ou Nord" />
                 </div>
                  <div>
                   <Label htmlFor="machineTypes">Types de machines gérées</Label>
-                  <MultiSelect
+                   <MultiSelect
                     options={MACHINE_TYPE_OPTIONS}
                     selected={formData.machineTypes}
                     onChange={(selected) => handleSelectChange('machineTypes', selected)}
-                    placeholder="Sélectionner types de machines..."
+                    placeholder="Sélectionner types..."
                   />
                 </div>
             </div>
@@ -216,9 +218,9 @@ const CreateDealerForm: React.FC = () => {
         );
       case 1: 
         return (
-          <div className="space-y-5">
-            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Contact et Informations Commerciales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4 md:space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Contact et Informations Commerciales</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <Label htmlFor="phone">Téléphone</Label>
                     <Input id="phone" name="phone" type="tel" value={formData.phone || ''} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" />
@@ -228,7 +230,7 @@ const CreateDealerForm: React.FC = () => {
                     <Input id="fax" name="fax" type="tel" value={formData.fax || ''} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" />
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="Ex: contact@example.com" />
@@ -242,7 +244,7 @@ const CreateDealerForm: React.FC = () => {
                 <Label htmlFor="contactPerson">Personne à contacter</Label>
                 <Input id="contactPerson" name="contactPerson" value={formData.contactPerson || ''} onChange={handleChange} placeholder="Ex: Jean Dupont" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <Label htmlFor="tractorBrands">Marques d'engins distribuées</Label>
                   <MultiSelect
@@ -265,8 +267,8 @@ const CreateDealerForm: React.FC = () => {
         );
       case 2: 
         return (
-          <div className="space-y-5">
-            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-4">Prospection et Commentaires</h3>
+          <div className="space-y-4 md:space-y-5">
+            <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Prospection et Commentaires</h3>
             <div>
               <Label htmlFor="prospectionStatus">Statut de prospection</Label>
               <Select name="prospectionStatus" onValueChange={(value) => handleSelectChange('prospectionStatus', value as Dealer['prospectionStatus'])} value={formData.prospectionStatus || 'none'}>
@@ -285,15 +287,15 @@ const CreateDealerForm: React.FC = () => {
             </div>
             <div>
                 <Label htmlFor="initialCommentText">Commentaire initial</Label>
-                <Textarea id="initialCommentText" name="initialCommentText" value={formData.initialCommentText || ''} onChange={handleChange} rows={4} placeholder="Ajoutez un premier commentaire ou une note sur ce concessionnaire..." />
+                <Textarea id="initialCommentText" name="initialCommentText" value={formData.initialCommentText || ''} onChange={handleChange} rows={4} placeholder="Ajoutez un premier commentaire..." />
                  <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                     <Info className="h-4 w-4 text-accent" />
-                    <AlertDescription>L'ajout d'images ou de fichiers aux commentaires sera possible ultérieurement.</AlertDescription>
+                    <AlertDescription>L'ajout de pièces jointes sera possible depuis la fiche détaillée après création.</AlertDescription>
                  </Alert>
             </div>
-            <Alert variant="default" className="mt-6 bg-accent/10 border-accent/50 text-accent-foreground/90">
-              <AlertTriangle className="h-5 w-5 text-accent" />
-              <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
+            <Alert variant="default" className="mt-4 bg-muted/50 border-border/50 text-muted-foreground">
+              <AlertTriangle className="h-5 w-5 text-muted-foreground/80" />
+              <AlertTitle className="font-semibold">Fonctionnalités à venir</AlertTitle>
               <AlertDescription className="text-xs">
                 La galerie d'images, la gestion des documents et la liaison avec d'autres entités (clients, sites) seront ajoutées ultérieurement.
               </AlertDescription>
@@ -308,37 +310,37 @@ const CreateDealerForm: React.FC = () => {
   const progressValue = Math.max(5, ((currentStep + 1) / totalSteps) * 100); 
 
   return (
-    <div className="space-y-6">
-      <Progress value={progressValue} className="w-full h-2" />
+    <div className="space-y-4 md:space-y-6">
+      <Progress value={progressValue} className="w-full h-1.5 md:h-2" /> {/* Adjusted height */}
       
-      <div className="min-h-[300px]">{renderStepContent()}</div>
+      <div className="min-h-[250px] md:min-h-[300px]">{renderStepContent()}</div> {/* Adjusted min-height */}
 
       {submissionError && (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="mt-3 md:mt-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Erreur</AlertTitle>
           <AlertDescription>{submissionError}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex justify-between items-center pt-5 mt-5 border-t border-border/30">
-        <Button onClick={handleBack} disabled={currentStep === 0 || isSubmitting} variant="outline" size="lg">
+      <div className="flex flex-col sm:flex-row justify-between items-center pt-4 md:pt-5 mt-4 md:mt-5 border-t border-border/30 gap-2">
+        <Button onClick={handleBack} disabled={currentStep === 0 || isSubmitting} variant="outline" size="lg" className="w-full sm:w-auto">
           Précédent
         </Button>
-        <p className="text-sm text-muted-foreground">Étape {currentStep + 1} sur {totalSteps}</p>
+        <p className="text-xs sm:text-sm text-muted-foreground order-first sm:order-none">Étape {currentStep + 1} sur {totalSteps}</p>
         {currentStep < totalSteps - 1 ? (
-          <Button onClick={handleNext} disabled={isSubmitting} size="lg">
+          <Button onClick={handleNext} disabled={isSubmitting} size="lg" className="w-full sm:w-auto">
             Suivant
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting || isGeocoding} size="lg">
+          <Button onClick={handleSubmit} disabled={isSubmitting || isGeocoding} size="lg" className="w-full sm:w-auto">
             {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
             {isSubmitting ? 'Création...' : 'Créer le concessionnaire'}
           </Button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mt-2 text-center">
-        Note: Le géocodage est actuellement simulé. L'intégration réelle de l'API Google Geocoding est nécessaire pour une conversion d'adresse précise.
+      <p className="text-xs text-muted-foreground mt-1 text-center">
+        Note: Le géocodage est actuellement simulé.
       </p>
     </div>
   );

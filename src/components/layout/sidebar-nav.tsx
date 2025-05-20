@@ -26,7 +26,7 @@ const navItems = [
   },
   {
     label: 'Outils Annexes',
-    icon: Settings,
+    icon: Settings, // Changed to a more generic 'Settings' or 'Tool' icon
     isGroup: true,
     subItems: [
         { href: '/forms/prevention-plan', label: 'Plan de Prévention', icon: FileText, tooltip: 'Formulaire Plan de Prévention' },
@@ -96,4 +96,3 @@ export default function SidebarNav() {
     </SidebarMenu>
   );
 }
-

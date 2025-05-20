@@ -41,12 +41,13 @@ export default function MainLayout({ children }: MainLayoutProps) {
     '/map',
     '/directory',
     '/dealers/create',
-    '/loadix-units/create', // Add new creation page
-    '/methanisation-sites/create' // Add new creation page
+    '/loadix-units/create',
+    '/methanisation-sites/create',
+    '/tools/bulk-import' // Added bulk import page
   ];
   const isDealerEditPage = /^\/dealers\/edit\/[^/]+$/.test(pathname);
-  const isLoadixUnitEditPage = /^\/loadix-units\/edit\/[^/]+$/.test(pathname); // Add new edit page pattern
-  const isMethanisationSiteEditPage = /^\/methanisation-sites\/edit\/[^/]+$/.test(pathname); // Add new edit page pattern
+  const isLoadixUnitEditPage = /^\/loadix-units\/edit\/[^/]+$/.test(pathname);
+  const isMethanisationSiteEditPage = /^\/methanisation-sites\/edit\/[^/]+$/.test(pathname);
 
   const applyNoPadding = noPaddingRoutes.includes(pathname) ||
                          isDealerEditPage ||
@@ -103,7 +104,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <div className="flex-1 text-center md:text-left">
             {/* Breadcrumbs or dynamic page title can go here */}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" onClick={() => setIsSearchOpen(true)}>
               <Search className="w-5 h-5" />
               <span className="sr-only">Rechercher</span>
@@ -115,7 +116,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto ${applyNoPadding ? '' : 'p-4 md:p-6 lg:p-8'}`}>
+        <main className={`flex-1 overflow-y-auto ${applyNoPadding ? '' : 'p-2 md:p-4 lg:p-6'}`}> {/* Reduced default padding slightly */}
           {children}
         </main>
       </SidebarInset>

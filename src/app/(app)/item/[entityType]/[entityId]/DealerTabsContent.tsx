@@ -10,15 +10,13 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-// Removed ScrollArea as we will handle scrolling directly for the timeline
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 
 const DetailItem: React.FC<{
   icon: React.ElementType;
@@ -88,7 +86,6 @@ const DetailItem: React.FC<{
   );
 };
 
-
 const getProspectionStatusBadgeInfo = (
   status?: Dealer['prospectionStatus']
 ): { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success'; label: string } => {
@@ -96,11 +93,11 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' }; 
+      return { variant: 'default', label: 'Tiède 🌤️' };
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' }; 
+      return { variant: 'success' as any, label: 'Converti ✅' };
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
@@ -108,57 +105,82 @@ const getProspectionStatusBadgeInfo = (
   }
 };
 
-const CommentCard: React.FC<{ comment: Comment; className?: string }> = ({ comment, className }) => (
-  <div className={cn("flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72", className)}>
-    <Avatar className="h-8 w-8 flex-shrink-0">
-      <AvatarImage src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
-      <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
-    </Avatar>
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground truncate">{comment.userName}</p>
+const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']): { dotClassName: string; connectorClassName: string; badgeVariant: BadgeProps['variant']; label: string } => {
+  switch (status) {
+    case 'hot': return { dotClassName: 'bg-red-500 border-red-700', connectorClassName: 'bg-red-500/70', badgeVariant: 'destructive', label: 'Chaud 🔥' };
+    case 'warm': return { dotClassName: 'bg-orange-500 border-orange-700', connectorClassName: 'bg-orange-500/70', badgeVariant: 'default', label: 'Tiède 🌤️' };
+    case 'cold': return { dotClassName: 'bg-blue-500 border-blue-700', connectorClassName: 'bg-blue-500/70', badgeVariant: 'secondary', label: 'Froid ❄️' };
+    case 'converted': return { dotClassName: 'bg-green-500 border-green-700', connectorClassName: 'bg-green-500/70', badgeVariant: 'success' as any, label: 'Converti ✅' };
+    case 'lost': return { dotClassName: 'bg-gray-500 border-gray-700', connectorClassName: 'bg-gray-500/70', badgeVariant: 'outline', label: 'Perdu ❌' };
+    default: return { dotClassName: 'bg-muted border-border', connectorClassName: 'bg-border', badgeVariant: 'outline', label: 'Aucun' };
+  }
+};
+
+
+const CommentCard: React.FC<{ comment: Comment; className?: string; isSearchResult?: boolean }> = ({ comment, className, isSearchResult }) => {
+  const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
+  return (
+    <div className={cn(
+      "flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72 transition-all duration-150",
+      isSearchResult && "ring-2 ring-primary border-primary shadow-primary/30",
+      className
+    )}>
+      <Avatar className="h-8 w-8 flex-shrink-0">
+        <AvatarImage src={comment.avatarUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
+        <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-foreground truncate">{comment.userName}</p>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </p>
+         {comment.prospectionStatusAtEvent && (
+          <Badge variant={statusColors.badgeVariant} className="mt-1.5 text-xs px-2 py-0.5">
+            Statut: {statusColors.label}
+          </Badge>
+        )}
+        <p className="text-sm text-foreground/80 whitespace-pre-line mt-1.5 break-words">{comment.text}</p>
+        {comment.imageUrl && (
+          <div className="mt-2 rounded-md overflow-hidden border border-border/40 w-full max-w-xs">
+            <Image src={comment.imageUrl} alt="Image de commentaire" width={300} height={200} className="object-cover" data-ai-hint="comment attachment" />
+          </div>
+        )}
+        {comment.fileUrl && (
+          <div className="mt-2">
+            <a
+              href={comment.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {comment.fileName || 'Télécharger le fichier'}
+            </a>
+          </div>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground mt-0.5">
-        {new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </p>
-      <p className="text-sm text-foreground/80 whitespace-pre-line mt-1.5 break-words">{comment.text}</p>
-      {comment.imageUrl && (
-        <div className="mt-2 rounded-md overflow-hidden border border-border/40 w-full max-w-xs">
-          <Image src={comment.imageUrl} alt="Image de commentaire" width={300} height={200} className="object-cover" data-ai-hint="comment attachment" />
-        </div>
-      )}
-      {comment.fileUrl && (
-        <div className="mt-2">
-          <a
-            href={comment.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {comment.fileName || 'Télécharger le fichier'}
-          </a>
-        </div>
-      )}
     </div>
-  </div>
-);
+  );
+};
 
 
 const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
     const [timelineSearchTerm, setTimelineSearchTerm] = React.useState('');
     const statusInfo = getProspectionStatusBadgeInfo(dealer.prospectionStatus);
 
-    const sortedComments = React.useMemo(() => 
+    const sortedComments = React.useMemo(() =>
         (dealer.comments || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [dealer.comments]);
 
     const filteredComments = React.useMemo(() => {
         if (!timelineSearchTerm.trim()) return sortedComments;
         const lowerSearchTerm = timelineSearchTerm.toLowerCase();
-        return sortedComments.filter(comment => 
+        return sortedComments.filter(comment =>
             comment.text.toLowerCase().includes(lowerSearchTerm) ||
             comment.userName.toLowerCase().includes(lowerSearchTerm) ||
+            (comment.prospectionStatusAtEvent && getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent).label.toLowerCase().includes(lowerSearchTerm)) ||
             new Date(comment.date).toLocaleDateString().includes(lowerSearchTerm)
         );
     }, [sortedComments, timelineSearchTerm]);
@@ -167,40 +189,42 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
     const [isDragging, setIsDragging] = React.useState(false);
     const [startX, setStartX] = React.useState(0);
     const [scrollLeftStart, setScrollLeftStart] = React.useState(0);
-    const DRAG_SPEED_MULTIPLIER = 1.5; // Adjust for desired drag speed
+    const DRAG_SPEED_MULTIPLIER = 1.5;
 
     const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const el = timelineContainerRef.current;
         if (!el) return;
-        
+
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
         setStartX(e.pageX);
         setScrollLeftStart(el.scrollLeft);
-        document.body.style.userSelect = 'none'; // Prevent text selection during drag
+        document.body.style.userSelect = 'none';
         el.style.cursor = 'grabbing';
     }, []);
 
     const onPointerMove = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-        if (!isDragging) return;
+        if (!isDragging || !timelineContainerRef.current) return;
+        e.preventDefault(); // Prevent text selection during drag
         const el = timelineContainerRef.current;
-        if (!el) return;
-
         const deltaX = e.pageX - startX;
         el.scrollLeft = scrollLeftStart - (deltaX * DRAG_SPEED_MULTIPLIER);
     }, [isDragging, startX, scrollLeftStart, DRAG_SPEED_MULTIPLIER]);
 
     const onPointerUpOrCancel = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-        if (!isDragging) return;
+        if (!isDragging || !timelineContainerRef.current) return;
         const el = timelineContainerRef.current;
-        if (!el) return;
-
-        el.releasePointerCapture(e.pointerId);
+        try {
+          el.releasePointerCapture(e.pointerId);
+        } catch (error) {
+          // In some cases, the pointer capture might have already been released (e.g., if element is removed from DOM)
+          // console.warn("Failed to release pointer capture:", error);
+        }
         setIsDragging(false);
-        document.body.style.userSelect = 'auto'; // Re-enable text selection
+        document.body.style.userSelect = 'auto';
         el.style.cursor = 'grab';
     }, [isDragging]);
-    
+
     return (
   <Tabs defaultValue="details" className="w-full">
     <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4 bg-muted/50 p-1 h-auto">
@@ -266,8 +290,8 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <CardContent>
                 <div className="mb-4 relative">
                     <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher dans la timeline (texte, nom, date)..." 
+                    <Input
+                        placeholder="Rechercher dans la timeline (texte, nom, date, statut)..."
                         value={timelineSearchTerm}
                         onChange={(e) => setTimelineSearchTerm(e.target.value)}
                         className="pl-10 bg-input/50 focus:bg-input border-border/70"
@@ -281,47 +305,53 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 ) : (
                     <div
                         ref={timelineContainerRef}
-                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none"
+                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10"
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
                         onPointerCancel={onPointerUpOrCancel}
-                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Prevent text selection during drag
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }}
                     >
                         {/* Timeline central line */}
                         <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2 z-0"></div>
-                        
+
                         {/* Container for comment cards - this needs to be wide enough to scroll */}
                         <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10">
-                            {filteredComments.map((comment, index) => (
-                                <div 
-                                    key={index} 
+                            {filteredComments.map((comment, index) => {
+                                const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
+                                return (
+                                <div
+                                    key={index}
                                     className={cn(
                                         "relative flex items-center group",
-                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8" 
+                                        index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8"
                                     )}
                                 >
-                                    <CommentCard 
-                                        comment={comment} 
+                                    <CommentCard
+                                        comment={comment}
                                         className={cn(
                                             "shadow-xl",
                                             index % 2 === 0 ? "mb-4" : "mt-4"
                                         )}
+                                        isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
                                     <div className={cn(
-                                        "w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity",
+                                        "w-px opacity-70 group-hover:opacity-100 transition-opacity",
+                                        timelineStatusColors.connectorClassName,
                                         index % 2 === 0 ? "h-8" : "h-8"
                                     )}></div>
-                                    <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
-                                                    group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
+                                    <div className={cn(
+                                      "w-4 h-4 rounded-full border-2 border-background shadow-md z-10 group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150",
+                                      timelineStatusColors.dotClassName
+                                    )}></div>
                                     <div className={cn(
                                         "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
-                                        index % 2 === 0 ? "mt-2" : "mb-2" 
+                                        index % 2 === 0 ? "mt-2" : "mb-2"
                                     )}>
                                         {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                          <div className="h-1" /> {/* Ensures scrollbar has some space if needed */}
                     </div>
@@ -387,5 +417,9 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 )};
 
 export default DealerTabsContent;
+
+
+type BadgeProps = React.HTMLAttributes<HTMLDivElement> &
+  import("class-variance-authority").VariantProps<typeof import("@/components/ui/badge").badgeVariants>;
 
     

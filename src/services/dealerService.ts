@@ -2,9 +2,10 @@
 // src/services/dealerService.ts
 'use server';
 
-import { db, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
+import { db, storage, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
 import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, MethanisationSite, NewMethanisationSiteData, AppEntity } from '@/types';
-import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Helper function to convert Firestore document data to Dealer type
 const mapDocToDealer = (docId: string, data: any): Dealer => {
@@ -23,6 +24,9 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
     date: comment.date instanceof Timestamp ? comment.date.toDate().toISOString() : (comment.date || new Date().toISOString()),
     userName: comment.userName || 'Unknown User',
     text: comment.text || '',
+    imageUrl: comment.imageUrl,
+    fileUrl: comment.fileUrl,
+    fileName: comment.fileName,
   })) : [];
 
 
@@ -180,24 +184,30 @@ export async function addDealer(dealerData: NewDealerData): Promise<Dealer | nul
       dataToSave.geoLocation = null;
     }
 
+    // Initialize comments from initialCommentText or ensure it's an array
+    const initialCommentsArray: Comment[] = [];
     if (dealerData.initialCommentText && dealerData.initialCommentText.trim() !== '') {
-        dataToSave.comments = [{
-            userName: 'Admin ManuRob', 
-            date: Timestamp.now(), 
+        initialCommentsArray.push({
+            userName: 'Admin ManuRob', // Default user for initial comment
+            date: Timestamp.now().toDate().toISOString(), 
             text: dealerData.initialCommentText.trim(),
-        }];
-    } else if (!dealerData.comments) { // Ensure comments is an array if not provided
-        dataToSave.comments = [];
+        });
     }
-    delete dataToSave.initialCommentText; 
+    // Ensure comments is always an array, even if initialCommentText is empty
+    dataToSave.comments = initialCommentsArray;
+    delete dataToSave.initialCommentText;
 
 
     const arrayFields: (keyof NewDealerData)[] = ['servicesOffered', 'tractorBrands', 'machineTypes', 'galleryUris', 'documentUris', 'relatedProspectIds', 'relatedSiteIds'];
     arrayFields.forEach(field => {
-        if (!dataToSave[field]) {
+        if (!dataToSave[field] || !Array.isArray(dataToSave[field])) { 
             dataToSave[field] = [];
         }
     });
+    
+    dataToSave.tractorBrands = Array.isArray(dealerData.tractorBrands) ? dealerData.tractorBrands : [];
+    dataToSave.machineTypes = Array.isArray(dealerData.machineTypes) ? dealerData.machineTypes : [];
+
 
     const docRef = await addDoc(dealersCol, dataToSave);
     const newDocSnap = await getDoc(docRef);
@@ -227,18 +237,45 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
     if (dataToUpdate.geoLocation) {
       updatePayload.geoLocation = new GeoPoint(dataToUpdate.geoLocation.lat, dataToUpdate.geoLocation.lng);
     } else if (dataToUpdate.hasOwnProperty('geoLocation') && dataToUpdate.geoLocation === undefined) {
-      updatePayload.geoLocation = null;
+      // If geoLocation is explicitly set to undefined (e.g., if address was cleared and not re-geocoded)
+      // you might want to set it to null in Firestore or remove it.
+      // For now, we'll let it pass through as is, or be omitted if not in dataToUpdate.
+      // If you want to explicitly set it to null: updatePayload.geoLocation = null;
     }
     
-    if (dataToUpdate.comments) {
+    // Convert comment dates back to Timestamps if they are strings
+    if (dataToUpdate.comments && Array.isArray(dataToUpdate.comments)) {
       updatePayload.comments = dataToUpdate.comments.map(comment => ({
         ...comment,
+        // Ensure date is Firestore Timestamp
         date: typeof comment.date === 'string' ? Timestamp.fromDate(new Date(comment.date)) : comment.date,
       }));
+    } else {
+        // If not providing comments in update, ensure they are not accidentally deleted
+        delete updatePayload.comments;
     }
+
     if (dataToUpdate.hasOwnProperty('initialCommentText')) {
-        delete updatePayload.initialCommentText;
+        delete updatePayload.initialCommentText; // This field is only for creation
     }
+    
+    // Ensure array fields are indeed arrays, even if empty, if they are part of the update
+    if (dataToUpdate.hasOwnProperty('tractorBrands')) {
+      updatePayload.tractorBrands = Array.isArray(dataToUpdate.tractorBrands) ? dataToUpdate.tractorBrands : [];
+    }
+    if (dataToUpdate.hasOwnProperty('machineTypes')) {
+      updatePayload.machineTypes = Array.isArray(dataToUpdate.machineTypes) ? dataToUpdate.machineTypes : [];
+    }
+    if (dataToUpdate.hasOwnProperty('servicesOffered')) {
+      updatePayload.servicesOffered = Array.isArray(dataToUpdate.servicesOffered) ? dataToUpdate.servicesOffered : [];
+    }
+     if (dataToUpdate.hasOwnProperty('galleryUris')) {
+      updatePayload.galleryUris = Array.isArray(dataToUpdate.galleryUris) ? dataToUpdate.galleryUris : [];
+    }
+    if (dataToUpdate.hasOwnProperty('documentUris')) {
+      updatePayload.documentUris = Array.isArray(dataToUpdate.documentUris) ? dataToUpdate.documentUris : [];
+    }
+
 
     await updateDoc(dealerRef, updatePayload);
     const updatedDocSnap = await getDoc(dealerRef);
@@ -251,6 +288,51 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
     throw error;
   }
 }
+
+export async function addCommentToDealer(dealerId: string, userName: string, text: string, file?: File): Promise<void> {
+  if (!firebaseConfigPresent || !db || !storage) {
+    console.warn("Firebase (Firestore or Storage) not configured. Cannot add comment.");
+    throw new Error("Firebase not configured.");
+  }
+  try {
+    const dealerRef = doc(db, 'dealers', dealerId);
+    const newCommentData: Partial<Comment> = { // Use Partial<Comment> for building the object
+      userName: userName,
+      text: text,
+      date: Timestamp.now().toDate().toISOString(), // Store as ISO string initially, convert to Timestamp for Firestore
+    };
+
+    if (file) {
+      const fileRef = storageRef(storage, `dealers/${dealerId}/comments/${Date.now()}-${file.name}`);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+      
+      if (file.type.startsWith('image/')) {
+        newCommentData.imageUrl = downloadURL;
+      } else {
+        newCommentData.fileUrl = downloadURL;
+        newCommentData.fileName = file.name;
+      }
+    }
+    
+    // Convert date to Firestore Timestamp before saving
+    const commentToSave = {
+        ...newCommentData,
+        date: Timestamp.fromDate(new Date(newCommentData.date as string))
+    };
+
+
+    await updateDoc(dealerRef, {
+      comments: arrayUnion(commentToSave),
+      updatedAt: serverTimestamp(), 
+    });
+
+  } catch (error) {
+    console.error(`Error adding comment to dealer ${dealerId}:`, error);
+    throw error;
+  }
+}
+
 
 export async function deleteDealer(id: string): Promise<void> {
   if (!firebaseConfigPresent || !db) {
@@ -321,7 +403,10 @@ export async function addLoadixUnit(unitData: NewLoadixUnitData): Promise<Loadix
     }
     
     if (unitData.purchaseDate) dataToSave.purchaseDate = Timestamp.fromDate(new Date(unitData.purchaseDate));
+    else delete dataToSave.purchaseDate;
+
     if (unitData.lastMaintenanceDate) dataToSave.lastMaintenanceDate = Timestamp.fromDate(new Date(unitData.lastMaintenanceDate));
+    else delete dataToSave.lastMaintenanceDate;
 
 
     const docRef = await addDoc(unitsCol, dataToSave);
@@ -381,9 +466,9 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
     const dataToSave: any = {
       ...siteData,
       entityType: 'methanisation-site',
-      siteClients: [], // Initialize default empty arrays
-      technologies: [],
-      relatedDealerIds: [],
+      siteClients: Array.isArray(siteData.siteClients) ? siteData.siteClients : [], 
+      technologies: Array.isArray(siteData.technologies) ? siteData.technologies : [],
+      relatedDealerIds: Array.isArray(siteData.relatedDealerIds) ? siteData.relatedDealerIds : [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -393,7 +478,10 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
     } else {
       dataToSave.geoLocation = null;
     }
+
     if (siteData.startDate) dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
+    else delete dataToSave.startDate;
+
 
     const docRef = await addDoc(sitesCol, dataToSave);
     const newDocSnap = await getDoc(docRef);

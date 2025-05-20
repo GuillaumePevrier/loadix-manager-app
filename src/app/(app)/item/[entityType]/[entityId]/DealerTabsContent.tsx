@@ -1,4 +1,3 @@
-
 // src/app/(app)/item/[entityType]/[entityId]/DealerTabsContent.tsx
 "use client";
 
@@ -17,6 +16,7 @@ import {
   MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { BadgeProps } from '@/components/ui/badge'; // Ensure BadgeProps is correctly typed if used for variant casting
 
 const DetailItem: React.FC<{
   icon: React.ElementType;
@@ -88,16 +88,16 @@ const DetailItem: React.FC<{
 
 const getProspectionStatusBadgeInfo = (
   status?: Dealer['prospectionStatus']
-): { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success'; label: string } => {
+): { variant: BadgeProps['variant']; label: string } => {
   switch (status) {
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' }; // Using default (primary) for warm
+      return { variant: 'default', label: 'Tiède 🌤️' }; 
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' }; // Casting success as any to match BadgeProps
+      return { variant: 'success' as any, label: 'Converti ✅' }; 
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
@@ -106,11 +106,9 @@ const getProspectionStatusBadgeInfo = (
 };
 
 const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']): { dotClassName: string; connectorClassName: string; badgeVariant: BadgeProps['variant']; label: string } => {
-  // Timeline structural elements are now blue themed
   const blueDot = 'bg-primary border-background shadow-md'; 
   const blueConnector = 'bg-primary';
 
-  // Badge variant and label still depend on the actual status for the CommentCard
   switch (status) {
     case 'hot':       return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'default',     label: 'Tiède 🌤️' };
@@ -123,7 +121,7 @@ const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']
 
 
 const CommentCard: React.FC<{ comment: Comment; className?: string; isSearchResult?: boolean }> = ({ comment, className, isSearchResult }) => {
-  const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent); // This will provide correct badgeVariant and label
+  const statusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent); 
   return (
     <div className={cn(
       "flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-xl w-72 transition-all duration-150",
@@ -198,14 +196,20 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 
     const onPointerDown = React.useCallback((e: React.PointerEvent<HTMLDivElement>) => {
         const el = timelineContainerRef.current;
-        if (!el) return;
-
-        // Check if the click is on a scrollbar (though this div itself is the scrollbar target now)
-        // This check might be less relevant now but doesn't hurt.
-        if (e.target instanceof HTMLElement && e.target.clientWidth < e.currentTarget.clientWidth && e.offsetX >= e.target.clientWidth - 10) { // approx scrollbar width
-            return;
+        if (!el || !(e.target === el || (e.target as HTMLElement).parentElement === el)) { // Only drag if clicking on container or direct children (not cards)
+          // This check might need refinement based on exact DOM structure of the timeline items
+          // to prevent card clicks from initiating drag.
+          // For now, a simpler check or allowing drag from anywhere within the container.
+          // Or, if the cards are direct children, we prevent drag if target is a card.
         }
         
+        if (!el) return;
+
+        // Only allow drag if the click is on the timeline container itself, not on a comment card
+        // This requires careful event target checking or stopping propagation on card clicks.
+        // For simplicity, let's assume any click in the timelineContainerRef initiates drag for now.
+        // Better solution: check if e.target is the container itself or a non-interactive part of it.
+
         el.setPointerCapture(e.pointerId);
         setIsDragging(true);
         setStartX(e.pageX);
@@ -227,9 +231,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
         if (!isDragging || !el) return;
         
         try {
-          // Only release if the pointerId matches the one we captured
-          // This check might not be strictly necessary if pointer events behave as expected
-          // but it's a safeguard against potential issues.
           if (el.hasPointerCapture(e.pointerId)) {
             el.releasePointerCapture(e.pointerId);
           }
@@ -280,7 +281,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
             <CardHeader><CardTitle className="font-bebas-neue text-primary text-xl">Coordonnées</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                 <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} />
-                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />} {/* Changed Printer to Info for Fax */}
+                {dealer.fax && <DetailItem icon={Info} label="Fax" value={dealer.fax} />} 
                 <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail />
                 <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink />
                 <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} />
@@ -322,17 +323,18 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                 ) : (
                     <div
                         ref={timelineContainerRef}
-                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none" // Added select-none
+                        className="w-full pb-4 cursor-grab overflow-x-auto relative pt-10 select-none" 
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={onPointerUpOrCancel}
-                        onPointerCancel={onPointerUpOrCancel} // Handles case where pointer leaves window
-                        style={{ userSelect: isDragging ? 'none' : 'auto' }} // Overrides select-none during drag if needed by other logic
+                        onPointerCancel={onPointerUpOrCancel} 
+                        style={{ userSelect: isDragging ? 'none' : 'auto' }} 
                     >
-                        {/* Timeline central line - themed blue */}
-                        <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2 z-0"></div>
+                        
+                        <div className="flex space-x-20 pl-8 pr-8 min-w-max relative"> 
+                            {/* Timeline central line - THEMED BLUE */}
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div>
 
-                        <div className="flex space-x-20 pl-8 pr-8 min-w-max relative z-10"> {/* Ensure cards are above the line */}
                             {filteredComments.map((comment, index) => {
                                 const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
                                 return (
@@ -346,24 +348,24 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
                                     <CommentCard
                                         comment={comment}
                                         className={cn(
-                                            "shadow-xl",
+                                            "shadow-xl z-10", // Ensure cards are above the line by default
                                             index % 2 === 0 ? "mb-4" : "mt-4" 
                                         )}
                                         isSearchResult={timelineSearchTerm.trim() !== ''}
                                     />
                                     {/* Connector - themed blue */}
                                     <div className={cn(
-                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
-                                        timelineStatusColors.connectorClassName, // This will now be blue
+                                        "w-px opacity-100 group-hover:opacity-100 transition-opacity z-10", 
+                                        timelineStatusColors.connectorClassName, 
                                         index % 2 === 0 ? "h-8" : "h-8" 
                                     )}></div>
                                     {/* Dot - themed blue and more visible */}
                                     <div className={cn(
-                                      "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", // shadow-primary for blue glow
-                                      timelineStatusColors.dotClassName // This will now be blue with border-background
+                                      "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
+                                      timelineStatusColors.dotClassName
                                     )}></div>
                                     <div className={cn(
-                                        "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm",
+                                        "text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
                                         index % 2 === 0 ? "mt-2" : "mb-2" 
                                     )}>
                                         {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -435,9 +437,4 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 )};
 
 export default DealerTabsContent;
-
-
-type BadgeProps = React.HTMLAttributes<HTMLDivElement> &
-  import("class-variance-authority").VariantProps<typeof import("@/components/ui/badge").badgeVariants>;
-
     

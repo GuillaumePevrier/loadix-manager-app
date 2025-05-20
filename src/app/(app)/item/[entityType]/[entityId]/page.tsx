@@ -9,10 +9,10 @@ import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText as FileTextLucide, Download, Image as ImageIconLucide 
-} from 'lucide-react'; // Renamed icons
+  MessageCircle, Briefcase, Building2, MapIcon, CircleAlert, Printer, FileText as FileTextLucide, Download, Image as ImageIconLucide, Search as SearchIcon
+} from 'lucide-react'; 
 import DeleteEntityButton from './DeleteEntityButton';
-import Image from 'next/image'; // For next/image
+import Image from 'next/image'; 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input'; 
 
 interface ItemPageProps {
   params: {
@@ -90,10 +91,12 @@ const DetailItem: React.FC<{
   isEmail?: boolean;
   className?: string;
 }> = ({ icon: Icon, label, value, isLink, isEmail, className }) => {
-  if (!value && typeof value !== 'boolean' && typeof value !== 'number' && (Array.isArray(value) && value.length === 0)) return null;
+  if (!value && typeof value !== 'boolean' && typeof value !== 'number' && !(Array.isArray(value) && value.length > 0)) return null;
 
   const renderValue = () => {
-    if (React.isValidElement(value)) return value;
+    if (React.isValidElement(value)) {
+        return value;
+    }
     if (Array.isArray(value)) {
       if (value.length === 0) return <span className="text-muted-foreground italic text-sm">Non spécifié</span>;
       return (
@@ -155,11 +158,11 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' };
+      return { variant: 'default', label: 'Tiède 🌤️' }; 
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' };
+      return { variant: 'success' as any, label: 'Converti ✅' }; 
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
@@ -179,22 +182,22 @@ const getLoadixStatusBadgeVariant = (status?: LoadixUnit['status']): "default" |
 };
 
 
-const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
-  <div className="flex items-start space-x-3 p-3 bg-muted/30 rounded-md border border-border/20">
-    <Avatar className="h-8 w-8">
+const CommentCard: React.FC<{ comment: Comment; className?: string }> = ({ comment, className }) => (
+  <div className={cn("flex items-start space-x-3 p-3 bg-card/60 backdrop-blur-sm rounded-md border border-border/30 shadow-md w-72", className)}>
+    <Avatar className="h-8 w-8 flex-shrink-0">
       <AvatarImage src={comment.imageUrl || `https://placehold.co/40x40.png?text=${comment.userName.substring(0,1)}`} data-ai-hint="avatar placeholder" />
       <AvatarFallback>{comment.userName.substring(0, 2).toUpperCase()}</AvatarFallback>
     </Avatar>
-    <div className="flex-1">
+    <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground">{comment.userName}</p>
-        <p className="text-xs text-muted-foreground">
-          {new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        <p className="text-sm font-medium text-foreground truncate">{comment.userName}</p>
       </div>
-      <p className="text-sm text-foreground/80 whitespace-pre-line mt-1">{comment.text}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        {new Date(comment.date).toLocaleDateString()} {new Date(comment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </p>
+      <p className="text-sm text-foreground/80 whitespace-pre-line mt-1.5 break-words">{comment.text}</p>
       {comment.imageUrl && (
-        <div className="mt-2 rounded-md overflow-hidden border border-border/30 w-full max-w-xs">
+        <div className="mt-2 rounded-md overflow-hidden border border-border/40 w-full max-w-xs">
           <Image src={comment.imageUrl} alt="Image de commentaire" width={300} height={200} className="object-cover" data-ai-hint="comment attachment" />
         </div>
       )}
@@ -216,7 +219,24 @@ const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
 );
 
 const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
+    const [timelineSearchTerm, setTimelineSearchTerm] = React.useState('');
+
     const statusInfo = getProspectionStatusBadgeInfo(dealer.prospectionStatus);
+
+    const sortedComments = React.useMemo(() => 
+        (dealer.comments || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [dealer.comments]);
+
+    const filteredComments = React.useMemo(() => {
+        if (!timelineSearchTerm.trim()) return sortedComments;
+        const lowerSearchTerm = timelineSearchTerm.toLowerCase();
+        return sortedComments.filter(comment => 
+            comment.text.toLowerCase().includes(lowerSearchTerm) ||
+            comment.userName.toLowerCase().includes(lowerSearchTerm) ||
+            new Date(comment.date).toLocaleDateString().includes(lowerSearchTerm)
+        );
+    }, [sortedComments, timelineSearchTerm]);
+    
     return (
   <Tabs defaultValue="details" className="w-full">
     <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-4 bg-muted/50 p-1 h-auto">
@@ -275,25 +295,55 @@ const DealerTabsContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => {
 
     <TabsContent value="prospection" className="space-y-4">
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="font-bebas-neue text-primary text-xl">Suivi de Prospection</CardTitle>
                 {dealer.prospectionStatus && <Badge variant={statusInfo.variant as any} className="text-sm px-3 py-1">{statusInfo.label}</Badge>}
             </CardHeader>
             <CardContent>
-                {(!dealer.comments || dealer.comments.length === 0) ? (
-                    <p className="text-muted-foreground italic">Aucun commentaire de suivi pour le moment.</p>
+                <div className="mb-4 relative">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Rechercher dans la timeline (texte, nom, date)..." 
+                        value={timelineSearchTerm}
+                        onChange={(e) => setTimelineSearchTerm(e.target.value)}
+                        className="pl-10 bg-input/50 focus:bg-input border-border/70"
+                    />
+                </div>
+
+                {filteredComments.length === 0 ? (
+                    <p className="text-muted-foreground italic text-center py-6">
+                        {timelineSearchTerm ? `Aucun commentaire trouvé pour "${timelineSearchTerm}".` : 'Aucun commentaire de suivi pour le moment.'}
+                    </p>
                 ) : (
-                    <ScrollArea className="h-[300px] pr-3">
-                        <div className="space-y-3">
-                            {dealer.comments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((comment, index) => (
-                                <CommentCard key={index} comment={comment} />
-                            ))}
+                    <ScrollArea className="w-full pb-4 pr-2"> {/* Added pr-2 for scrollbar visibility */}
+                        <div className="relative flex items-start pt-10 pb-6 min-w-max"> {/* Added pt/pb for spacing */}
+                            {/* Timeline Axis */}
+                            <div className="absolute left-0 right-0 top-[calc(50%+20px)] h-1.5 bg-gradient-to-r from-border/50 via-border to-border/50 rounded-full -translate-y-1/2"></div>
+                            
+                            <div className="flex space-x-20 pl-8 pr-8"> {/* Increased spacing between items */}
+                                {filteredComments.map((comment, index) => (
+                                    <div key={index} className="relative flex flex-col items-center group pt-2"> {/* pt-2 to push card up slightly */}
+                                        {/* Comment Card positioned above the dot */}
+                                        <CommentCard comment={comment} className="mb-4 shadow-xl"/>
+                                        {/* Vertical connector */}
+                                        <div className="h-8 w-px bg-accent opacity-70 group-hover:opacity-100 transition-opacity"></div>
+                                        {/* Dot on the timeline */}
+                                        <div className="w-4 h-4 bg-accent rounded-full border-2 border-background shadow-md z-10
+                                                        group-hover:scale-125 group-hover:shadow-accent/50 transition-all duration-150"></div>
+                                        {/* Date below the dot */}
+                                        <div className="mt-3 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded-md shadow-sm backdrop-blur-sm">
+                                            {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
+                        <div className="h-1" /> {/* Ensures scrollbar appears correctly */}
                     </ScrollArea>
                 )}
-                 <Alert variant="default" className="mt-4 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                 <Alert variant="default" className="mt-6 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
                     <Info className="h-4 w-4 text-accent" />
-                    <AlertDescription>L'ajout de nouveaux commentaires avec médias sera possible via le formulaire de modification.</AlertDescription>
+                    <AlertDescription>L'ajout de nouveaux commentaires avec médias se fait via le formulaire de modification du concessionnaire.</AlertDescription>
                  </Alert>
             </CardContent>
         </Card>
@@ -416,8 +466,6 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
   </Card>
 );
 
-// Define TRACTOR_BRAND_OPTIONS and MACHINE_TYPE_OPTIONS if not already globally available or imported.
-// For example, if they are part of your types.ts or a constants file:
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 
 
@@ -498,10 +546,13 @@ export default async function ItemDetailPage({ params }: ItemPageProps) {
         <CircleAlert className="h-5 w-5 text-accent" />
         <AlertTitle className="font-bebas-neue text-lg text-accent">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
-            Les données des concessionnaires, engins et sites sont maintenant lues depuis Firebase Firestore.
-            Les fonctionnalités d'ajout sont connectées à Firestore. La modification des concessionnaires est implémentée. La modification et suppression pour Engins/Sites sont en cours.
+            Les données sont maintenant lues et écrites depuis/vers Firebase Firestore.
+            La modification des concessionnaires est implémentée. La modification et suppression pour Engins/Sites sont en cours.
         </AlertDescription>
     </Alert>
     </div>
   );
 }
+
+      
+    

@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench } from 'lucide-react';
+import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench, UploadCloud } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' },
@@ -31,6 +31,7 @@ const navItems = [
     subItems: [
         { href: '/forms/prevention-plan', label: 'Plan de Prévention', icon: FileText, tooltip: 'Formulaire Plan de Prévention' },
         { href: '/support', label: 'AI Support', icon: BotMessageSquare, tooltip: 'Outil Support AI' },
+        { href: '/tools/bulk-import', label: 'Import en Masse', icon: UploadCloud, tooltip: 'Import en Masse de Données' },
     ],
   },
   {
@@ -95,3 +96,4 @@ export default function SidebarNav() {
     </SidebarMenu>
   );
 }
+

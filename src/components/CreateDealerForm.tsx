@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { addDealer } from '@/services/dealerService'; 
 import type { NewDealerData, Comment, Dealer } from '@/types';
-import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define the structure for dealer form data, aligning with NewDealerData
@@ -32,8 +32,8 @@ interface DealerFormData {
   brandSign: string; 
   branchName: string; 
 
-  machineTypes: string[]; // Placeholder for multi-select
-  tractorBrands: string[]; // Placeholder for multi-select
+  machineTypesRaw: string; // Raw comma-separated string
+  tractorBrandsRaw: string; // Raw comma-separated string
   
   prospectionStatus: Dealer['prospectionStatus'];
   initialCommentText: string; 
@@ -55,33 +55,12 @@ const initialFormData: DealerFormData = {
   contactPerson: '',
   brandSign: '',
   branchName: '',
-  machineTypes: [],
-  tractorBrands: [],
+  machineTypesRaw: '',
+  tractorBrandsRaw: '',
   prospectionStatus: 'none',
   initialCommentText: '',
   geoLocation: undefined,
 };
-
-// Mock data for select options - these should ideally come from a config or API
-const machineTypeOptionsList = [
-  { value: 'tracteurs', label: 'Tracteurs' },
-  { value: 'moissonneuses-batteuses', label: 'Moissonneuses-batteuses' },
-  { value: 'chargeurs', label: 'Chargeurs' },
-  { value: 'ensileuses', label: 'Ensileuses' },
-  { value: 'ramasseuses-presses', label: 'Ramasseuses-presses' },
-  { value: 'recolte-betteraves', label: 'Récolte betteraves' },
-  { value: 'machines-a-traire', label: 'Machines à traire' },
-  { value: 'machines-a-vendanger', label: 'Machines à Vendanger' },
-];
-
-const tractorBrandOptionsList = [
-    { value: "john_deere", label: "John Deere" }, { value: "case_ih", label: "Case IH" },
-    { value: "new_holland", label: "New Holland" }, { value: "fendt", label: "Fendt" },
-    { value: "massey_ferguson", label: "Massey Ferguson" }, { value: "claas", label: "Claas" },
-    { value: "deutz_fahr", label: "Deutz-Fahr" }, { value: "valtra", label: "Valtra" },
-    // This list needs to be comprehensive
-];
-
 
 const CreateDealerForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -116,7 +95,7 @@ const CreateDealerForm: React.FC = () => {
   };
 
   const handleSelectChange = (name: keyof DealerFormData, value: string) => {
-    setFormData(prevData => ({ ...prevData, [name]: value as any })); // Cast as any for prospectionStatus union type
+    setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
   
   const handleGeocodeAddress = async () => {
@@ -195,8 +174,8 @@ const CreateDealerForm: React.FC = () => {
       contactPerson: formData.contactPerson,
       brandSign: formData.brandSign,
       branchName: formData.branchName,
-      machineTypes: formData.machineTypes, 
-      tractorBrands: formData.tractorBrands, 
+      machineTypes: formData.machineTypesRaw.split(',').map(s => s.trim()).filter(Boolean), 
+      tractorBrands: formData.tractorBrandsRaw.split(',').map(s => s.trim()).filter(Boolean), 
       prospectionStatus: formData.prospectionStatus,
       comments: commentsArray,
       geoLocation: formData.geoLocation,
@@ -272,9 +251,12 @@ const CreateDealerForm: React.FC = () => {
                     <Input id="department" name="department" value={formData.department} onChange={handleChange} placeholder="Ex: 75 - Paris ou Nord" />
                 </div>
                 <div>
-                    <Label htmlFor="machineTypes">Types de machines gérées</Label>
-                    <Input type="text" value={formData.machineTypes.join(', ')} onChange={(e) => handleMultiSelectChange('machineTypes', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="Tracteurs, Moissonneuses..."  />
-                    <div className="mt-1 text-xs text-muted-foreground">Séparez par des virgules. Sera un multi-select.</div>
+                    <Label htmlFor="machineTypesRaw">Types de machines gérées (séparées par virgule)</Label>
+                    <Input id="machineTypesRaw" name="machineTypesRaw" value={formData.machineTypesRaw} onChange={handleChange} placeholder="Tracteurs, Moissonneuses..."  />
+                     <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                        <Info className="h-4 w-4 text-accent" />
+                        <AlertDescription>Un composant de sélection multiple sera ajouté ultérieurement. Pour l'instant, séparez les valeurs par des virgules.</AlertDescription>
+                     </Alert>
                 </div>
             </div>
           </div>
@@ -309,9 +291,12 @@ const CreateDealerForm: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <Label htmlFor="tractorBrands">Marques d'engins représentées</Label>
-                    <Input type="text" value={formData.tractorBrands.join(', ')} onChange={(e) => handleMultiSelectChange('tractorBrands', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} placeholder="John Deere, Claas..." />
-                    <div className="mt-1 text-xs text-muted-foreground">Séparez par des virgules. Sera un multi-select.</div>
+                    <Label htmlFor="tractorBrandsRaw">Marques d'engins (séparées par virgule)</Label>
+                    <Input id="tractorBrandsRaw" name="tractorBrandsRaw" value={formData.tractorBrandsRaw} onChange={handleChange} placeholder="John Deere, Claas..." />
+                    <Alert variant="default" className="mt-2 text-xs bg-accent/10 border-accent/30 text-accent-foreground/80">
+                        <Info className="h-4 w-4 text-accent" />
+                        <AlertDescription>Un composant de sélection multiple sera ajouté ultérieurement. Pour l'instant, séparez les valeurs par des virgules.</AlertDescription>
+                     </Alert>
                 </div>
                 <div>
                     <Label htmlFor="brandSign">Enseigne</Label>
@@ -353,7 +338,7 @@ const CreateDealerForm: React.FC = () => {
               <AlertTitle className="font-semibold text-accent">Fonctionnalités à venir</AlertTitle>
               <AlertDescription className="text-xs">
                 La galerie d'images, la gestion des documents et la liaison avec d'autres entités (clients, sites) seront ajoutées ultérieurement.
-                Les champs pour "Types de machines" et "Marques d'engins" seront améliorés avec des sélections multiples et affichage en tags.
+                Les champs pour "Types de machines" et "Marques d'engins" seront améliorés avec des sélections multiples dédiées.
               </AlertDescription>
             </Alert>
           </div>
@@ -396,7 +381,7 @@ const CreateDealerForm: React.FC = () => {
         )}
       </div>
       <p className="text-xs text-muted-foreground mt-2 text-center">
-        Note: Le géocodage nécessite l'activation de l'API Google Geocoding.
+        Note: Le géocodage est actuellement simulé. L'intégration réelle de l'API Google Geocoding est nécessaire pour une conversion d'adresse précise.
       </p>
     </div>
   );

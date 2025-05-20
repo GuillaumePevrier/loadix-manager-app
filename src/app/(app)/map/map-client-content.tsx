@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import type { AppEntity, EntityType, Dealer, LoadixUnit, MethanisationSite } from '@/types'; // Client removed
+import type { AppEntity, EntityType, Dealer, LoadixUnit, MethanisationSite } from '@/types';
 import dynamic from 'next/dynamic';
 
 import { Button } from '@/components/ui/button';
@@ -55,7 +55,7 @@ const entityTypeTranslations: Record<EntityType, string> = {
 const entityPinColors: Record<EntityType, { background: string; glyphColor: string; borderColor?: string }> = {
     'dealer': { background: "hsl(var(--primary))", glyphColor: "hsl(var(--primary-foreground))", borderColor: "hsl(var(--primary-foreground))" }, // Blue
     'loadix-unit': { background: "hsl(var(--destructive))", glyphColor: "hsl(var(--destructive-foreground))", borderColor: "hsl(var(--destructive-foreground))" }, // Red
-    'methanisation-site': { background: "hsl(var(--secondary))", glyphColor: "hsl(var(--secondary-foreground))", borderColor: "hsl(var(--secondary-foreground))" }, // Green (using accent for now)
+    'methanisation-site': { background: "hsl(var(--accent))", glyphColor: "hsl(var(--accent-foreground))", borderColor: "hsl(var(--accent-foreground))" }, // Violet (using accent for this)
 };
 
 
@@ -131,7 +131,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
-    setIsSearchFocused(false);
+    setIsSearchFocused(false); // Close search results when an entity is selected
   };
 
   const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'methanisation-site'];
@@ -188,17 +188,17 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             defaultCenter={{ lat: 46.2276, lng: 2.2137 }} // Centered on France
             defaultZoom={6}
             gestureHandling={'greedy'}
-            disableDefaultUI={true} // UI controls (zoom, etc.) will be custom or managed by sheet
-            mapId="loadixManagerMainMap"
+            disableDefaultUI={true}
+            mapId="loadixManagerMainMap" // It's good practice to provide a mapId
             style={{ width: '100%', height: '100%' }}
           >
             {entitiesForMarkers.map((entity) => {
-              if (entity.geoLocation && entity.geoLocation.latitude && entity.geoLocation.longitude) {
+              if (entity.geoLocation && entity.geoLocation.lat && entity.geoLocation.lng) {
                 const pinStyle = entityPinColors[entity.entityType] || entityPinColors['dealer'];
                 return (
                   <AdvancedMarker
                     key={entity.id}
-                    position={{ lat: entity.geoLocation.latitude, lng: entity.geoLocation.longitude }}
+                    position={{ lat: entity.geoLocation.lat, lng: entity.geoLocation.lng }}
                     onClick={() => handleEntityClick(entity)}
                     title={entity.name}
                   >
@@ -226,6 +226,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
+                  // onBlur={() => setTimeout(() => setIsSearchFocused(false), 100)} // Add a small delay to allow click on results
                   className="pl-11 w-full h-12 text-base bg-background/70 border-border/60 focus:bg-background"
                 />
               </div>
@@ -348,7 +349,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     </CardContent>
                   </Card>
 
-                  {selectedEntity.geoLocation && selectedEntity.geoLocation.latitude && selectedEntity.geoLocation.longitude && (
+                  {selectedEntity.geoLocation && selectedEntity.geoLocation.lat && selectedEntity.geoLocation.lng && (
                     <Card className="bg-background/50 border-border/40">
                       <CardHeader>
                           <CardTitle className="text-lg font-bebas-neue text-primary">Localisation (Mini-carte)</CardTitle>

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Search, Filter, Building, Truck, Factory as SiteIcon } from 'lucide-react'; // Added icons for dropdown
+import { PlusCircle, Search, Filter, Building, Truck, Factory as SiteIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -30,10 +30,10 @@ const entityTypeTranslations: Record<EntityType, string> = {
   'methanisation-site': 'Site de Méthanisation',
 };
 
-const entityTypeBadgeColors: Record<EntityType, "default" | "secondary" | "destructive" | "outline"> = {
+const entityTypeBadgeColors: Record<EntityType, "default" | "secondary" | "destructive" | "outline" | null > = {
   'dealer': 'default',
   'loadix-unit': 'destructive',
-  'methanisation-site': 'outline',
+  'methanisation-site': 'secondary', // Changed to secondary for better distinction
 };
 
 const entityCreationRoutes: Record<EntityType, string> = {
@@ -54,7 +54,11 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
         entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entity.city && entity.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
         entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity.entityType === 'dealer' && (entity as any).tractorBrands?.some((brand: string) => brand.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (entity.entityType === 'dealer' && (entity as any).machineTypes?.some((type: string) => type.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (entity.entityType === 'dealer' && (entity as any).brandSign?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity.entityType === 'dealer' && (entity as any).branchName?.toLowerCase().includes(searchTerm.toLowerCase()));
       return typeMatch && searchMatch;
     });
   }, [initialEntities, searchTerm, selectedEntityType]);
@@ -76,7 +80,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Rechercher par nom, ville, ID, type..."
+            placeholder="Rechercher par nom, ville, ID, type, marque..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 w-full bg-input/50 border-border/70 focus:bg-input"
@@ -132,11 +136,14 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Nom</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Ville</TableHead>
-              <TableHead>Pays</TableHead>
-              {/* Add more common columns or adapt dynamically later */}
+              <TableHead className="w-[200px] min-w-[150px]">Nom</TableHead>
+              <TableHead className="min-w-[120px]">Type</TableHead>
+              <TableHead className="min-w-[100px]">Ville</TableHead>
+              <TableHead className="min-w-[100px]">Pays</TableHead>
+              <TableHead className="min-w-[150px]">Marques Tracteurs</TableHead>
+              <TableHead className="min-w-[150px]">Types Machines</TableHead>
+              <TableHead className="min-w-[120px]">Enseigne</TableHead>
+              <TableHead className="min-w-[120px]">Succursale</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -149,17 +156,35 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
                 >
                   <TableCell className="font-medium">{entity.name}</TableCell>
                   <TableCell>
-                    <Badge variant={entityTypeBadgeColors[entity.entityType] || 'default'}>
+                    <Badge variant={entityTypeBadgeColors[entity.entityType] || 'outline'} className={entityTypeBadgeColors[entity.entityType] === null ? "border-foreground/50 text-foreground/80" : ""}>
                       {entityTypeTranslations[entity.entityType] || entity.entityType}
                     </Badge>
                   </TableCell>
                   <TableCell>{entity.city}</TableCell>
                   <TableCell>{entity.country}</TableCell>
+                  <TableCell>
+                    {entity.entityType === 'dealer' && (entity as Dealer).tractorBrands && (entity as Dealer).tractorBrands!.length > 0
+                      ? (entity as Dealer).tractorBrands!.slice(0,2).map(brand => <Badge key={brand} variant="secondary" className="mr-1 mb-1 text-xs">{brand}</Badge>)
+                      : entity.entityType === 'dealer' ? <span className="text-muted-foreground text-xs italic">N/A</span> : ''}
+                    {(entity.entityType === 'dealer' && (entity as Dealer).tractorBrands && (entity as Dealer).tractorBrands!.length > 2) && <Badge variant="outline" className="text-xs">...</Badge>}
+                  </TableCell>
+                  <TableCell>
+                     {entity.entityType === 'dealer' && (entity as Dealer).machineTypes && (entity as Dealer).machineTypes!.length > 0
+                      ? (entity as Dealer).machineTypes!.slice(0,2).map(type => <Badge key={type} variant="secondary" className="mr-1 mb-1 text-xs">{type}</Badge>)
+                      : entity.entityType === 'dealer' ? <span className="text-muted-foreground text-xs italic">N/A</span> : ''}
+                    {(entity.entityType === 'dealer' && (entity as Dealer).machineTypes && (entity as Dealer).machineTypes!.length > 2) && <Badge variant="outline" className="text-xs">...</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    {entity.entityType === 'dealer' ? ((entity as Dealer).brandSign || <span className="text-muted-foreground text-xs italic">N/A</span>) : ''}
+                  </TableCell>
+                  <TableCell>
+                    {entity.entityType === 'dealer' ? ((entity as Dealer).branchName || <span className="text-muted-foreground text-xs italic">N/A</span>) : ''}
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   Aucune entité trouvée. Essayez d'ajuster vos filtres ou votre recherche.
                 </TableCell>
               </TableRow>

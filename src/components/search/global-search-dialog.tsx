@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Users, Settings, Briefcase, Truck, Factory, Map, BarChart3, BotMessageSquare, ExternalLink, HelpCircle, Building, UserCheck, Search, UploadCloud } from 'lucide-react'; // Added UploadCloud
+import { FileText, Users, Settings, Briefcase, Truck, Factory, Map, BarChart3, BotMessageSquare, ExternalLink, HelpCircle, Building, UserCheck, Search, UploadCloud } from 'lucide-react';
 
 interface SearchableItem {
   id: string;
@@ -72,44 +72,46 @@ export default function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearc
       (item.description && item.description.toLowerCase().includes(lowerCaseQuery)) ||
       (item.keywords && item.keywords.some(keyword => keyword.toLowerCase().includes(lowerCaseQuery)))
     );
-    setSearchResults(filteredResults.slice(0, 10)); 
+    setSearchResults(filteredResults.slice(0, 10));
   }, [searchQuery]);
 
   const handleResultClick = (href: string) => {
     router.push(href);
-    onOpenChange(false); 
+    onOpenChange(false);
   };
-  
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Escape') {
         onOpenChange(false);
       }
       if (event.key === 'Enter' && searchResults.length > 0) {
-        event.preventDefault(); 
+        event.preventDefault();
         handleResultClick(searchResults[0].href);
       }
     },
-    [searchResults, onOpenChange, router] 
+    [searchResults, onOpenChange, router]
   );
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="sm:max-w-lg md:max-w-2xl p-0 bg-card/80 backdrop-blur-xl border-border/60 shadow-2xl" // Adjusted max-width
+      <DialogContent
+        className="sm:max-w-lg md:max-w-2xl p-0 bg-card/80 backdrop-blur-xl border-border/60 shadow-2xl"
         onKeyDown={handleKeyDown}
       >
-        <div className="p-3 md:p-4 border-b border-border/30"> {/* Replaced DialogHeader */}
-          <Input
-            id="global-search-input"
-            type="search"
-            placeholder="Rechercher dans LOADIX Manager..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 md:h-12 text-base md:text-lg bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none placeholder:text-muted-foreground/70"
-            aria-label="Champ de recherche globale"
-          />
+        <div className="p-3 md:p-4 border-b border-border/30">
+          <div className="rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300">
+            <Input
+              id="global-search-input"
+              type="search"
+              placeholder="Rechercher dans LOADIX Manager..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 md:h-12 text-base md:text-lg bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none placeholder:text-muted-foreground/70 rounded-[calc(var(--radius)-1.5px)]"
+              aria-label="Champ de recherche globale"
+            />
+          </div>
         </div>
         <div className="border-t border-border/30">
           {searchQuery.trim() !== '' && searchResults.length === 0 && (

@@ -2,14 +2,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { AppEntity, EntityType, Dealer } from '@/types'; // Added Dealer explicitly
+import type { AppEntity, EntityType, Dealer } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Search, Filter, Building, Truck, Factory as SiteIcon } from 'lucide-react';
+import { PlusCircle, Search as SearchIcon, Filter, Building, Truck, Factory as SiteIcon } from 'lucide-react'; // Renamed Search to SearchIcon
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -75,17 +75,19 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
   };
 
   return (
-    <div className="flex flex-col h-full p-1 md:p-2"> {/* Reduced padding */}
-      <div className="flex flex-col sm:flex-row items-center mb-2 md:mb-3 gap-2"> {/* Added gap */}
-        <div className="relative flex-grow w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Rechercher par nom, ville, ID, type..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full bg-input/50 border-border/70 focus:bg-input h-10 text-sm" // Adjusted size
-          />
+    <div className="flex flex-col h-full p-1 md:p-2">
+      <div className="flex flex-col sm:flex-row items-center mb-2 md:mb-3 gap-2">
+        <div className="relative flex-grow w-full sm:w-auto rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300">
+          <div className="relative flex items-center">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Rechercher par nom, ville, ID, type..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none h-10 text-sm rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
+            />
+          </div>
         </div>
         <div className="flex items-center w-full sm:w-auto flex-shrink-0">
           <Filter className="h-4 w-4 text-muted-foreground mr-2 hidden sm:block" />
@@ -93,7 +95,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
             value={selectedEntityType}
             onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
           >
-            <SelectTrigger className="w-full sm:w-[200px] bg-input/50 border-border/70 focus:bg-input h-10 text-sm"> {/* Adjusted size */}
+            <SelectTrigger className="w-full sm:w-[200px] bg-input/50 border-border/70 focus:bg-input h-10 text-sm">
               <SelectValue placeholder="Filtrer par type" />
             </SelectTrigger>
             <SelectContent>
@@ -109,7 +111,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="default" className="w-full sm:w-auto h-10 text-sm flex-shrink-0"> {/* Adjusted size */}
+            <Button variant="default" className="w-full sm:w-auto h-10 text-sm flex-shrink-0">
               <PlusCircle className="mr-2 h-4 w-4" />
               Créer une fiche
             </Button>
@@ -133,7 +135,7 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
         </DropdownMenu>
       </div>
 
-      <ScrollArea className="flex-grow"> {/* Wrapped table in ScrollArea for better flexible height */}
+      <ScrollArea className="flex-grow">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

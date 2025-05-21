@@ -15,8 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe,
-  CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search, Filter,
-  Maximize, Minimize
+  CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search as SearchIcon, Filter, // Renamed Search to SearchIcon
+  Maximize, Minimize, ListChecks
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -65,7 +65,7 @@ const getEntityIcon = (type: EntityType, className?: string): React.ReactNode =>
     'loadix-unit': Truck,
     'methanisation-site': Factory,
   };
-  const IconComponent = icons[type] || Info;
+  const IconComponent = icons[type] || ListChecks; // Default to ListChecks if type is unknown
   return <IconComponent className={className || "h-5 w-5"} />;
 };
 
@@ -131,7 +131,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const handleEntityClick = (entity: AppEntity) => {
     setSelectedEntity(entity);
     setIsSheetOpen(true);
-    setIsSearchFocused(false); 
+    setIsSearchFocused(false);
   };
 
   const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'methanisation-site'];
@@ -185,11 +185,11 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
       <div className="relative h-full w-full" ref={mapContainerRef}>
         <div className="absolute inset-0 z-0">
           <Map
-            defaultCenter={{ lat: 46.2276, lng: 2.2137 }} 
+            defaultCenter={{ lat: 46.2276, lng: 2.2137 }}
             defaultZoom={6}
             gestureHandling={'greedy'}
             disableDefaultUI={true}
-            mapId="loadixManagerMainMap" 
+            mapId="loadixManagerMainMap"
             style={{ width: '100%', height: '100%' }}
           >
             {entitiesForMarkers.map((entity) => {
@@ -215,19 +215,21 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </Map>
         </div>
 
-        <div className="absolute top-2 md:top-3 left-1/2 z-20 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0"> {/* Responsive width and padding */}
+        <div className="absolute top-2 md:top-3 left-1/2 z-20 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0">
           <Card className="p-2 md:p-3 bg-card/80 backdrop-blur-xl rounded-lg md:rounded-xl shadow-xl border border-border/50">
             <div className="flex flex-col sm:flex-row items-center gap-2">
-              <div className="relative flex-grow w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Rechercher..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  className="pl-9 w-full h-10 text-sm md:h-11 md:text-base bg-background/70 border-border/60 focus:bg-background"
-                />
+              <div className="relative flex-grow w-full rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300">
+                <div className="relative flex items-center">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Rechercher..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    className="pl-9 w-full h-10 text-sm md:h-11 md:text-base bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
+                  />
+                </div>
               </div>
               <div className="flex items-center w-full sm:w-auto gap-2">
                 <Select

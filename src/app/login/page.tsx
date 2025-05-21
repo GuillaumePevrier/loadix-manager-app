@@ -20,10 +20,10 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/'); // Redirect to dashboard if already logged in
+    if (!authIsLoading && isAuthenticated) {
+      router.replace('/'); // Redirect to dashboard if already logged in and auth check is complete
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, authIsLoading, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,11 +36,13 @@ export default function LoginPage() {
     if (success) {
       router.replace('/'); // Redirect to dashboard or intended page
     } else {
-      setError('Échec de la connexion. Veuillez vérifier vos identifiants.');
+      // More specific error messages can be set based on Firebase error codes if propagated from login function
+      setError('Échec de la connexion. Veuillez vérifier vos identifiants ou réessayez.');
     }
   };
 
-  if (authIsLoading || isAuthenticated) { // Show loader or nothing if redirecting
+  // Show loader if auth state is loading or if already authenticated and redirecting
+  if (authIsLoading || (!authIsLoading && isAuthenticated)) { 
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

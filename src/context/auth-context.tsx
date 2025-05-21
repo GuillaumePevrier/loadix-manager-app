@@ -3,20 +3,28 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Keep useRouter if redirects are handled here, though (app)/layout handles it too
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, // Renamed to avoid conflict with local signOut
+  onAuthStateChanged,
+  type User as FirebaseUser 
+} from 'firebase/auth';
+import { app, auth as firebaseAuthInstance, allConfigPresent as firebaseConfigured } from '@/lib/firebase'; // Ensure auth is exported from firebase.ts
 
 interface User {
   id: string;
-  email: string;
-  name: string;
-  avatarUrl?: string;
+  email: string | null; // Firebase email can be null
+  name: string | null; // Firebase displayName can be null
+  avatarUrl?: string | null; // Firebase photoURL can be null
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<boolean>; // Password optional for now
+  login: (email: string, password?: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -25,65 +33,82 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start true to check localStorage
+  const [isLoading, setIsLoading] = useState(true); // Start true to wait for Firebase auth check
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // This effect runs once on mount to check persisted auth state
-    try {
-      const storedAuth = localStorage.getItem('isAuthenticated');
-      const storedUser = localStorage.getItem('user');
-      if (storedAuth === 'true' && storedUser) {
-        setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error("Failed to load user from localStorage", error);
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('user');
+    if (!firebaseConfigured || !firebaseAuthInstance) {
+      console.warn("Firebase Auth is not configured. Authentication will not work.");
+      setIsLoading(false);
+      setIsAuthenticated(false);
+      setUser(null);
+      return;
     }
-    setIsLoading(false);
-  }, []);
+
+    const unsubscribe = onAuthStateChanged(firebaseAuthInstance, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in
+        const appUser: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || firebaseUser.email || 'Utilisateur', // Fallback for name
+          avatarUrl: firebaseUser.photoURL,
+        };
+        setUser(appUser);
+        setIsAuthenticated(true);
+      } else {
+        // User is signed out
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setIsLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []); // router is not needed here as redirection is handled by layouts
 
   const login = useCallback(async (email: string, password?: string): Promise<boolean> => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // For now, any login is successful
-    const dummyUser: User = {
-      id: 'simulated-user-id',
-      email: email,
-      name: 'Admin ManuRob', // Placeholder name
-      avatarUrl: 'https://placehold.co/100x100.png',
-    };
-    setUser(dummyUser);
-    setIsAuthenticated(true);
-    try {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('user', JSON.stringify(dummyUser));
-    } catch (error) {
-      console.error("Failed to save user to localStorage", error);
+    if (!firebaseConfigured || !firebaseAuthInstance) {
+      console.error("Firebase Auth is not configured. Cannot log in.");
+      return false;
     }
-    setIsLoading(false);
-    return true;
-  }, []);
+    if (!password) {
+      console.error("Password is required for email/password login.");
+      return false;
+    }
+
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(firebaseAuthInstance, email, password);
+      // onAuthStateChanged will handle setting user and isAuthenticated state
+      // router.replace('/'); // Redirection can be handled by the page or (app)/layout
+      setIsLoading(false);
+      return true;
+    } catch (error: any) {
+      console.error('Firebase Login Error:', error.code, error.message);
+      setIsLoading(false);
+      // Potentially set an error state here to display to the user on the login page
+      return false;
+    }
+  }, []); // router is not needed here
 
   const logout = useCallback(async () => {
-    setIsLoading(true);
-    setUser(null);
-    setIsAuthenticated(false);
-    try {
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('user');
-    } catch (error) {
-      console.error("Failed to clear user from localStorage", error);
+    if (!firebaseConfigured || !firebaseAuthInstance) {
+      console.error("Firebase Auth is not configured. Cannot log out.");
+      return;
     }
-    // No need to await router.push if we set isLoading to false after
-    // router.push('/login'); // Redirection will be handled by the component calling logout or by the AuthenticatedAppLayout
-    setIsLoading(false);
-  }, []);
+    setIsLoading(true);
+    try {
+      await firebaseSignOut(firebaseAuthInstance);
+      // onAuthStateChanged will handle clearing user and isAuthenticated state
+      // router.replace('/login'); // Redirection can be handled by the page or (app)/layout
+    } catch (error) {
+      console.error('Firebase Logout Error:', error);
+    } finally {
+      setIsLoading(false); 
+    }
+  }, []); // router is not needed here
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, logout }}>

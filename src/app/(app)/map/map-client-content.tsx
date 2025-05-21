@@ -423,7 +423,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             disableDefaultUI={true}
             mapId="loadixManagerMainMapV2"
             className="w-full h-full"
-            onLoad={(ev) => mapRef.current = ev.map}
+            ref={mapRef}
           >
             {entitiesForMarkers.map((entity) => {
               if (entity.geoLocation && typeof entity.geoLocation.lat === 'number' && typeof entity.geoLocation.lng === 'number') {
@@ -435,7 +435,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     position={{ lat: entity.geoLocation.lat, lng: entity.geoLocation.lng }}
                     onClick={() => handleEntityClick(entity)}
                     title={entity.name}
-                    zIndexOffset={isHovered ? 1000 : undefined}
+ stackable={isHovered}
                   >
                     <Pin
                       background={isHovered ? `hsl(var(--primary) / 0.8)` : pinStyle.background}

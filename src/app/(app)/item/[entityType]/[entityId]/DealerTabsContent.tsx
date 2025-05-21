@@ -42,7 +42,7 @@ import type { BadgeProps } from '@/components/ui/badge';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { addCommentToDealer, deleteCommentFromDealer } from '@/services/dealerService';
-import Image from 'next/image'; // Keep for comment images
+import Image from 'next/image'; 
 
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
@@ -300,11 +300,11 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
         try {
             const userName = user?.name || "Utilisateur Anonyme";
             const currentStatus = dealer.prospectionStatus || 'none';
-            // File parameter removed from addCommentToDealer call
+            
             await addCommentToDealer(dealer.id, userName, newCommentText, currentStatus);
             toast({ title: 'Succès', description: 'Commentaire ajouté.' });
             setNewCommentText('');
-            // setNewCommentFile(null); // No longer needed
+            
             setIsAddCommentDialogOpen(false);
             onDataRefresh(); 
         } catch (err) {
@@ -424,7 +424,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                     <div className="relative flex-grow w-full">
                         <SearchIcon className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Rechercher (texte, nom, date, statut)..."
+                            placeholder="Rechercher commentaire (texte, nom, date, statut)..."
                             value={timelineSearchTerm}
                             onChange={(e) => setTimelineSearchTerm(e.target.value)}
                             className="pl-8 md:pl-10 bg-input/50 focus:bg-input border-border/70 h-9 md:h-10 text-sm"
@@ -453,11 +453,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         className="bg-input/70 focus:bg-input text-sm"
                                     />
                                 </div>
-                                {/* File input removed from this dialog */}
                             </div>
                             <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                                 <DialogClose asChild>
-                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); /* setNewCommentFile(null); */ }} className="w-full sm:w-auto">Annuler</Button>
+                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); }} className="w-full sm:w-auto">Annuler</Button>
                                 </DialogClose>
                                 <Button onClick={handleNewCommentSubmit} disabled={isAddingComment || !newCommentText.trim()} className="w-full sm:w-auto">
                                     {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
@@ -482,27 +481,29 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                         onPointerCancel={onPointerUpOrCancel} 
                         style={{ userSelect: isDragging ? 'none' : 'auto' }} 
                     >
-                        <div className="relative min-w-max"> {/* Parent for absolute line */}
-                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div> {/* The blue line */}
-                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10"> {/* Comments container */}
+                        <div className="relative min-w-max">
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div>
+                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10">
                                 {filteredComments.map((comment, index) => {
                                     const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
+                                    const isCurrentCommentHighlighted = timelineSearchTerm.trim() !== '' && 
+                                                                      filteredComments.some(fc => fc.date === comment.date && fc.text === comment.text && fc.userName === comment.userName);
                                     return (
                                     <div
-                                        key={comment.date + index} 
+                                        key={comment.date + index + comment.userName} 
                                         className={cn(
                                             "relative flex items-center group z-10", 
-                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8" 
+                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8" ,
+                                            isCurrentCommentHighlighted && "ring-2 ring-primary border-primary shadow-primary/30"
                                         )}
                                     >
                                         <CommentCard
                                             comment={comment}
                                             className={cn(
                                                 "shadow-xl", 
-                                                index % 2 === 0 ? "mb-5" : "mt-5",
-                                                isSearchResult && "ring-2 ring-primary border-primary shadow-primary/30"
+                                                index % 2 === 0 ? "mb-5" : "mt-5"
                                             )}
-                                            isSearchResult={timelineSearchTerm.trim() !== '' && filteredComments.some(fc => fc.date === comment.date && fc.text === comment.text)}
+                                            isSearchResult={isCurrentCommentHighlighted}
                                             onDelete={() => handleDeleteCommentRequest(comment)}
                                         />
                                     
@@ -536,7 +537,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                 <AlertDialogHeader>
                     <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible et supprimera également les fichiers associés s'il y en a.
+                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">

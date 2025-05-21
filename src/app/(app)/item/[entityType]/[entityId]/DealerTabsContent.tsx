@@ -6,7 +6,6 @@ import * as React from 'react';
 import type { Dealer, Comment } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types';
 import Link from 'next/link';
-// import Image from 'next/image'; // No longer needed for the map
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +44,6 @@ import { useToast } from '@/hooks/use-toast';
 import { addCommentToDealer, deleteCommentFromDealer } from '@/services/dealerService';
 import Image from 'next/image'; // Keep for comment images
 
-// Import Google Maps components
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
 
@@ -124,11 +122,11 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' }; 
+      return { variant: 'default', label: 'Tiède 🌤️' };
     case 'cold':
       return { variant: 'secondary', label: 'Froid ❄️' };
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' }; 
+      return { variant: 'success' as any, label: 'Converti ✅' };
     case 'lost':
       return { variant: 'outline', label: 'Perdu ❌' };
     default:
@@ -224,7 +222,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
 
     const [isAddCommentDialogOpen, setIsAddCommentDialogOpen] = React.useState(false);
     const [newCommentText, setNewCommentText] = React.useState('');
-    const [newCommentFile, setNewCommentFile] = React.useState<File | null>(null);
+    // File upload state removed as per new requirement for this dialog
     const [isAddingComment, setIsAddingComment] = React.useState(false);
 
     const [commentToDelete, setCommentToDelete] = React.useState<Comment | null>(null);
@@ -302,10 +300,11 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
         try {
             const userName = user?.name || "Utilisateur Anonyme";
             const currentStatus = dealer.prospectionStatus || 'none';
-            await addCommentToDealer(dealer.id, userName, newCommentText, currentStatus, newCommentFile || undefined);
+            // File parameter removed from addCommentToDealer call
+            await addCommentToDealer(dealer.id, userName, newCommentText, currentStatus);
             toast({ title: 'Succès', description: 'Commentaire ajouté.' });
             setNewCommentText('');
-            setNewCommentFile(null);
+            // setNewCommentFile(null); // No longer needed
             setIsAddCommentDialogOpen(false);
             onDataRefresh(); 
         } catch (err) {
@@ -454,20 +453,11 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         className="bg-input/70 focus:bg-input text-sm"
                                     />
                                 </div>
-                                <div>
-                                    <Label htmlFor="newCommentFileDialog">Pièce jointe (Optionnel)</Label>
-                                    <Input
-                                        id="newCommentFileDialog"
-                                        type="file"
-                                        onChange={(e) => setNewCommentFile(e.target.files ? e.target.files[0] : null)}
-                                        className="bg-input/70 focus:bg-input file:text-primary file:font-medium text-sm h-9"
-                                    />
-                                    {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier: {newCommentFile.name}</p>}
-                                </div>
+                                {/* File input removed from this dialog */}
                             </div>
                             <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                                 <DialogClose asChild>
-                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); setNewCommentFile(null); }} className="w-full sm:w-auto">Annuler</Button>
+                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); /* setNewCommentFile(null); */ }} className="w-full sm:w-auto">Annuler</Button>
                                 </DialogClose>
                                 <Button onClick={handleNewCommentSubmit} disabled={isAddingComment || !newCommentText.trim()} className="w-full sm:w-auto">
                                     {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
@@ -509,9 +499,10 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                             comment={comment}
                                             className={cn(
                                                 "shadow-xl", 
-                                                index % 2 === 0 ? "mb-5" : "mt-5" 
+                                                index % 2 === 0 ? "mb-5" : "mt-5",
+                                                isSearchResult && "ring-2 ring-primary border-primary shadow-primary/30"
                                             )}
-                                            isSearchResult={timelineSearchTerm.trim() !== ''}
+                                            isSearchResult={timelineSearchTerm.trim() !== '' && filteredComments.some(fc => fc.date === comment.date && fc.text === comment.text)}
                                             onDelete={() => handleDeleteCommentRequest(comment)}
                                         />
                                     
@@ -545,7 +536,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                 <AlertDialogHeader>
                     <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible.
+                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible et supprimera également les fichiers associés s'il y en a.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
@@ -613,4 +604,3 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
 
 export default DealerTabsContent;
     
-

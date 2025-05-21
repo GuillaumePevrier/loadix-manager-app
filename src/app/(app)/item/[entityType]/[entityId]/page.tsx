@@ -2,7 +2,7 @@
 "use client"; 
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation'; // Keep notFound if needed elsewhere, or remove
+import { useRouter, notFound } from 'next/navigation'; 
 import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types';
 import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ import {
   Building, User, Truck, Factory, MapPin,
   Phone, Mail, Globe, CalendarDays, Tag,
   Info, Hash, Power, ChevronsRight, Edit2,
-  CircleAlert, Loader2, Printer // Added Printer for Fax
+  CircleAlert, Loader2, Printer 
 } from 'lucide-react';
 import DeleteEntityButton from './DeleteEntityButton';
 import Image from 'next/image';
@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import DealerTabsContent from './DealerTabsContent';
-// import type { Metadata, ResolvingMetadata } from 'next'; // Commented out for client component
 
 interface ItemPageProps {
   params: {
@@ -29,8 +28,6 @@ interface ItemPageProps {
   };
 }
 
-// This function can remain here or be moved to utils if used elsewhere.
-// It's not dependent on client/server context by itself.
 const getEntityTypeDisplayName = (type: EntityType): string => {
   const names: Record<EntityType, string> = {
     dealer: 'Concessionnaire',
@@ -206,7 +203,7 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
 
 
 export default function ItemDetailPage({ params }: ItemPageProps) {
-  const { entityType, entityId } = params; // Access params directly
+  const { entityType, entityId } = params; 
   const [currentEntity, setCurrentEntity] = React.useState<AppEntity | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -232,7 +229,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
       } else if (entityType === 'methanisation-site') {
         fetchedEntity = await getMethanisationSiteById(entityId);
       } else {
-        console.warn(`ItemDetailPage: Unknown entity type: ${entityType}, rendering not found.`);
+        console.warn(`ItemDetailPage: Unknown entity type: ${entityType}, falling back to notFound.`);
         setError(`Type d'entité inconnu: ${entityType}`);
       }
 
@@ -246,7 +243,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [entityType, entityId]); // Removed params from dependency array as entityType & entityId are stable after initial destructuring
+  }, [entityType, entityId]); 
 
   React.useEffect(() => {
     fetchData();
@@ -280,14 +277,14 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     );
   }
 
-  if (!currentEntity) {
+  if (!currentEntity && !isLoading) { // Ensure not to show "not found" while still loading
     return (
         <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
             <Alert variant="destructive">
                 <CircleAlert className="h-5 w-5" />
                 <AlertTitle>Entité Non Trouvée</AlertTitle>
                 <AlertDescription>
-                    L'entité que vous recherchez n'a pas pu être trouvée.
+                    L'entité que vous recherchez (Type: {entityType}, ID: {entityId}) n'a pas pu être trouvée.
                 </AlertDescription>
             </Alert>
              <Button asChild variant="outline" className="mt-4">
@@ -299,6 +296,16 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
         </div>
     );
   }
+  
+  if (!currentEntity) { // Fallback if still no entity after loading checks.
+      return (
+           <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4 text-center">
+                <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm md:text-base text-muted-foreground">Préparation des données...</p>
+           </div>
+      )
+  }
+
 
   const entityTypeDisplay = getEntityTypeDisplayName(currentEntity.entityType);
   const editRoute = getEntityEditRoute(currentEntity.entityType, currentEntity.id);
@@ -358,9 +365,10 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
         <CircleAlert className="h-5 w-5 text-muted-foreground/70" />
         <AlertTitle className="font-bebas-neue text-md md:text-lg text-muted-foreground/80">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
-            Les données sont lues depuis Firebase Firestore. La modification et la suppression sont en cours d'implémentation pour tous les types.
+            Les données sont maintenant lues depuis Firebase Firestore. La modification et la suppression pour tous les types d'entités sont en cours d'implémentation.
         </AlertDescription>
     </Alert>
     </div>
   );
 }
+

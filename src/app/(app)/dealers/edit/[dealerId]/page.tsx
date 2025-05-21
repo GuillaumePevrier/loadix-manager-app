@@ -1,9 +1,9 @@
+
 // This is a client component
 "use client";
 
 import React, { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { useRouter }
-from 'next/navigation'; // Corrected: notFound is not typically used directly in client components for this case
+import { useRouter } from 'next/navigation';
 import { getDealerById, updateDealer, addCommentToDealer } from '@/services/dealerService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,10 +27,10 @@ import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { geocodeAddress } from '@/services/geocodingService'; // Import real geocoding service
+import { geocodeAddress } from '@/services/geocodingService'; 
 
 interface EditDealerPageProps {
-  params: Promise<{ // params is a Promise
+  params: Promise<{ 
     dealerId: string;
   }>;
 }
@@ -39,13 +39,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
-  const resolvedParams = React.use(paramsPromise); // Resolve the promise using React.use()
+  const resolvedParams = React.use(paramsPromise); 
   const { dealerId } = resolvedParams;
 
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
     tractorBrands: [],
     machineTypes: [],
-    comments: [],
+    // comments: [], // Comments are managed separately
     servicesOffered: [],
     galleryUris: [],
     documentUris: [],
@@ -55,7 +55,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [newCommentText, setNewCommentText] = useState('');
-  const [newCommentFile, setNewCommentFile] = useState<File | null>(null);
+  // File upload state for comments removed as per new requirement
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [currentDealerData, setCurrentDealerData] = useState<Dealer | null>(null);
 
@@ -63,7 +63,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [addressValidated, setAddressValidated] = useState<boolean | null>(null);
 
 
-  const fetchDealerData = async () => {
+  const fetchDealerData = React.useCallback(async () => { // Wrapped fetchDealerData in useCallback
     try {
       setLoading(true);
       setError(null);
@@ -95,7 +95,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           tractorBrands: dealerData.tractorBrands || [],
           prospectionStatus: dealerData.prospectionStatus || 'none',
           geoLocation: dealerData.geoLocation, 
-          comments: dealerData.comments || [],
+          // comments: dealerData.comments || [], // Not part of formData for update
           servicesOffered: dealerData.servicesOffered || [],
           galleryUris: dealerData.galleryUris || [],
           documentUris: dealerData.documentUris || [],
@@ -113,7 +113,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     } finally {
       setLoading(false);
     }
-  };
+  }, [dealerId]); // Added dealerId as a dependency
 
   useEffect(() => {
     if (dealerId) {
@@ -122,14 +122,13 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       setError("ID de concessionnaire manquant ou non résolu.");
       setLoading(false);
     }
-  }, [dealerId]);
+  }, [dealerId, fetchDealerData]); // Added fetchDealerData to dependency array
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (['address', 'city', 'postalCode', 'country'].includes(name)) {
         setAddressValidated(null); 
-        // Do not clear geoLocation here; re-validation will handle it
     }
   };
 
@@ -137,13 +136,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
 
-  const handleNewCommentFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setNewCommentFile(e.target.files[0]);
-    } else {
-      setNewCommentFile(null);
-    }
-  };
+  // handleNewCommentFileChange is removed as file uploads are removed from this form's comment addition
 
   const handleRealGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
@@ -158,7 +151,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsGeocoding(true);
     setAddressValidated(null);
     setError(null);
-    setFormData(prev => ({ ...prev, geoLocation: undefined })); // Clear previous geo on new attempt
+    setFormData(prev => ({ ...prev, geoLocation: undefined })); 
 
     const result = await geocodeAddress({
       address: formData.address,
@@ -202,14 +195,15 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       const userName = user?.name || "Utilisateur Anonyme";
       const currentStatus = formData.prospectionStatus || currentDealerData?.prospectionStatus || 'none';
 
-      await addCommentToDealer(dealerId, userName, newCommentText, currentStatus, newCommentFile || undefined);
+      // File parameter removed from addCommentToDealer call
+      await addCommentToDealer(dealerId, userName, newCommentText, currentStatus);
       toast({
         title: "Succès",
         description: "Commentaire ajouté avec succès.",
       });
       setNewCommentText('');
-      setNewCommentFile(null);
-      await fetchDealerData(); // Refresh comments
+      // setNewCommentFile(null); // No longer needed
+      await fetchDealerData(); 
     } catch (err) {
       console.error("Erreur lors de l'ajout du commentaire :", err);
       toast({
@@ -249,29 +243,21 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         throw new Error("L'ID du concessionnaire est manquant.");
       }
 
-      // Prepare data, ensuring geoLocation comes from formData if successfully re-geocoded
       const dataToUpdate: UpdateDealerData = {
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        comments: undefined, 
+        // comments: undefined, // Comments are managed separately
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
         galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
         documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
       };
       
-      // Ensure geoLocation is correctly handled:
-      // If address changed and validation was successful, use formData.geoLocation.
-      // If address didn't change, keep currentDealerData.geoLocation.
-      // If address changed and validation failed, geoLocation in formData would be undefined (cleared by handleRealGeocodeAddress), so this gets passed correctly.
       if (addressFieldsChanged && addressValidated === true) {
-        dataToUpdate.geoLocation = formData.geoLocation; // This is the new, validated location
+        dataToUpdate.geoLocation = formData.geoLocation; 
       } else if (!addressFieldsChanged) {
-        dataToUpdate.geoLocation = currentDealerData?.geoLocation; // Keep old if address not touched
+        dataToUpdate.geoLocation = currentDealerData?.geoLocation; 
       } else {
-        // Address changed, but validation not successful OR not re-attempted (but it was required by check above).
-        // formData.geoLocation would have been cleared by geocode attempt or if address parts changed.
-        // So, sending formData.geoLocation (which would be undefined) is correct to clear it.
         dataToUpdate.geoLocation = formData.geoLocation;
       }
 
@@ -551,16 +537,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 className="bg-input/70 focus:bg-input text-sm"
                             />
                         </div>
-                        <div>
-                            <Label htmlFor="newCommentFile">Pièce jointe (Image/Document)</Label>
-                            <Input
-                                id="newCommentFile"
-                                type="file"
-                                onChange={handleNewCommentFileChange}
-                                className="bg-input/70 focus:bg-input file:text-primary file:font-medium text-sm h-9"
-                            />
-                             {newCommentFile && <p className="text-xs text-muted-foreground mt-1">Fichier : {newCommentFile.name}</p>}
-                        </div>
+                        {/* File input removed */}
                         <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">
                             {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             {isAddingComment ? 'Ajout...' : 'Ajouter Suivi'}
@@ -603,3 +580,4 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     </div>
   );
 }
+

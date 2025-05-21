@@ -13,16 +13,17 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import {
   Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe,
   CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search as SearchIcon, Filter,
-  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLinkIcon
+  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLink as ExternalLinkIcon, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMap } from '@vis.gl/react-google-maps';
+// import { useMap } from '@vis.gl/react-google-maps'; // Removed useMap from here
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -32,7 +33,7 @@ const APIProvider = dynamic(() =>
   { ssr: false }
 );
 
-const MapComponent = dynamic(() => // Renamed to avoid conflict with global Map
+const MapComponent = dynamic(() => 
   import('@vis.gl/react-google-maps').then((mod) => mod.Map),
   { ssr: false }
 );
@@ -105,7 +106,7 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
 };
 
 const DealerDetailContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => ( <> <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} /> <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail /> <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink /> <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} /> {dealer.servicesOffered && dealer.servicesOffered.length > 0 && (<DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />)} </> );
-const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'success' : unit.status === 'maintenance' ? 'default' : unit.status === 'in_stock' ? 'secondary' : 'destructive'} className="text-xs">{LOADIX_STATUS_OPTIONS.find(opt => opt.value === unit.status)?.label || unit.status}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
+const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'success' as any : unit.status === 'maintenance' ? 'default' : unit.status === 'in_stock' ? 'secondary' : 'destructive'} className="text-xs">{LOADIX_STATUS_OPTIONS.find(opt => opt.value === unit.status)?.label || unit.status}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
 const MethanisationSiteDetailContent: React.FC<{ site: MethanisationSite }> = ({ site }) => ( <> <DetailItem icon={Info} label="Capacité" value={site.capacity} /> <DetailItem icon={User} label="Opérateur" value={site.operator} /> <DetailItem icon={CalendarDays} label="Date de mise en service" value={site.startDate ? new Date(site.startDate).toLocaleDateString() : undefined} /> </>);
 
 
@@ -121,7 +122,10 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const { toast } = useToast();
 
   const isMobile = useIsMobile();
-  const mapInstance = useMap(); // For programmatically controlling the map
+  
+  // State for map center and zoom, to control the map declaratively
+  const [mapCenter, setMapCenter] = useState<GeoLocation>({ lat: 46.2276, lng: 2.2137 }); // Default: France
+  const [mapZoom, setMapZoom] = useState(6); // Default zoom for overview
 
   const [userLocation, setUserLocation] = useState<GeoLocation | null>(null);
   const [locatingUser, setLocatingUser] = useState(false);
@@ -129,7 +133,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter states
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [regionFilter, setRegionFilter] = useState('');
+  const [regionFilter, setRegionFilter] = useState(''); // Placeholder, as region data isn't structured yet
   const [tractorBrandsFilter, setTractorBrandsFilter] = useState<string[]>([]);
   const [machineTypesFilter, setMachineTypesFilter] = useState<string[]>([]);
   const [brandSignFilter, setBrandSignFilter] = useState('');
@@ -159,7 +163,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         if (entity.entityType === 'dealer') {
           const dealer = entity as Dealer;
           if (departmentFilter && !dealer.department?.toLowerCase().includes(departmentFilter.toLowerCase())) return false;
-          // Region filter would require region data on dealer or complex lookup - skipping for now
           if (brandSignFilter && !dealer.brandSign?.toLowerCase().includes(brandSignFilter.toLowerCase())) return false;
           if (branchNameFilter && !dealer.branchName?.toLowerCase().includes(branchNameFilter.toLowerCase())) return false;
           if (tractorBrandsFilter.length > 0 && !tractorBrandsFilter.some(brand => dealer.tractorBrands?.includes(brand))) return false;
@@ -183,7 +186,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   ]);
 
   const searchResultsEntities = useMemo(() => {
-    if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused && !showAdvancedFilters) { // Hide if no active search/filter
+    if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused && !showAdvancedFilters) { 
         return [];
     }
     return entitiesForMarkers;
@@ -191,12 +194,16 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
 
 
   const handleEntityClick = (entity: AppEntity) => {
-    setIsSearchFocused(false); // Close search results list
+    setIsSearchFocused(false); 
     if (isMobile) {
       setSelectedEntity(entity);
       setIsSheetOpen(true);
     } else {
       setSelectedMarkerForInfoWindow(entity);
+      if (entity.geoLocation) {
+        setMapCenter(entity.geoLocation); // Center map on selected marker for InfoWindow
+        setMapZoom(15); // Zoom in
+      }
     }
   };
 
@@ -243,10 +250,8 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         const { latitude, longitude } = position.coords;
         const newLocation = { lat: latitude, lng: longitude };
         setUserLocation(newLocation);
-        if (mapInstance) {
-          mapInstance.panTo(newLocation);
-          mapInstance.setZoom(15);
-        }
+        setMapCenter(newLocation); // Update map center state
+        setMapZoom(15); // Update map zoom state
         setLocatingUser(false);
         toast({ title: "Position trouvée", description: "Carte centrée sur votre position."});
       },
@@ -278,8 +283,10 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
       <div className="relative h-full w-full" ref={mapContainerRef}>
         <div className="absolute inset-0 z-0">
           <MapComponent
-            defaultCenter={{ lat: 46.2276, lng: 2.2137 }} // France
-            defaultZoom={6}
+            center={mapCenter}
+            zoom={mapZoom}
+            onCenterChanged={(ev) => setMapCenter(ev.detail.center)} // Keep state in sync if user pans
+            onZoomChanged={(ev) => setMapZoom(ev.detail.zoom)}   // Keep state in sync if user zooms
             gestureHandling={'greedy'}
             disableDefaultUI={true}
             mapId="loadixManagerMainMapV2"
@@ -310,11 +317,11 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                 <Pin background={"#4285F4"} glyphColor={"#FFFFFF"} borderColor={"#FFFFFF"} />
               </AdvancedMarker>
             )}
-             {selectedMarkerForInfoWindow && !isMobile && (
+             {selectedMarkerForInfoWindow && !isMobile && selectedMarkerForInfoWindow.geoLocation && (
               <InfoWindow
                 position={selectedMarkerForInfoWindow.geoLocation}
                 onCloseClick={() => setSelectedMarkerForInfoWindow(null)}
-                pixelOffset={[0,-35]} // Adjust offset to position above marker pin
+                pixelOffset={[0,-35]} 
               >
                 <Card className="w-64 shadow-lg border-border/50 bg-card/90 backdrop-blur-md">
                   <CardHeader className="p-3">
@@ -354,6 +361,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
+                    // onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)} // Delay blur to allow click on results
                     className="pl-9 w-full h-10 text-sm md:h-11 md:text-base bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
                   />
                 </div>
@@ -515,7 +523,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </Button>
         </div>
 
-        {selectedEntity && isMobile && ( // Only use Sheet on mobile
+        {selectedEntity && isMobile && ( 
           <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setSelectedEntity(null); }}>
             <SheetContent
               side="bottom"
@@ -577,4 +585,3 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     </APIProvider>
   );
 }
-

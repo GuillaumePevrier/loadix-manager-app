@@ -19,8 +19,7 @@ import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-selec
 import {
   Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe as GlobeIcon,
   CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search as SearchIcon, Filter,
-  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLink as ExternalLinkIcon, Loader2,
-  ZoomIn, ZoomOut
+  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLink as ExternalLinkIcon, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -216,11 +215,9 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
               passesAdvancedFilters = false;
             }
           }
-          if (regionFilter && passesAdvancedFilters) { // only apply if previous filters passed
-            // Assuming region is part of address or a dedicated field we don't have yet
-            // For now, let's assume it might be in 'city' or 'address' for a simple text match
-            const searchableRegionText = `${dealer.address || ''} ${dealer.city || ''}`.toLowerCase();
-            if (!searchableRegionText.includes(regionFilter.toLowerCase())) {
+           if (regionFilter && passesAdvancedFilters) {
+            const entityRegion = ((dealer.address || '') + ' ' + (dealer.city || '')).toLowerCase(); // Simple text search for region for now
+            if (!entityRegion.includes(regionFilter.toLowerCase())) {
               passesAdvancedFilters = false;
             }
           }
@@ -283,18 +280,15 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     loadixStatusFilter, loadixModelFilter, siteCapacityFilter, siteOperatorFilter
   ]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (mapRef.current && entitiesForMarkers.length > 0) {
-      // Fit bounds only if the number of markers changed or primary filters changed
       if (entitiesForMarkers.length !== prevEntitiesForMarkersLength.current || 
           searchTerm !== prevSearchTerm.current || 
           selectedEntityType !== prevSelectedEntityType.current) {
             
-        if (entitiesForMarkers.length === 1) {
-          const singleMarkerLocation = entitiesForMarkers[0].geoLocation!;
-          mapRef.current.panTo(singleMarkerLocation);
-          // Optionally set a specific zoom for single marker
-          // mapRef.current.setZoom(15); 
+        if (entitiesForMarkers.length === 1 && entitiesForMarkers[0].geoLocation) {
+          mapRef.current.panTo(entitiesForMarkers[0].geoLocation);
+          // mapRef.current.setZoom(15); // Consider if auto-zoom for single is desired
         } else {
           const bounds = new google.maps.LatLngBounds();
           entitiesForMarkers.forEach(entity => {
@@ -302,14 +296,19 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
               bounds.extend(new google.maps.LatLng(entity.geoLocation.lat, entity.geoLocation.lng));
             }
           });
-          mapRef.current.fitBounds(bounds, 100); // 100px padding
+          if (!bounds.isEmpty()) {
+            mapRef.current.fitBounds(bounds, 100); // 100px padding
+          }
         }
       }
+    } else if (mapRef.current && entitiesForMarkers.length === 0 && (searchTerm !== prevSearchTerm.current || selectedEntityType !== prevSelectedEntityType.current)){
+      // Optionally reset to France view if filters result in no markers
+      // setMapCenter(FRANCE_CENTER);
+      // setMapZoom(FRANCE_ZOOM);
     }
     prevEntitiesForMarkersLength.current = entitiesForMarkers.length;
     prevSearchTerm.current = searchTerm;
     prevSelectedEntityType.current = selectedEntityType;
-
   }, [entitiesForMarkers, searchTerm, selectedEntityType]);
 
 
@@ -394,24 +393,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const handleResetViewToFrance = () => {
     setMapCenter(FRANCE_CENTER);
     setMapZoom(FRANCE_ZOOM);
-  };
-
-  const handleZoomIn = () => {
-    if (mapRef.current) {
-      const currentZoom = mapRef.current.getZoom();
-      if (currentZoom !== undefined) {
-        mapRef.current.setZoom(currentZoom + 1);
-      }
-    }
-  };
-
-  const handleZoomOut = () => {
-     if (mapRef.current) {
-      const currentZoom = mapRef.current.getZoom();
-      if (currentZoom !== undefined && currentZoom > 0) {
-        mapRef.current.setZoom(currentZoom - 1);
-      }
-    }
   };
 
 
@@ -670,26 +651,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         )}
 
         <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-30 flex flex-col items-end gap-2">
-          <div className="flex flex-col gap-0.5">
-             <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomIn}
-              className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10 rounded-b-none"
-              title="Zoom avant"
-            >
-              <ZoomIn className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomOut}
-              className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10 rounded-t-none"
-              title="Zoom arrière"
-            >
-              <ZoomOut className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
-          </div>
+         
           <Button
             variant="outline"
             size="icon"
@@ -707,7 +669,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10"
             title="Vue d'ensemble France"
           >
-            <GlobeIcon className="h-4 w-4 md:h-5 md:h-5" />
+            <GlobeIcon className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
           <Button
             variant="outline"
@@ -716,7 +678,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10"
             title={isFullscreen ? "Quitter le mode plein écran" : "Passer en mode plein écran"}
           >
-            {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:h-5" /> : <Maximize className="h-4 w-4 md:h-5 md:h-5" />}
+            {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:h-5" /> : <Maximize className="h-4 w-4 md:h-5 md:w-5" />}
           </Button>
         </div>
 
@@ -782,3 +744,4 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     </APIProvider>
   );
 }
+

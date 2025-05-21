@@ -1,11 +1,11 @@
-
 // src/services/dealerService.ts
 'use server';
 
 import { db, storage, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
 import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, MethanisationSite, NewMethanisationSiteData, AppEntity } from '@/types';
 import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject as deleteFileFromStorage } from 'firebase/storage';
+// File upload related imports are removed as per new requirements for comments
+// import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject as deleteFileFromStorage } from 'firebase/storage';
 
 
 // Helper function to convert Firestore document data to Dealer type
@@ -21,17 +21,17 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
   }
 
   const comments = Array.isArray(data.comments) ? data.comments.map((comment: any) => {
-    let commentDate = new Date().toISOString(); 
+    let commentDate = new Date().toISOString();
     if (comment.date instanceof Timestamp) {
       commentDate = comment.date.toDate().toISOString();
     } else if (typeof comment.date === 'string') {
       const parsedDate = new Date(comment.date);
-      if (!isNaN(parsedDate.getTime())) { 
+      if (!isNaN(parsedDate.getTime())) {
         commentDate = parsedDate.toISOString();
       } else {
         console.warn(`Invalid date string for comment in dealer ${docId}:`, comment.date, "- defaulting to current date.");
       }
-    } else if (comment.date) { 
+    } else if (comment.date) {
         console.warn(`Unexpected date type for comment in dealer ${docId}:`, comment.date, "- defaulting to current date.");
     }
 
@@ -39,9 +39,9 @@ const mapDocToDealer = (docId: string, data: any): Dealer => {
       userName: comment.userName || 'Unknown User',
       date: commentDate,
       text: comment.text || '',
-      imageUrl: comment.imageUrl,
-      fileUrl: comment.fileUrl,
-      fileName: comment.fileName,
+      imageUrl: comment.imageUrl, // Keep for display if data exists
+      fileUrl: comment.fileUrl,   // Keep for display if data exists
+      fileName: comment.fileName, // Keep for display if data exists
       prospectionStatusAtEvent: comment.prospectionStatusAtEvent,
     };
   }) : [];
@@ -252,7 +252,9 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
         if (updatePayload.geoLocation && typeof updatePayload.geoLocation.lat === 'number' && typeof updatePayload.geoLocation.lng === 'number') {
             updatePayload.geoLocation = new GeoPoint(updatePayload.geoLocation.lat, updatePayload.geoLocation.lng);
         } else {
-            updatePayload.geoLocation = null;
+            // If geoLocation is explicitly set to undefined or null (e.g. address cleared and not re-geocoded)
+            // set it to null in Firestore.
+            updatePayload.geoLocation = null; 
         }
     }
     
@@ -270,6 +272,7 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
         }
     });
 
+    // Remove undefined fields as Firestore update doesn't like them
     Object.keys(updatePayload).forEach(key => {
         if (updatePayload[key] === undefined) {
             delete updatePayload[key];
@@ -289,37 +292,25 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
 }
 
 export async function addCommentToDealer(
-    dealerId: string, 
-    userName: string, 
-    text: string, 
-    prospectionStatusAtEvent: Dealer['prospectionStatus'], // Kept for consistency, used for new comments
-    file?: File // File is now optional as it's removed from one of the forms
+    dealerId: string,
+    userName: string,
+    text: string,
+    newDealerProspectionStatus: Dealer['prospectionStatus'] // This is the status for the comment AND the new status for the dealer
 ): Promise<void> {
-  if (!firebaseConfigPresent || !db || !storage) {
-    console.warn("Firebase (Firestore or Storage) not configured. Cannot add comment.");
+  if (!firebaseConfigPresent || !db) {
+    console.warn("Firebase (Firestore) not configured. Cannot add comment.");
     throw new Error("Firebase not configured. Cannot add comment.");
   }
   try {
     const dealerRef = doc(db, 'dealers', dealerId);
+    
     const newCommentData: Partial<Comment> = {
       userName: userName,
       text: text,
-      date: new Date().toISOString(), 
-      prospectionStatusAtEvent: prospectionStatusAtEvent || 'none',
+      date: new Date().toISOString(), // Will be converted to Firestore Timestamp
+      prospectionStatusAtEvent: newDealerProspectionStatus || 'none',
+      // imageUrl, fileUrl, fileName are removed as file upload is no longer part of this function
     };
-
-    if (file) {
-      const fileStorageRef = storageRef(storage, `dealers/${dealerId}/comments/${Date.now()}-${file.name}`);
-      await uploadBytes(fileStorageRef, file);
-      const downloadURL = await getDownloadURL(fileStorageRef);
-      
-      if (file.type.startsWith('image/')) {
-        newCommentData.imageUrl = downloadURL;
-      } else {
-        newCommentData.fileUrl = downloadURL;
-        newCommentData.fileName = file.name;
-      }
-    }
     
     const commentToSaveFirestore = {
         ...newCommentData,
@@ -328,6 +319,7 @@ export async function addCommentToDealer(
 
     await updateDoc(dealerRef, {
       comments: arrayUnion(commentToSaveFirestore),
+      prospectionStatus: newDealerProspectionStatus || 'none', // Update the dealer's main status
       updatedAt: serverTimestamp(), 
     });
 
@@ -351,33 +343,53 @@ export async function deleteCommentFromDealer(dealerId: string, commentToDelete:
         }
 
         const dealerData = dealerSnapshot.data();
-        const existingComments = (dealerData.comments || []).map((c: any) => ({
-            ...c,
-            date: c.date instanceof Timestamp ? c.date.toDate().toISOString() : c.date
+        
+        // Map Firestore comments to have ISO date strings for comparison
+        const commentsFromFirestore = (dealerData.comments || []).map((c: any) => ({
+            userName: c.userName || 'Unknown User',
+            date: c.date instanceof Timestamp ? c.date.toDate().toISOString() : (typeof c.date === 'string' ? c.date : new Date().toISOString()),
+            text: c.text || '',
+            imageUrl: c.imageUrl,
+            fileUrl: c.fileUrl,
+            fileName: c.fileName,
+            prospectionStatusAtEvent: c.prospectionStatusAtEvent,
         }));
 
-        const updatedComments = existingComments.filter((comment: Comment) => {
-            // More robust comparison, especially for dates
-            return !(comment.date === commentToDelete.date && 
-                     comment.text === commentToDelete.text &&
-                     comment.userName === commentToDelete.userName);
+        // Filter out the comment to delete
+        // commentToDelete.date is already an ISO string from the client
+        const updatedComments = commentsFromFirestore.filter((comment: Comment) => {
+            return !(
+                comment.userName === commentToDelete.userName &&
+                comment.text === commentToDelete.text &&
+                comment.date === commentToDelete.date &&
+                comment.prospectionStatusAtEvent === commentToDelete.prospectionStatusAtEvent // Added for more precise matching
+            );
         });
 
-        // Convert dates back to Timestamps before updating Firestore
+        if (commentsFromFirestore.length === updatedComments.length) {
+            console.warn("Comment to delete was not found in Firestore array. No changes made.", commentToDelete);
+            // Optionally throw an error or return a specific status if the comment wasn't found
+            // For now, we proceed to update with the (unchanged) array to avoid breaking flow if strict match failed
+        }
+
+        // Convert dates back to Timestamps for Firestore update
         const commentsToSaveFirestore = updatedComments.map(c => ({
             ...c,
-            date: Timestamp.fromDate(new Date(c.date))
+            date: Timestamp.fromDate(new Date(c.date)),
+            // Ensure optional fields are either present or explicitly null/removed if needed
+            ...(c.imageUrl && { imageUrl: c.imageUrl }),
+            ...(c.fileUrl && { fileUrl: c.fileUrl }),
+            ...(c.fileName && { fileName: c.fileName }),
+            ...(c.prospectionStatusAtEvent && { prospectionStatusAtEvent: c.prospectionStatusAtEvent }),
         }));
         
-        // Delete associated file from Storage if it exists
-        // This part is kept commented as it requires careful handling and robust URL parsing
+        // Logic for deleting associated file from Storage remains commented out
         /*
         if (commentToDelete.imageUrl && storage) {
             try {
                 const fileRef = storageRef(storage, commentToDelete.imageUrl);
                 await deleteFileFromStorage(fileRef);
             } catch (storageError: any) {
-                // Log error but don't block comment deletion if file deletion fails (e.g., file already deleted)
                 if (storageError.code !== 'storage/object-not-found') {
                   console.warn(`Failed to delete image from storage: ${commentToDelete.imageUrl}`, storageError);
                 }
@@ -570,5 +582,3 @@ export async function addMethanisationSite(siteData: NewMethanisationSiteData): 
 
 // TODO: Implement updateLoadixUnit, deleteLoadixUnit
 // TODO: Implement updateMethanisationSite, deleteMethanisationSite
-
-    

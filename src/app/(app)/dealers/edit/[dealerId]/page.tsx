@@ -1,4 +1,3 @@
-
 // This is a client component
 "use client";
 
@@ -45,17 +44,15 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
     tractorBrands: [],
     machineTypes: [],
-    // comments: [], // Comments are managed separately
     servicesOffered: [],
-    galleryUris: [],
-    documentUris: [],
+    galleryUris: [], // Managed elsewhere
+    documentUris: [], // Managed elsewhere
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [newCommentText, setNewCommentText] = useState('');
-  // File upload state for comments removed as per new requirement
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [currentDealerData, setCurrentDealerData] = useState<Dealer | null>(null);
 
@@ -63,7 +60,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   const [addressValidated, setAddressValidated] = useState<boolean | null>(null);
 
 
-  const fetchDealerData = React.useCallback(async () => { // Wrapped fetchDealerData in useCallback
+  const fetchDealerData = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -95,10 +92,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           tractorBrands: dealerData.tractorBrands || [],
           prospectionStatus: dealerData.prospectionStatus || 'none',
           geoLocation: dealerData.geoLocation, 
-          // comments: dealerData.comments || [], // Not part of formData for update
           servicesOffered: dealerData.servicesOffered || [],
-          galleryUris: dealerData.galleryUris || [],
-          documentUris: dealerData.documentUris || [],
+          // galleryUris and documentUris are not directly edited in this form's state
         };
         setFormData(initialFormState);
         if (dealerData.geoLocation) {
@@ -113,7 +108,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     } finally {
       setLoading(false);
     }
-  }, [dealerId]); // Added dealerId as a dependency
+  }, [dealerId]); 
 
   useEffect(() => {
     if (dealerId) {
@@ -122,7 +117,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       setError("ID de concessionnaire manquant ou non résolu.");
       setLoading(false);
     }
-  }, [dealerId, fetchDealerData]); // Added fetchDealerData to dependency array
+  }, [dealerId, fetchDealerData]); 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -136,7 +131,6 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setFormData(prevData => ({ ...prevData, [name]: value as any }));
   };
 
-  // handleNewCommentFileChange is removed as file uploads are removed from this form's comment addition
 
   const handleRealGeocodeAddress = async () => {
     if (!formData.address || !formData.city || !formData.postalCode || !formData.country) {
@@ -193,17 +187,15 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     setIsAddingComment(true);
     try {
       const userName = user?.name || "Utilisateur Anonyme";
-      const currentStatus = formData.prospectionStatus || currentDealerData?.prospectionStatus || 'none';
-
-      // File parameter removed from addCommentToDealer call
-      await addCommentToDealer(dealerId, userName, newCommentText, currentStatus);
+      const currentProspectionStatus = formData.prospectionStatus || currentDealerData?.prospectionStatus || 'none';
+      
+      await addCommentToDealer(dealerId, userName, newCommentText, currentProspectionStatus);
       toast({
         title: "Succès",
-        description: "Commentaire ajouté avec succès.",
+        description: "Commentaire ajouté avec succès. Le statut du concessionnaire a été mis à jour.",
       });
       setNewCommentText('');
-      // setNewCommentFile(null); // No longer needed
-      await fetchDealerData(); 
+      await fetchDealerData(); // Refresh dealer data to show new comment and potentially updated status
     } catch (err) {
       console.error("Erreur lors de l'ajout du commentaire :", err);
       toast({
@@ -247,10 +239,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         ...formData,
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
-        // comments: undefined, // Comments are managed separately
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
-        galleryUris: Array.isArray(formData.galleryUris) ? formData.galleryUris : [],
-        documentUris: Array.isArray(formData.documentUris) ? formData.documentUris : [],
+        // galleryUris and documentUris are not part of this form's direct update logic
       };
       
       if (addressFieldsChanged && addressValidated === true) {
@@ -258,9 +248,12 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       } else if (!addressFieldsChanged) {
         dataToUpdate.geoLocation = currentDealerData?.geoLocation; 
       } else {
-        dataToUpdate.geoLocation = formData.geoLocation;
+         // Address changed but not re-validated or validation failed, clear geo
+        dataToUpdate.geoLocation = formData.geoLocation; // if validation passed, this will be set
       }
 
+      // The prospectionStatus is already part of formData and will be included in dataToUpdate.
+      // addCommentToDealer also updates prospectionStatus, so this ensures the latest form value is saved.
 
       await updateDealer(dealerId, dataToUpdate);
       toast({
@@ -491,7 +484,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                  <div className="space-y-3 md:space-y-4 p-3 md:p-4 border rounded-md shadow-sm bg-card">
                     <h3 className="text-lg font-semibold text-primary border-b pb-2">Suivi de Prospection</h3>
                     <div>
-                        <Label htmlFor="prospectionStatus">Statut de prospection</Label>
+                        <Label htmlFor="prospectionStatus">Statut de prospection du concessionnaire</Label>
                         <Select name="prospectionStatus" onValueChange={(value) => handleSelectChange('prospectionStatus', value as Dealer['prospectionStatus'])} value={formData.prospectionStatus || 'none'}>
                             <SelectTrigger>
                             <SelectValue placeholder="Sélectionner un statut" />
@@ -518,6 +511,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                         <p className="text-foreground/80 whitespace-pre-line mt-0.5">{comment.text}</p>
                                         {comment.imageUrl && <Image src={comment.imageUrl} alt="Image commentaire" width={80} height={80} className="mt-1 rounded-md object-cover" data-ai-hint="comment image" />}
                                         {comment.fileUrl && <a href={comment.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs mt-1 inline-block">{comment.fileName || 'Fichier attaché'}</a>}
+                                        {comment.prospectionStatusAtEvent && <Badge variant={getProspectionStatusBadgeInfo(comment.prospectionStatusAtEvent).variant} className="text-xs mt-1">Statut: {getProspectionStatusBadgeInfo(comment.prospectionStatusAtEvent).label}</Badge>}
                                     </div>
                                 ))}
                             </ScrollArea>
@@ -526,6 +520,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
 
                     <div className="mt-4 md:mt-6 space-y-2 md:space-y-3 p-3 md:p-4 border rounded-md shadow-sm bg-card/50">
                         <h4 className="text-md font-semibold text-foreground/90">Ajouter un nouveau suivi</h4>
+                        <p className="text-xs text-muted-foreground">Le statut de prospection du concessionnaire (sélectionné ci-dessus) sera enregistré avec ce commentaire.</p>
                         <div>
                             <Label htmlFor="newCommentText">Nouveau commentaire</Label>
                             <Textarea
@@ -537,7 +532,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 className="bg-input/70 focus:bg-input text-sm"
                             />
                         </div>
-                        {/* File input removed */}
+                        {/* File input is removed */}
                         <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">
                             {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             {isAddingComment ? 'Ajout...' : 'Ajouter Suivi'}
@@ -580,4 +575,19 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     </div>
   );
 }
+
+
+// Helper function to get badge info, can be co-located or imported if used elsewhere
+const getProspectionStatusBadgeInfo = (
+  status?: Dealer['prospectionStatus']
+): { variant: BadgeProps['variant']; label: string } => {
+  switch (status) {
+    case 'hot': return { variant: 'destructive', label: 'Chaud 🔥' };
+    case 'warm': return { variant: 'default', label: 'Tiède 🌤️' };
+    case 'cold': return { variant: 'secondary', label: 'Froid ❄️' };
+    case 'converted': return { variant: 'success' as any, label: 'Converti ✅' };
+    case 'lost': return { variant: 'outline', label: 'Perdu ❌' };
+    default: return { variant: 'outline', label: 'Aucun statut' };
+  }
+};
 

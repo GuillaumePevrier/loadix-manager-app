@@ -1,8 +1,8 @@
-
+// This is a client component
 "use client"; 
 
 import * as React from 'react';
-import { useRouter, notFound } from 'next/navigation'; 
+import { useRouter, notFound, useParams } from 'next/navigation'; // useParams for client components
 import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types';
 import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService';
 import { cn } from '@/lib/utils';
@@ -12,23 +12,23 @@ import {
   Info, Hash, Power, ChevronsRight, Edit2,
   CircleAlert, Loader2, Printer 
 } from 'lucide-react';
-// DeleteEntityButton is no longer used directly here, it's part of DealerTabsContent or other specific cards
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import DealerTabsContent from './DealerTabsContent'; // Moved from item-detail-client
-import DeleteEntityButton from './DeleteEntityButton'; // Moved from item-detail-client
+import DealerTabsContent from './DealerTabsContent'; 
+import DeleteEntityButton from './DeleteEntityButton'; 
 
-// ItemPageProps doit maintenant gérer params comme une promesse potentielle
+// ItemPageProps pour un composant client n'utilise pas la promesse directement
 interface ItemPageProps {
-  params: Promise<{ // params is now a Promise
+  params: { // params est un objet direct dans les client components utilisant useParams
     entityType: EntityType;
     entityId: string;
-  }>;
+  };
 }
+
 
 const getEntityTypeDisplayName = (type: EntityType): string => {
   const names: Record<EntityType, string> = {
@@ -248,7 +248,7 @@ export default function ItemDetailPage({ params: paramsPromise }: ItemPageProps)
     } finally {
         setIsLoading(false);
     }
-  }, [entityType, entityId, resolvedParams]); // resolvedParams ajouté aux dépendances
+  }, [entityType, entityId, resolvedParams]); 
 
   React.useEffect(() => {
     fetchData();
@@ -370,7 +370,7 @@ export default function ItemDetailPage({ params: paramsPromise }: ItemPageProps)
         <CircleAlert className="h-5 w-5 text-muted-foreground/70" />
         <AlertTitle className="font-bebas-neue text-md md:text-lg text-muted-foreground/80">Note sur les Données</AlertTitle>
         <AlertDescription className="text-xs">
-            Les données sont maintenant lues depuis Firebase Firestore. La modification et la suppression pour tous les types d'entités sont en cours d'implémentation.
+            Les données des concessionnaires, engins LOADIX et sites de méthanisation sont maintenant lues depuis Firebase Firestore. L'ajout de commentaires est fonctionnel pour les concessionnaires.
         </AlertDescription>
     </Alert>
     </div>

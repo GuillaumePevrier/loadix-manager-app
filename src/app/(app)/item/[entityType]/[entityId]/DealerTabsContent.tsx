@@ -1,4 +1,3 @@
-
 // src/app/(app)/item/[entityType]/[entityId]/DealerTabsContent.tsx
 "use client";
 
@@ -34,6 +33,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   MapPin, MapIcon, Phone, Mail, Globe, User, Tag, Truck, Power, Info, Search as SearchIcon, Download, FileText as FileTextLucide, Building2, Briefcase, Factory, PlusCircle, Trash2, Loader2, Send, Printer
 } from 'lucide-react';
@@ -122,13 +128,13 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' };
+      return { variant: 'default', label: 'Tiède 🌤️' }; // Orange
     case 'cold':
-      return { variant: 'secondary', label: 'Froid ❄️' };
+      return { variant: 'secondary', label: 'Froid ❄️' }; // Blue-ish
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' };
+      return { variant: 'success' as any, label: 'Converti ✅' }; // Green
     case 'lost':
-      return { variant: 'outline', label: 'Perdu ❌' };
+      return { variant: 'outline', label: 'Perdu ❌' }; // Grey
     default:
       return { variant: 'outline', label: 'Aucun statut' };
   }
@@ -138,14 +144,16 @@ const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']
   const blueDot = 'bg-primary border-background shadow-md'; 
   const blueConnector = 'bg-primary';
 
-  switch (status) {
-    case 'hot':       return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'destructive', label: 'Chaud 🔥' };
-    case 'warm':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'default',     label: 'Tiède 🌤️' };
-    case 'cold':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'secondary',   label: 'Froid ❄️' };
-    case 'converted': return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'success' as any, label: 'Converti ✅' };
-    case 'lost':      return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'outline',     label: 'Perdu ❌' };
-    default:          return { dotClassName: blueDot, connectorClassName: blueConnector, badgeVariant: 'outline',     label: 'Aucun' };
-  }
+  // Use the primary blue for all timeline structural elements (dots, connectors)
+  // The badgeVariant and label will still reflect the actual status for the CommentCard
+  const statusInfo = getProspectionStatusBadgeInfo(status);
+
+  return { 
+    dotClassName: blueDot, 
+    connectorClassName: blueConnector, 
+    badgeVariant: statusInfo.variant, 
+    label: statusInfo.label 
+  };
 };
 
 
@@ -167,7 +175,7 @@ const CommentCard: React.FC<CommentCardProps> = ({ comment, className, isSearchR
        <Button
         variant="ghost"
         size="icon"
-        className="absolute top-0.5 right-0.5 md:top-1 md:right-1 h-5 w-5 md:h-6 md:w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-0.5 right-0.5 md:top-1 md:right-1 h-5 w-5 md:h-6 md:w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-20"
         onClick={onDelete}
         title="Supprimer le commentaire"
       >
@@ -222,7 +230,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
 
     const [isAddCommentDialogOpen, setIsAddCommentDialogOpen] = React.useState(false);
     const [newCommentText, setNewCommentText] = React.useState('');
-    // File upload state removed as per new requirement for this dialog
+    const [newCommentProspectionStatus, setNewCommentProspectionStatus] = React.useState<Dealer['prospectionStatus']>(dealer.prospectionStatus || 'none');
     const [isAddingComment, setIsAddingComment] = React.useState(false);
 
     const [commentToDelete, setCommentToDelete] = React.useState<Comment | null>(null);
@@ -236,6 +244,13 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
     const DRAG_SPEED_MULTIPLIER = 1.5;
     
     const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+
+    React.useEffect(() => {
+      if (dealer) {
+        setNewCommentProspectionStatus(dealer.prospectionStatus || 'none');
+      }
+    }, [dealer]);
 
 
     const sortedComments = React.useMemo(() =>
@@ -299,11 +314,11 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
         setIsAddingComment(true);
         try {
             const userName = user?.name || "Utilisateur Anonyme";
-            const currentStatus = dealer.prospectionStatus || 'none';
             
-            await addCommentToDealer(dealer.id, userName, newCommentText, currentStatus);
-            toast({ title: 'Succès', description: 'Commentaire ajouté.' });
+            await addCommentToDealer(dealer.id, userName, newCommentText, newCommentProspectionStatus);
+            toast({ title: 'Succès', description: 'Commentaire ajouté et statut du concessionnaire mis à jour.' });
             setNewCommentText('');
+            // setNewCommentProspectionStatus(dealer.prospectionStatus || 'none'); // Reset to current dealer status after add, or to the new status
             
             setIsAddCommentDialogOpen(false);
             onDataRefresh(); 
@@ -443,6 +458,25 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                             </DialogHeader>
                             <div className="space-y-3 py-3">
                                 <div>
+                                    <Label htmlFor="newCommentProspectionStatusDialog">Nouveau Statut Prospection</Label>
+                                    <Select 
+                                        value={newCommentProspectionStatus} 
+                                        onValueChange={(value) => setNewCommentProspectionStatus(value as Dealer['prospectionStatus'])}
+                                    >
+                                        <SelectTrigger id="newCommentProspectionStatusDialog">
+                                            <SelectValue placeholder="Choisir un statut..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">Aucun</SelectItem>
+                                            <SelectItem value="cold">Froid</SelectItem>
+                                            <SelectItem value="warm">Tiède</SelectItem>
+                                            <SelectItem value="hot">Chaud</SelectItem>
+                                            <SelectItem value="converted">Converti</SelectItem>
+                                            <SelectItem value="lost">Perdu</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
                                     <Label htmlFor="newCommentTextDialog">Commentaire</Label>
                                     <Textarea
                                         id="newCommentTextDialog"
@@ -453,10 +487,11 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         className="bg-input/70 focus:bg-input text-sm"
                                     />
                                 </div>
+                                {/* File input removed */}
                             </div>
                             <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                                 <DialogClose asChild>
-                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); }} className="w-full sm:w-auto">Annuler</Button>
+                                    <Button variant="ghost" onClick={() => { setNewCommentText(''); setNewCommentProspectionStatus(dealer.prospectionStatus || 'none'); }} className="w-full sm:w-auto">Annuler</Button>
                                 </DialogClose>
                                 <Button onClick={handleNewCommentSubmit} disabled={isAddingComment || !newCommentText.trim()} className="w-full sm:w-auto">
                                     {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
@@ -481,27 +516,33 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                         onPointerCancel={onPointerUpOrCancel} 
                         style={{ userSelect: isDragging ? 'none' : 'auto' }} 
                     >
-                        <div className="relative min-w-max">
-                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2"></div>
-                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10">
+                        <div className="relative min-w-max"> {/* This div now has relative position */}
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2 z-0"></div> {/* Main timeline bar */}
+                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10"> {/* Container for comment groups */}
                                 {filteredComments.map((comment, index) => {
                                     const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
                                     const isCurrentCommentHighlighted = timelineSearchTerm.trim() !== '' && 
-                                                                      filteredComments.some(fc => fc.date === comment.date && fc.text === comment.text && fc.userName === comment.userName);
+                                                                      filteredComments.some(fc => 
+                                                                          fc.date === comment.date && 
+                                                                          fc.text === comment.text && 
+                                                                          fc.userName === comment.userName &&
+                                                                          fc.prospectionStatusAtEvent === comment.prospectionStatusAtEvent
+                                                                      );
                                     return (
                                     <div
-                                        key={comment.date + index + comment.userName} 
-                                        className={cn(
-                                            "relative flex items-center group z-10", 
-                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8" ,
-                                            isCurrentCommentHighlighted && "ring-2 ring-primary border-primary shadow-primary/30"
+                                        key={`${comment.date}-${comment.userName}-${index}`} 
+                                        className={cn( 
+                                            "relative flex items-center group z-10", // z-10 for comment group
+                                            index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8"
                                         )}
                                     >
                                         <CommentCard
                                             comment={comment}
                                             className={cn(
                                                 "shadow-xl", 
-                                                index % 2 === 0 ? "mb-5" : "mt-5"
+                                                index % 2 === 0 ? "mb-5" : "mt-5", // Adjusted margins
+                                                isCurrentCommentHighlighted && "ring-2 ring-primary border-primary shadow-primary/30"
+
                                             )}
                                             isSearchResult={isCurrentCommentHighlighted}
                                             onDelete={() => handleDeleteCommentRequest(comment)}
@@ -510,15 +551,15 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         <div className={cn( 
                                             "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
                                             timelineStatusColors.connectorClassName, 
-                                            index % 2 === 0 ? "h-10" : "h-10"
+                                            index % 2 === 0 ? "h-10" : "h-10" // Increased height
                                         )}></div>
                                         
                                         <div className={cn( 
-                                        "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
-                                        timelineStatusColors.dotClassName
+                                            "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", // z-10 for dot
+                                            timelineStatusColors.dotClassName
                                         )}></div>
                                         <div className={cn( 
-                                            "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10",
+                                            "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10", // z-10 for date
                                             index % 2 === 0 ? "mt-2" : "mb-2" 
                                         )}>
                                             {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -537,7 +578,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                 <AlertDialogHeader>
                     <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible.
+                        Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible. Les fichiers associés (si existants) ne seront pas supprimés de Firebase Storage par cette action.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">

@@ -1,9 +1,8 @@
 
 import type { Metadata } from 'next';
-import { Inter, Bebas_Neue } from 'next/font/google'; // Assuming you want consistent fonts
+import { Inter, Bebas_Neue } from 'next/font/google';
+import { ThemeToggleButton } from '@/components/ui/theme-toggle-button';
 
-// If you have specific font variables like in RootLayout, replicate them or ensure they are globally available
-// For simplicity, using them directly here.
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -29,10 +28,14 @@ export default function LoginLayout({
   children: React.ReactNode;
 }) {
   return (
-    // Applying font variables to ensure login page has access if needed
-    // globals.css should still provide base styling
     <div className={`${inter.variable} ${bebasNeue.variable} font-sans`}>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4 antialiased">
+      <main className="relative flex min-h-screen flex-col items-center justify-center p-4 antialiased overflow-hidden bg-background">
+        {/* Animated Aurora Background */}
+        <div aria-hidden="true" className="fixed inset-0 -z-10 login-aurora-bg"></div>
+        
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggleButton />
+        </div>
         {children}
       </main>
     </div>

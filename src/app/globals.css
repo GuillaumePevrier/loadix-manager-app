@@ -23,8 +23,8 @@
     --muted: 224 25% 25%; /* Muted elements */
     --muted-foreground: 220 15% 65%; /* Muted text */
 
-    --accent: 25 95% 53%; /* Vivid Orange #F77F00 - This is the original accent, kept for other uses */
-    --accent-foreground: 210 40% 98%; /* Text on accent */
+    --accent: 210 20% 85%; /* Light Silver/Grey for accent */
+    --accent-foreground: 224 33% 10%; /* Text on accent (darker for light silver) */
 
     --destructive: 0 72% 51%; /* Default destructive color */
     --destructive-foreground: 210 40% 98%;
@@ -58,7 +58,6 @@
     --font-futura: "Futura", "Arial Black", "Impact", sans-serif; /* Fallback fonts for Futura */
   }
 
-  /* Optional light theme - user requested dark theme as primary */
   .light {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -78,8 +77,8 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 25 95% 53%; /* Vivid Orange #F77F00 - This is the original accent, kept for other uses */
-    --accent-foreground: 210 40% 98%;
+    --accent: 210 20% 85%; /* Light Silver/Grey for accent */
+    --accent-foreground: 224 33% 10%; /* Text on accent (darker for light silver) */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -134,11 +133,44 @@
   .animated-gradient-border-wrapper {
     @apply relative rounded-lg p-[2px] overflow-hidden transition-all duration-300 ease-in-out;
     /* Gradient: Dominant Blue, with Light Silver accent */
-    background-image: conic-gradient(from var(--gradient-angle, 0deg) at 50% 50%, hsl(var(--primary)) 0%, hsl(var(--primary)) 15%, hsl(210, 20%, 85%) 30%, hsl(210, 20%, 85%) 45%, hsl(var(--primary)) 60%, hsl(var(--primary)) 75%, hsl(210, 20%, 85%) 90%, hsl(var(--primary)) 100%);
+    background-image: conic-gradient(from var(--gradient-angle, 0deg) at 50% 50%, hsl(var(--primary)) 0%, hsl(var(--primary)) 15%, hsl(var(--accent)) 30%, hsl(var(--accent)) 45%, hsl(var(--primary)) 60%, hsl(var(--primary)) 75%, hsl(var(--accent)) 90%, hsl(var(--primary)) 100%);
     animation: rotate-gradient-border 5s linear infinite;
   }
   .animated-gradient-border-wrapper:hover {
-    /* Adjusted hover shadow to use primary and a lighter silver tone */
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.5), 0 0 20px hsl(210, 20%, 85% / 0.3);
+    /* Adjusted hover shadow to use primary and accent (silver) */
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--accent) / 0.3);
+  }
+
+  /* Aurora Background for Login Page */
+  .login-aurora-bg {
+    @apply absolute inset-0 -z-10 transition-opacity duration-500;
+    background-image: 
+      radial-gradient(ellipse 50% 80% at 20% -20%, hsla(var(--primary), 0.35), transparent 70%),
+      radial-gradient(ellipse 50% 80% at 80% 120%, hsla(var(--accent), 0.3), transparent 70%),
+      radial-gradient(circle 400px at 50% 50%, hsla(var(--primary), 0.15), transparent 80%);
+    background-size: 300% 300%; /* Make gradients larger */
+    animation: aurora-animation 30s ease-in-out infinite alternate;
+  }
+
+  .dark .login-aurora-bg {
+     opacity: 0.6; /* Slightly more pronounced in dark mode */
+     background-image: 
+      radial-gradient(ellipse 50% 80% at 10% -15%, hsla(var(--primary), 0.5), transparent 70%),
+      radial-gradient(ellipse 50% 80% at 90% 115%, hsla(var(--accent), 0.25), transparent 70%),
+      radial-gradient(circle 500px at 50% 30%, hsla(var(--primary), 0.2), transparent 80%);
+    background-size: 300% 300%;
+    animation: aurora-animation 30s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes aurora-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }

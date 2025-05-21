@@ -128,13 +128,13 @@ const getProspectionStatusBadgeInfo = (
     case 'hot':
       return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm':
-      return { variant: 'default', label: 'Tiède 🌤️' }; // Orange
+      return { variant: 'default', label: 'Tiède 🌤️' }; 
     case 'cold':
-      return { variant: 'secondary', label: 'Froid ❄️' }; // Blue-ish
+      return { variant: 'secondary', label: 'Froid ❄️' }; 
     case 'converted':
-      return { variant: 'success' as any, label: 'Converti ✅' }; // Green
+      return { variant: 'success' as any, label: 'Converti ✅' }; 
     case 'lost':
-      return { variant: 'outline', label: 'Perdu ❌' }; // Grey
+      return { variant: 'outline', label: 'Perdu ❌' }; 
     default:
       return { variant: 'outline', label: 'Aucun statut' };
   }
@@ -144,8 +144,6 @@ const getProspectionStatusTimelineColors = (status?: Dealer['prospectionStatus']
   const blueDot = 'bg-primary border-background shadow-md'; 
   const blueConnector = 'bg-primary';
 
-  // Use the primary blue for all timeline structural elements (dots, connectors)
-  // The badgeVariant and label will still reflect the actual status for the CommentCard
   const statusInfo = getProspectionStatusBadgeInfo(status);
 
   return { 
@@ -318,8 +316,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
             await addCommentToDealer(dealer.id, userName, newCommentText, newCommentProspectionStatus);
             toast({ title: 'Succès', description: 'Commentaire ajouté et statut du concessionnaire mis à jour.' });
             setNewCommentText('');
-            // setNewCommentProspectionStatus(dealer.prospectionStatus || 'none'); // Reset to current dealer status after add, or to the new status
-            
             setIsAddCommentDialogOpen(false);
             onDataRefresh(); 
         } catch (err) {
@@ -436,14 +432,16 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
             </CardHeader>
             <CardContent className="p-3 md:p-4 pt-0">
                 <div className="mb-3 md:mb-4 flex flex-col sm:flex-row items-center gap-2 md:gap-3">
-                    <div className="relative flex-grow w-full">
-                        <SearchIcon className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Rechercher commentaire (texte, nom, date, statut)..."
-                            value={timelineSearchTerm}
-                            onChange={(e) => setTimelineSearchTerm(e.target.value)}
-                            className="pl-8 md:pl-10 bg-input/50 focus:bg-input border-border/70 h-9 md:h-10 text-sm"
-                        />
+                    <div className="relative flex-grow w-full animated-gradient-border-wrapper">
+                        <div className="relative flex items-center">
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Rechercher commentaire (texte, nom, date, statut)..."
+                                value={timelineSearchTerm}
+                                onChange={(e) => setTimelineSearchTerm(e.target.value)}
+                                className="pl-9 md:pl-10 bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none h-9 md:h-10 text-sm rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70 w-full"
+                            />
+                        </div>
                     </div>
                     <Dialog open={isAddCommentDialogOpen} onOpenChange={setIsAddCommentDialogOpen}>
                         <DialogTrigger asChild>
@@ -487,7 +485,6 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         className="bg-input/70 focus:bg-input text-sm"
                                     />
                                 </div>
-                                {/* File input removed */}
                             </div>
                             <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                                 <DialogClose asChild>
@@ -516,9 +513,9 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                         onPointerCancel={onPointerUpOrCancel} 
                         style={{ userSelect: isDragging ? 'none' : 'auto' }} 
                     >
-                        <div className="relative min-w-max"> {/* This div now has relative position */}
-                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2 z-0"></div> {/* Main timeline bar */}
-                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10"> {/* Container for comment groups */}
+                        <div className="relative min-w-max">
+                            <div className="absolute left-0 right-0 top-1/2 h-1.5 bg-primary rounded-full -translate-y-1/2 z-0"></div>
+                            <div className="flex space-x-16 md:space-x-20 pl-6 pr-6 md:pl-8 md:pr-8 relative z-10">
                                 {filteredComments.map((comment, index) => {
                                     const timelineStatusColors = getProspectionStatusTimelineColors(comment.prospectionStatusAtEvent);
                                     const isCurrentCommentHighlighted = timelineSearchTerm.trim() !== '' && 
@@ -532,7 +529,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                     <div
                                         key={`${comment.date}-${comment.userName}-${index}`} 
                                         className={cn( 
-                                            "relative flex items-center group z-10", // z-10 for comment group
+                                            "relative flex items-center group z-10",
                                             index % 2 === 0 ? "flex-col" : "flex-col-reverse mt-8 md:mt-8"
                                         )}
                                     >
@@ -540,7 +537,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                             comment={comment}
                                             className={cn(
                                                 "shadow-xl", 
-                                                index % 2 === 0 ? "mb-5" : "mt-5", // Adjusted margins
+                                                index % 2 === 0 ? "mb-5" : "mt-5", 
                                                 isCurrentCommentHighlighted && "ring-2 ring-primary border-primary shadow-primary/30"
 
                                             )}
@@ -551,15 +548,15 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
                                         <div className={cn( 
                                             "w-px opacity-100 group-hover:opacity-100 transition-opacity", 
                                             timelineStatusColors.connectorClassName, 
-                                            index % 2 === 0 ? "h-10" : "h-10" // Increased height
+                                            index % 2 === 0 ? "h-10" : "h-10"
                                         )}></div>
                                         
                                         <div className={cn( 
-                                            "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", // z-10 for dot
+                                            "w-4 h-4 rounded-full border-2 group-hover:scale-125 group-hover:shadow-primary/50 transition-all duration-150 z-10", 
                                             timelineStatusColors.dotClassName
                                         )}></div>
                                         <div className={cn( 
-                                            "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10", // z-10 for date
+                                            "text-xs text-muted-foreground bg-background/80 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-sm backdrop-blur-sm z-10", 
                                             index % 2 === 0 ? "mt-2" : "mb-2" 
                                         )}>
                                             {new Date(comment.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}

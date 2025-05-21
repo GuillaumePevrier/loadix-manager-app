@@ -1,4 +1,3 @@
-
 // src/app/(app)/support/support-form.tsx
 'use client';
 
@@ -61,13 +60,15 @@ export default function SupportForm() {
           <Label htmlFor="loadixSerialNumber" className="text-sm font-medium text-foreground/80">
             LOADIX Serial Number
           </Label>
-          <Input
-            id="loadixSerialNumber"
-            type="text"
-            {...register('loadixSerialNumber')}
-            className={`mt-1 bg-input/50 border-border/70 focus:bg-input ${errors.loadixSerialNumber ? 'border-destructive ring-destructive' : 'focus:ring-primary'}`}
-            placeholder="e.g., LDX-2024-001"
-          />
+          <div className="relative mt-1 animated-gradient-border-wrapper">
+             <Input
+                id="loadixSerialNumber"
+                type="text"
+                {...register('loadixSerialNumber')}
+                className={`w-full bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70 ${errors.loadixSerialNumber ? 'ring-2 ring-destructive ring-offset-2 ring-offset-card' : ''}`}
+                placeholder="e.g., LDX-2024-001"
+              />
+          </div>
           {errors.loadixSerialNumber && (
             <p className="mt-1 text-sm text-destructive">{errors.loadixSerialNumber.message}</p>
           )}
@@ -160,3 +161,4 @@ export default function SupportForm() {
     </div>
   );
 }
+

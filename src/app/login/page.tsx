@@ -53,12 +53,12 @@ export default function LoginPage() {
       <CardHeader className="text-center pt-8 pb-6">
         <Link href="/" className="flex flex-col items-center justify-center gap-3 mb-6 group">
           <Logo className="w-16 h-16 text-primary transition-transform group-hover:scale-110 duration-300" />
-          <h1 className="text-4xl font-futura font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary">
-            LOADIX
+          <h1 className="text-4xl font-futura font-bold text-primary">
+            ManuRob
           </h1>
         </Link>
         <CardTitle className="text-3xl font-futura text-foreground/90">Connexion</CardTitle>
-        <CardDescription className="text-md font-bebas-neue tracking-wider text-muted-foreground/80 mt-1">
+        <CardDescription className="text-md font-bebas-neue tracking-wider text-primary/90 mt-1">
           Accédez à votre interface de gestion ManuRob.
         </CardDescription>
       </CardHeader>

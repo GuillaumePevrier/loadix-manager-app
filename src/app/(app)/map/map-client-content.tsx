@@ -17,13 +17,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import {
-  Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe,
+  Building, User, Truck, Factory, MapPin as LocationIcon, Phone, Mail, Globe as GlobeIcon,
   CalendarDays, Tag, Info, Hash, Power, ChevronsRight, X, Search as SearchIcon, Filter,
-  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLink as ExternalLinkIcon, Loader2
+  Maximize, Minimize, ListChecks, LocateFixed, SlidersHorizontal, ExternalLink as ExternalLinkIcon, Loader2,
+  ZoomIn, ZoomOut
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-// import { useMap } from '@vis.gl/react-google-maps'; // Removed useMap from here
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -105,10 +105,12 @@ const DetailItem: React.FC<{ icon: React.ElementType; label: string; value?: str
   );
 };
 
-const DealerDetailContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => ( <> <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} /> <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail /> <DetailItem icon={Globe} label="Site Web" value={dealer.website} isLink /> <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} /> {dealer.servicesOffered && dealer.servicesOffered.length > 0 && (<DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />)} </> );
+const DealerDetailContent: React.FC<{ dealer: Dealer }> = ({ dealer }) => ( <> <DetailItem icon={Phone} label="Téléphone" value={dealer.phone} /> <DetailItem icon={Mail} label="Email" value={dealer.email} isEmail /> <DetailItem icon={GlobeIcon} label="Site Web" value={dealer.website} isLink /> <DetailItem icon={User} label="Personne à contacter" value={dealer.contactPerson} /> {dealer.servicesOffered && dealer.servicesOffered.length > 0 && (<DetailItem icon={Tag} label="Services Proposés" value={dealer.servicesOffered} />)} </> );
 const LoadixUnitDetailContent: React.FC<{ unit: LoadixUnit }> = ({ unit }) => ( <> <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} /> <DetailItem icon={Truck} label="Modèle" value={unit.model} /> <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={unit.status === 'active' ? 'success' as any : unit.status === 'maintenance' ? 'default' : unit.status === 'in_stock' ? 'secondary' : 'destructive'} className="text-xs">{LOADIX_STATUS_OPTIONS.find(opt => opt.value === unit.status)?.label || unit.status}</Badge> : null} /> <DetailItem icon={CalendarDays} label="Date d'achat" value={unit.purchaseDate ? new Date(unit.purchaseDate).toLocaleDateString() : undefined} /> <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={unit.lastMaintenanceDate ? new Date(unit.lastMaintenanceDate).toLocaleDateString() : undefined} /> </>);
 const MethanisationSiteDetailContent: React.FC<{ site: MethanisationSite }> = ({ site }) => ( <> <DetailItem icon={Info} label="Capacité" value={site.capacity} /> <DetailItem icon={User} label="Opérateur" value={site.operator} /> <DetailItem icon={CalendarDays} label="Date de mise en service" value={site.startDate ? new Date(site.startDate).toLocaleDateString() : undefined} /> </>);
 
+const FRANCE_CENTER = { lat: 46.2276, lng: 2.2137 };
+const FRANCE_ZOOM = 6;
 
 export default function MapClientContent({ initialEntities }: MapClientContentProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -118,14 +120,14 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const { toast } = useToast();
 
   const isMobile = useIsMobile();
   
-  // State for map center and zoom, to control the map declaratively
-  const [mapCenter, setMapCenter] = useState<GeoLocation>({ lat: 46.2276, lng: 2.2137 }); // Default: France
-  const [mapZoom, setMapZoom] = useState(6); // Default zoom for overview
+  const [mapCenter, setMapCenter] = useState<GeoLocation>(FRANCE_CENTER);
+  const [mapZoom, setMapZoom] = useState(FRANCE_ZOOM);
 
   const [userLocation, setUserLocation] = useState<GeoLocation | null>(null);
   const [locatingUser, setLocatingUser] = useState(false);
@@ -133,7 +135,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter states
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [regionFilter, setRegionFilter] = useState(''); // Placeholder, as region data isn't structured yet
+  const [regionFilter, setRegionFilter] = useState(''); 
   const [tractorBrandsFilter, setTractorBrandsFilter] = useState<string[]>([]);
   const [machineTypesFilter, setMachineTypesFilter] = useState<string[]>([]);
   const [brandSignFilter, setBrandSignFilter] = useState('');
@@ -144,46 +146,172 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
   const [siteOperatorFilter, setSiteOperatorFilter] = useState('');
 
   const [selectedMarkerForInfoWindow, setSelectedMarkerForInfoWindow] = useState<AppEntity | null>(null);
+  const [hoveredEntityId, setHoveredEntityId] = useState<string | null>(null);
+  const [activeAdvancedFilterCount, setActiveAdvancedFilterCount] = useState(0);
+
+  useEffect(() => {
+    const advancedFilters = [
+      departmentFilter, regionFilter, brandSignFilter, branchNameFilter,
+      loadixStatusFilter, loadixModelFilter, siteCapacityFilter, siteOperatorFilter
+    ];
+    const activeTractorBrands = tractorBrandsFilter.length > 0;
+    const activeMachineTypes = machineTypesFilter.length > 0;
+
+    let count = advancedFilters.filter(f => f !== '' && f !== undefined).length;
+    if (activeTractorBrands) count++;
+    if (activeMachineTypes) count++;
+    
+    setActiveAdvancedFilterCount(count);
+  }, [
+    departmentFilter, regionFilter, tractorBrandsFilter, machineTypesFilter, brandSignFilter, branchNameFilter,
+    loadixStatusFilter, loadixModelFilter, siteCapacityFilter, siteOperatorFilter
+  ]);
+
+  const handleResetAdvancedFilters = () => {
+    setDepartmentFilter('');
+    setRegionFilter('');
+    setTractorBrandsFilter([]);
+    setMachineTypesFilter([]);
+    setBrandSignFilter('');
+    setBranchNameFilter('');
+    setLoadixStatusFilter('');
+    setLoadixModelFilter('');
+    setSiteCapacityFilter('');
+    setSiteOperatorFilter('');
+  };
+
+  const prevEntitiesForMarkersLength = useRef<number>(0);
+  const prevSearchTerm = useRef<string>(searchTerm);
+  const prevSelectedEntityType = useRef<EntityType | 'all'>(selectedEntityType);
 
 
   const entitiesForMarkers = useMemo(() => {
-    return initialEntities.filter(entity => {
-      const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;
-      
-      const mainSearchMatch = searchTerm.trim() === '' ||
-        entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity.city && entity.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase());
+    let filtered = initialEntities;
 
-      if (!typeMatch || !mainSearchMatch || !entity.geoLocation) return false;
+    // Main search term filter
+    if (searchTerm.trim() !== '') {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(entity =>
+        entity.name.toLowerCase().includes(lowerSearchTerm) ||
+        (entity.city && entity.city.toLowerCase().includes(lowerSearchTerm)) ||
+        entity.id.toLowerCase().includes(lowerSearchTerm) ||
+        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(lowerSearchTerm)
+      );
+    }
 
-      // Advanced Filters Logic
-      if (showAdvancedFilters) {
+    // Entity type filter
+    if (selectedEntityType !== 'all') {
+      filtered = filtered.filter(entity => entity.entityType === selectedEntityType);
+    }
+    
+    // Advanced Filters Logic
+    if (showAdvancedFilters) {
+      filtered = filtered.filter(entity => {
+        let passesAdvancedFilters = true;
         if (entity.entityType === 'dealer') {
           const dealer = entity as Dealer;
-          if (departmentFilter && !dealer.department?.toLowerCase().includes(departmentFilter.toLowerCase())) return false;
-          if (brandSignFilter && !dealer.brandSign?.toLowerCase().includes(brandSignFilter.toLowerCase())) return false;
-          if (branchNameFilter && !dealer.branchName?.toLowerCase().includes(branchNameFilter.toLowerCase())) return false;
-          if (tractorBrandsFilter.length > 0 && !tractorBrandsFilter.some(brand => dealer.tractorBrands?.includes(brand))) return false;
-          if (machineTypesFilter.length > 0 && !machineTypesFilter.some(type => dealer.machineTypes?.includes(type))) return false;
+          if (departmentFilter) {
+            const entityDepartment = (dealer.department || '').toLowerCase();
+            if (!entityDepartment.includes(departmentFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (regionFilter && passesAdvancedFilters) { // only apply if previous filters passed
+            // Assuming region is part of address or a dedicated field we don't have yet
+            // For now, let's assume it might be in 'city' or 'address' for a simple text match
+            const searchableRegionText = `${dealer.address || ''} ${dealer.city || ''}`.toLowerCase();
+            if (!searchableRegionText.includes(regionFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (brandSignFilter && passesAdvancedFilters) {
+            const entityBrandSign = (dealer.brandSign || '').toLowerCase();
+            if (!entityBrandSign.includes(brandSignFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (branchNameFilter && passesAdvancedFilters) {
+            const entityBranchName = (dealer.branchName || '').toLowerCase();
+            if (!entityBranchName.includes(branchNameFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (tractorBrandsFilter.length > 0 && passesAdvancedFilters) {
+            if (!tractorBrandsFilter.some(brand => dealer.tractorBrands?.includes(brand))) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (machineTypesFilter.length > 0 && passesAdvancedFilters) {
+            if (!machineTypesFilter.some(type => dealer.machineTypes?.includes(type))) {
+              passesAdvancedFilters = false;
+            }
+          }
         } else if (entity.entityType === 'loadix-unit') {
           const unit = entity as LoadixUnit;
-          if (loadixStatusFilter && unit.status !== loadixStatusFilter) return false;
-          if (loadixModelFilter && !unit.model.toLowerCase().includes(loadixModelFilter.toLowerCase())) return false;
+          if (loadixStatusFilter && unit.status !== loadixStatusFilter) {
+             passesAdvancedFilters = false;
+          }
+          if (loadixModelFilter && passesAdvancedFilters) {
+            const entityModel = (unit.model || '').toLowerCase();
+            if (!entityModel.includes(loadixModelFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
         } else if (entity.entityType === 'methanisation-site') {
           const site = entity as MethanisationSite;
-          if (siteCapacityFilter && !site.capacity?.toLowerCase().includes(siteCapacityFilter.toLowerCase())) return false;
-          if (siteOperatorFilter && !site.operator?.toLowerCase().includes(siteOperatorFilter.toLowerCase())) return false;
+          if (siteCapacityFilter && passesAdvancedFilters) {
+            const entityCapacity = (site.capacity || '').toLowerCase();
+            if (!entityCapacity.includes(siteCapacityFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
+          if (siteOperatorFilter && passesAdvancedFilters) {
+             const entityOperator = (site.operator || '').toLowerCase();
+            if (!entityOperator.includes(siteOperatorFilter.toLowerCase())) {
+              passesAdvancedFilters = false;
+            }
+          }
         }
-      }
-      return true;
-    });
+        return passesAdvancedFilters;
+      });
+    }
+    
+    return filtered.filter(entity => entity.geoLocation && typeof entity.geoLocation.lat === 'number' && typeof entity.geoLocation.lng === 'number');
   }, [
     initialEntities, searchTerm, selectedEntityType, showAdvancedFilters,
     departmentFilter, regionFilter, tractorBrandsFilter, machineTypesFilter, brandSignFilter, branchNameFilter,
     loadixStatusFilter, loadixModelFilter, siteCapacityFilter, siteOperatorFilter
   ]);
+
+  useEffect(() => {
+    if (mapRef.current && entitiesForMarkers.length > 0) {
+      // Fit bounds only if the number of markers changed or primary filters changed
+      if (entitiesForMarkers.length !== prevEntitiesForMarkersLength.current || 
+          searchTerm !== prevSearchTerm.current || 
+          selectedEntityType !== prevSelectedEntityType.current) {
+            
+        if (entitiesForMarkers.length === 1) {
+          const singleMarkerLocation = entitiesForMarkers[0].geoLocation!;
+          mapRef.current.panTo(singleMarkerLocation);
+          // Optionally set a specific zoom for single marker
+          // mapRef.current.setZoom(15); 
+        } else {
+          const bounds = new google.maps.LatLngBounds();
+          entitiesForMarkers.forEach(entity => {
+            if (entity.geoLocation) {
+              bounds.extend(new google.maps.LatLng(entity.geoLocation.lat, entity.geoLocation.lng));
+            }
+          });
+          mapRef.current.fitBounds(bounds, 100); // 100px padding
+        }
+      }
+    }
+    prevEntitiesForMarkersLength.current = entitiesForMarkers.length;
+    prevSearchTerm.current = searchTerm;
+    prevSelectedEntityType.current = selectedEntityType;
+
+  }, [entitiesForMarkers, searchTerm, selectedEntityType]);
+
 
   const searchResultsEntities = useMemo(() => {
     if (searchTerm.trim() === '' && selectedEntityType === 'all' && !isSearchFocused && !showAdvancedFilters) { 
@@ -201,8 +329,8 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
     } else {
       setSelectedMarkerForInfoWindow(entity);
       if (entity.geoLocation) {
-        setMapCenter(entity.geoLocation); // Center map on selected marker for InfoWindow
-        setMapZoom(15); // Zoom in
+        setMapCenter(entity.geoLocation);
+        setMapZoom(15);
       }
     }
   };
@@ -250,8 +378,8 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         const { latitude, longitude } = position.coords;
         const newLocation = { lat: latitude, lng: longitude };
         setUserLocation(newLocation);
-        setMapCenter(newLocation); // Update map center state
-        setMapZoom(15); // Update map zoom state
+        setMapCenter(newLocation); 
+        setMapZoom(15); 
         setLocatingUser(false);
         toast({ title: "Position trouvée", description: "Carte centrée sur votre position."});
       },
@@ -261,6 +389,29 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
         setLocatingUser(false);
       }
     );
+  };
+
+  const handleResetViewToFrance = () => {
+    setMapCenter(FRANCE_CENTER);
+    setMapZoom(FRANCE_ZOOM);
+  };
+
+  const handleZoomIn = () => {
+    if (mapRef.current) {
+      const currentZoom = mapRef.current.getZoom();
+      if (currentZoom !== undefined) {
+        mapRef.current.setZoom(currentZoom + 1);
+      }
+    }
+  };
+
+  const handleZoomOut = () => {
+     if (mapRef.current) {
+      const currentZoom = mapRef.current.getZoom();
+      if (currentZoom !== undefined && currentZoom > 0) {
+        mapRef.current.setZoom(currentZoom - 1);
+      }
+    }
   };
 
 
@@ -280,32 +431,36 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
 
   return (
     <APIProvider apiKey={googleMapsApiKey}>
-      <div className="relative h-full w-full" ref={mapContainerRef}>
+      <div className="relative h-full w-full overflow-hidden" ref={mapContainerRef}>
         <div className="absolute inset-0 z-0">
           <MapComponent
             center={mapCenter}
             zoom={mapZoom}
-            onCenterChanged={(ev) => setMapCenter(ev.detail.center)} // Keep state in sync if user pans
-            onZoomChanged={(ev) => setMapZoom(ev.detail.zoom)}   // Keep state in sync if user zooms
+            onCenterChanged={(ev) => setMapCenter(ev.detail.center)} 
+            onZoomChanged={(ev) => setMapZoom(ev.detail.zoom)}  
             gestureHandling={'greedy'}
             disableDefaultUI={true}
             mapId="loadixManagerMainMapV2"
             className="w-full h-full"
+            onLoad={(ev) => mapRef.current = ev.map}
           >
             {entitiesForMarkers.map((entity) => {
               if (entity.geoLocation && typeof entity.geoLocation.lat === 'number' && typeof entity.geoLocation.lng === 'number') {
                 const pinStyle = entityPinColors[entity.entityType] || entityPinColors['dealer'];
+                const isHovered = entity.id === hoveredEntityId;
                 return (
                   <AdvancedMarker
                     key={entity.id}
                     position={{ lat: entity.geoLocation.lat, lng: entity.geoLocation.lng }}
                     onClick={() => handleEntityClick(entity)}
                     title={entity.name}
+                    zIndexOffset={isHovered ? 1000 : undefined}
                   >
                     <Pin
-                      background={pinStyle.background}
-                      borderColor={pinStyle.borderColor || pinStyle.background}
+                      background={isHovered ? `hsl(var(--primary) / 0.8)` : pinStyle.background}
+                      borderColor={isHovered ? `hsl(var(--primary))` : (pinStyle.borderColor || pinStyle.background)}
                       glyphColor={pinStyle.glyphColor}
+                      scale={isHovered ? 1.2 : 1}
                     />
                   </AdvancedMarker>
                 );
@@ -361,7 +516,6 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
-                    // onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)} // Delay blur to allow click on results
                     className="pl-9 w-full h-10 text-sm md:h-11 md:text-base bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
                   />
                 </div>
@@ -384,15 +538,20 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     ))}
                     </SelectContent>
                 </Select>
-                <Button variant="outline" size="icon" onClick={() => setShowAdvancedFilters(prev => !prev)} className="h-10 w-10 md:h-11 md:w-11 bg-background/70 border-border/60 hover:bg-accent text-foreground flex-shrink-0">
+                <Button variant="outline" size="icon" onClick={() => setShowAdvancedFilters(prev => !prev)} className="h-10 w-10 md:h-11 md:w-11 bg-background/70 border-border/60 hover:bg-accent text-foreground flex-shrink-0 relative">
                     <SlidersHorizontal className="h-4 w-4 md:h-5 md:w-5"/>
+                    {activeAdvancedFilterCount > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs rounded-full">
+                        {activeAdvancedFilterCount}
+                      </Badge>
+                    )}
                     <span className="sr-only">Plus de filtres</span>
                 </Button>
               </div>
             </div>
              {showAdvancedFilters && (
                 <div className="mt-2 p-3 bg-background/50 rounded-md border border-border/30 space-y-3">
-                    <h4 className="text-sm font-medium text-muted-foreground border-b border-border/50 pb-1.5 mb-2">Filtres Avancés ({entityTypeTranslations[selectedEntityType as EntityType] || 'Tous'})</h4>
+                    <h4 className="text-sm font-medium text-muted-foreground border-b border-border/50 pb-1.5 mb-2">Filtres Avancés ({selectedEntityType !== 'all' ? entityTypeTranslations[selectedEntityType] : 'Tous les types'})</h4>
                     
                     {selectedEntityType === 'all' && <p className="text-xs text-muted-foreground italic text-center">Sélectionnez un type d'entité pour voir les filtres spécifiques.</p>}
 
@@ -458,12 +617,19 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                             </div>
                         </>
                     )}
+                    {activeAdvancedFilterCount > 0 && (
+                      <div className="pt-2 text-right">
+                        <Button variant="ghost" size="sm" onClick={handleResetAdvancedFilters} className="text-xs h-7">
+                          Réinitialiser les filtres
+                        </Button>
+                      </div>
+                    )}
                 </div>
             )}
           </Card>
         </div>
 
-        {(isSearchFocused || searchTerm || (showAdvancedFilters && (departmentFilter || regionFilter || tractorBrandsFilter.length > 0 || machineTypesFilter.length > 0 || brandSignFilter || branchNameFilter || loadixStatusFilter || loadixModelFilter || siteCapacityFilter || siteOperatorFilter ))) && searchResultsEntities.length > 0 && (
+        {(isSearchFocused || (searchTerm && searchResultsEntities.length > 0) || (showAdvancedFilters && searchResultsEntities.length > 0 && activeAdvancedFilterCount > 0) ) && searchResultsEntities.length > 0 && (
           <div className="absolute top-16 md:top-20 left-1/2 z-10 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0 mt-1 md:mt-2">
             <Card className="max-h-[30vh] md:max-h-[40vh] overflow-y-auto bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
               <CardContent className="p-1.5 md:p-2">
@@ -474,6 +640,8 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                         variant="ghost"
                         className="w-full justify-start text-left h-auto py-2 px-2.5 md:py-2.5 md:px-3 hover:bg-primary/10"
                         onClick={() => handleEntityClick(entity)}
+                        onMouseEnter={() => setHoveredEntityId(entity.id)}
+                        onMouseLeave={() => setHoveredEntityId(null)}
                       >
                         <div className="flex items-center gap-2 md:gap-3">
                           {getEntityIcon(entity.entityType, "h-4 w-4 md:h-5 md:h-5 text-primary/80")}
@@ -491,7 +659,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             </Card>
           </div>
         )}
-        {(isSearchFocused || searchTerm || showAdvancedFilters) && searchResultsEntities.length === 0 && (searchTerm.length > 0 || departmentFilter || regionFilter || tractorBrandsFilter.length > 0 || machineTypesFilter.length > 0 || brandSignFilter || branchNameFilter || loadixStatusFilter || loadixModelFilter || siteCapacityFilter || siteOperatorFilter) && (
+        {(isSearchFocused || (searchTerm && searchResultsEntities.length === 0) || (showAdvancedFilters && searchResultsEntities.length === 0 && activeAdvancedFilterCount > 0)) && (searchTerm.length > 0 || activeAdvancedFilterCount > 0) && (
           <div className="absolute top-16 md:top-20 left-1/2 z-10 w-[calc(100%-1rem)] sm:w-full max-w-lg md:max-w-xl -translate-x-1/2 px-2 md:px-0 mt-1 md:mt-2">
             <Card className="bg-card/90 backdrop-blur-lg border-border/50 shadow-xl">
               <CardContent className="p-3 md:p-4 text-center text-sm text-muted-foreground">
@@ -501,8 +669,28 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-30 flex flex-col gap-2">
-           <Button
+        <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-30 flex flex-col items-end gap-2">
+          <div className="flex flex-col gap-0.5">
+             <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10 rounded-b-none"
+              title="Zoom avant"
+            >
+              <ZoomIn className="h-4 w-4 md:h-5 md:w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10 rounded-t-none"
+              title="Zoom arrière"
+            >
+              <ZoomOut className="h-4 w-4 md:h-5 md:w-5" />
+            </Button>
+          </div>
+          <Button
             variant="outline"
             size="icon"
             onClick={handleLocateMe}
@@ -512,6 +700,15 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
           >
             {locatingUser ? <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin"/> : <LocateFixed className="h-4 w-4 md:h-5 md:w-5" />}
           </Button>
+           <Button
+            variant="outline"
+            size="icon"
+            onClick={handleResetViewToFrance}
+            className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10"
+            title="Vue d'ensemble France"
+          >
+            <GlobeIcon className="h-4 w-4 md:h-5 md:h-5" />
+          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -519,7 +716,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
             className="bg-card/80 backdrop-blur-md border-border/50 hover:bg-card text-foreground h-9 w-9 md:h-10 md:w-10"
             title={isFullscreen ? "Quitter le mode plein écran" : "Passer en mode plein écran"}
           >
-            {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:w-5" /> : <Maximize className="h-4 w-4 md:h-5 md:h-5" />}
+            {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:h-5" /> : <Maximize className="h-4 w-4 md:h-5 md:h-5" />}
           </Button>
         </div>
 
@@ -544,7 +741,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                   </div>
                   <SheetClose asChild>
                     <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 md:h-9 md:w-9">
-                      <X className="h-4 w-4 md:h-5 md:w-5" />
+                      <X className="h-4 w-4 md:h-5 md:h-5" />
                     </Button>
                   </SheetClose>
                 </div>

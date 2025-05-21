@@ -1,3 +1,4 @@
+
 // This is a client component
 "use client";
 
@@ -27,6 +28,7 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { geocodeAddress } from '@/services/geocodingService'; 
+import { Badge, type BadgeProps } from '@/components/ui/badge'; // Added Badge and BadgeProps import
 
 interface EditDealerPageProps {
   params: Promise<{ 
@@ -45,8 +47,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
     tractorBrands: [],
     machineTypes: [],
     servicesOffered: [],
-    galleryUris: [], // Managed elsewhere
-    documentUris: [], // Managed elsewhere
+    galleryUris: [], 
+    documentUris: [], 
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +95,6 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           prospectionStatus: dealerData.prospectionStatus || 'none',
           geoLocation: dealerData.geoLocation, 
           servicesOffered: dealerData.servicesOffered || [],
-          // galleryUris and documentUris are not directly edited in this form's state
         };
         setFormData(initialFormState);
         if (dealerData.geoLocation) {
@@ -195,7 +196,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         description: "Commentaire ajouté avec succès. Le statut du concessionnaire a été mis à jour.",
       });
       setNewCommentText('');
-      await fetchDealerData(); // Refresh dealer data to show new comment and potentially updated status
+      await fetchDealerData(); 
     } catch (err) {
       console.error("Erreur lors de l'ajout du commentaire :", err);
       toast({
@@ -240,7 +241,6 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         machineTypes: Array.isArray(formData.machineTypes) ? formData.machineTypes : [],
         tractorBrands: Array.isArray(formData.tractorBrands) ? formData.tractorBrands : [],
         servicesOffered: Array.isArray(formData.servicesOffered) ? formData.servicesOffered : [],
-        // galleryUris and documentUris are not part of this form's direct update logic
       };
       
       if (addressFieldsChanged && addressValidated === true) {
@@ -248,12 +248,9 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
       } else if (!addressFieldsChanged) {
         dataToUpdate.geoLocation = currentDealerData?.geoLocation; 
       } else {
-         // Address changed but not re-validated or validation failed, clear geo
-        dataToUpdate.geoLocation = formData.geoLocation; // if validation passed, this will be set
+        dataToUpdate.geoLocation = formData.geoLocation; 
       }
 
-      // The prospectionStatus is already part of formData and will be included in dataToUpdate.
-      // addCommentToDealer also updates prospectionStatus, so this ensures the latest form value is saved.
 
       await updateDealer(dealerId, dataToUpdate);
       toast({
@@ -532,7 +529,6 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 className="bg-input/70 focus:bg-input text-sm"
                             />
                         </div>
-                        {/* File input is removed */}
                         <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">
                             {isAddingComment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             {isAddingComment ? 'Ajout...' : 'Ajouter Suivi'}
@@ -585,7 +581,7 @@ const getProspectionStatusBadgeInfo = (
     case 'hot': return { variant: 'destructive', label: 'Chaud 🔥' };
     case 'warm': return { variant: 'default', label: 'Tiède 🌤️' };
     case 'cold': return { variant: 'secondary', label: 'Froid ❄️' };
-    case 'converted': return { variant: 'success' as any, label: 'Converti ✅' };
+    case 'converted': return { variant: 'success' as any, label: 'Converti ✅' }; // success is not a standard BadgeProps variant, cast to any or define custom variant
     case 'lost': return { variant: 'outline', label: 'Perdu ❌' };
     default: return { variant: 'outline', label: 'Aucun statut' };
   }

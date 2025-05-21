@@ -12,20 +12,22 @@ import {
   Info, Hash, Power, ChevronsRight, Edit2,
   CircleAlert, Loader2, Printer 
 } from 'lucide-react';
-import DeleteEntityButton from './DeleteEntityButton';
+// DeleteEntityButton is no longer used directly here, it's part of DealerTabsContent or other specific cards
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import DealerTabsContent from './DealerTabsContent';
+import DealerTabsContent from './DealerTabsContent'; // Moved from item-detail-client
+import DeleteEntityButton from './DeleteEntityButton'; // Moved from item-detail-client
 
+// ItemPageProps doit maintenant gérer params comme une promesse potentielle
 interface ItemPageProps {
-  params: {
+  params: Promise<{ // params is now a Promise
     entityType: EntityType;
     entityId: string;
-  };
+  }>;
 }
 
 const getEntityTypeDisplayName = (type: EntityType): string => {
@@ -202,8 +204,11 @@ const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ si
 );
 
 
-export default function ItemDetailPage({ params }: ItemPageProps) {
-  const { entityType, entityId } = params; 
+export default function ItemDetailPage({ params: paramsPromise }: ItemPageProps) {
+  // Utiliser React.use pour déballer la promesse des paramètres
+  const resolvedParams = React.use(paramsPromise);
+  const { entityType, entityId } = resolvedParams;
+  
   const [currentEntity, setCurrentEntity] = React.useState<AppEntity | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -215,7 +220,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     let fetchedEntity: AppEntity | null = null;
 
     if (!entityType || !entityId) {
-      console.warn('ItemDetailPage: EntityType or EntityId is undefined. Params:', params);
+      console.warn('ItemDetailPage: EntityType or EntityId is undefined. Resolved Params:', resolvedParams);
       setError('Paramètres de route invalides.');
       setIsLoading(false);
       return;
@@ -243,7 +248,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [entityType, entityId]); 
+  }, [entityType, entityId, resolvedParams]); // resolvedParams ajouté aux dépendances
 
   React.useEffect(() => {
     fetchData();
@@ -277,7 +282,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     );
   }
 
-  if (!currentEntity && !isLoading) { // Ensure not to show "not found" while still loading
+  if (!currentEntity && !isLoading) { 
     return (
         <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
             <Alert variant="destructive">
@@ -297,7 +302,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     );
   }
   
-  if (!currentEntity) { // Fallback if still no entity after loading checks.
+  if (!currentEntity) { 
       return (
            <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4 text-center">
                 <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
@@ -371,4 +376,3 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
     </div>
   );
 }
-

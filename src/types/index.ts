@@ -50,6 +50,7 @@ export interface Dealer extends BaseEntity {
   department?: string;
   brandSign?: string;
   branchName?: string;
+  // region?: string; // Future field
 }
 
 export interface LoadixUnit extends BaseEntity {
@@ -77,6 +78,7 @@ export interface MethanisationSite extends BaseEntity {
   siteClients?: MethanisationSiteClient[]; 
   technologies?: string[]; 
   relatedDealerIds?: string[]; 
+  // region?: string; // Future field
 }
 
 export type AppEntity = Dealer | LoadixUnit | MethanisationSite;
@@ -145,7 +147,7 @@ export interface NewMethanisationSiteData {
 export type UpdateMethanisationSiteData = Partial<NewMethanisationSiteData>;
 
 // Options for MultiSelect components
-export const TRACTOR_BRAND_OPTIONS = [
+export const TRACTOR_BRAND_OPTIONS: { value: string; label: string }[] = [
   { value: "john_deere", label: "John Deere" },
   { value: "case_ih", label: "Case IH" },
   { value: "new_holland", label: "New Holland" },
@@ -160,7 +162,7 @@ export const TRACTOR_BRAND_OPTIONS = [
   { value: "same", label: "SAME" },
 ];
 
-export const MACHINE_TYPE_OPTIONS = [
+export const MACHINE_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "tractor", label: "Tracteurs" },
   { value: "combine_harvester", label: "Moissonneuses-batteuses" },
   { value: "loader", label: "Chargeurs" },
@@ -173,6 +175,22 @@ export const MACHINE_TYPE_OPTIONS = [
   { value: "sprayer", label: "Pulvérisateurs" },
   { value: "tillage_equipment", label: "Matériel de travail du sol" },
 ];
+
+export const LOADIX_STATUS_OPTIONS: { value: LoadixUnit['status']; label: string }[] = [
+  { value: 'active', label: 'Actif' },
+  { value: 'maintenance', label: 'En Maintenance' },
+  { value: 'inactive', label: 'Inactif' },
+  { value: 'in_stock', label: 'En Stock (Neuf)' },
+  { value: 'sold', label: 'Vendu (Occasion)' },
+];
+
+export const LOADIX_MODEL_OPTIONS: { value: string; label: string }[] = [
+    { value: 'LOADIX Pro v1', label: 'LOADIX Pro v1' },
+    { value: 'LOADIX Pro v2', label: 'LOADIX Pro v2' },
+    { value: 'LOADIX Compact', label: 'LOADIX Compact' },
+    { value: 'LOADIX HD', label: 'LOADIX HD' },
+];
+
 
 // Zod Schemas for CSV Import Validation
 

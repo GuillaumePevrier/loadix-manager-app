@@ -51,10 +51,10 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-xl border-border/20 rounded-xl animate-in fade-in-0 zoom-in-95 duration-500">
       <CardHeader className="text-center pt-8 pb-6">
-        <Link href="/" className="flex flex-col items-center justify-center mb-4 group">
-          <Logo className="w-24 h-24 text-primary transition-transform group-hover:scale-110 duration-300" alt="LOADIX Logo" />
+        <Link href="/" className="flex flex-col items-center justify-center mb-3 group">
+          <Logo className="w-28 h-28 text-primary transition-transform group-hover:scale-110 duration-300" alt="ManuRob Logo" />
         </Link>
-        <CardTitle className="text-3xl font-futura text-foreground/90">Connexion</CardTitle>
+        <CardTitle className="text-3xl font-futura text-primary">ManuRob</CardTitle>
         <CardDescription className="text-md font-bebas-neue tracking-wider text-primary/90 mt-1">
           Accédez à votre interface de gestion ManuRob.
         </CardDescription>
@@ -63,7 +63,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">Email</Label>
-            <div className="animated-gradient-border-wrapper">
+            <div className="relative rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300 animated-gradient-border-wrapper">
               <Input
                 id="email"
                 type="email"
@@ -71,13 +71,13 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-input border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[calc(var(--radius)-2px)] w-full placeholder:text-muted-foreground/60 py-3 px-4 text-base"
+                className="bg-input border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[calc(var(--radius)-1.5px)] w-full placeholder:text-muted-foreground/60 py-3 px-4 text-base"
               />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium text-muted-foreground">Mot de passe</Label>
-            <div className="animated-gradient-border-wrapper">
+            <div className="relative rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300 animated-gradient-border-wrapper">
               <Input
                 id="password"
                 type="password"
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-input border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[calc(var(--radius)-2px)] w-full placeholder:text-muted-foreground/60 py-3 px-4 text-base"
+                className="bg-input border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[calc(var(--radius)-1.5px)] w-full placeholder:text-muted-foreground/60 py-3 px-4 text-base"
               />
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function LoginPage() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="text-center text-xs text-muted-foreground/70 justify-center pb-8">
+      <CardFooter className="text-center text-xs text-muted-foreground/70 justify-center pb-8 pt-4">
         <p>&copy; {new Date().getFullYear()} ManuRob. Tous droits réservés.</p>
       </CardFooter>
     </Card>

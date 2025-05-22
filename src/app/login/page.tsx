@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authIsLoading && isAuthenticated) {
-      router.replace('/'); 
+      router.replace('/');
     }
   }, [isAuthenticated, authIsLoading, router]);
 
@@ -34,13 +34,13 @@ export default function LoginPage() {
     }
     const success = await login(email, password);
     if (success) {
-      router.replace('/'); 
+      router.replace('/');
     } else {
       setError('Échec de la connexion. Veuillez vérifier vos identifiants ou réessayez.');
     }
   };
 
-  if (authIsLoading || (!authIsLoading && isAuthenticated)) { 
+  if (authIsLoading || (!authIsLoading && isAuthenticated)) {
     return (
       <div className="flex h-screen items-center justify-center bg-transparent">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -49,11 +49,10 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-xl border-border/30 rounded-xl animate-in fade-in-0 zoom-in-95 duration-500">
+    <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-xl border-border/20 rounded-xl animate-in fade-in-0 zoom-in-95 duration-500">
       <CardHeader className="text-center pt-8 pb-6">
         <Link href="/" className="flex flex-col items-center justify-center mb-4 group">
-          <Logo className="w-20 h-20 text-primary transition-transform group-hover:scale-110 duration-300" alt="ManuRob Logo" />
-          {/* Le h1 ManuRob a été supprimé */}
+          <Logo className="w-24 h-24 text-primary transition-transform group-hover:scale-110 duration-300" alt="LOADIX Logo" />
         </Link>
         <CardTitle className="text-3xl font-futura text-foreground/90">Connexion</CardTitle>
         <CardDescription className="text-md font-bebas-neue tracking-wider text-primary/90 mt-1">

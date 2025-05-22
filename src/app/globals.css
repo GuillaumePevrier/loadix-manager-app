@@ -5,57 +5,57 @@
 @layer base {
   :root {
     /* Dark Theme as default */
-    --background: 224 33% 10%; /* Dark navy #1A263A */
-    --foreground: 210 40% 98%; /* Light color for text */
+    --background: 220 10% 15%; /* Darker Gray */
+    --foreground: 210 40% 98%; 
 
-    --card: 224 30% 13%; /* Slightly lighter navy for cards #1F2B41, with glassmorphism this will be semi-transparent */
+    --card: 220 10% 18%; /* Slightly Lighter Gray for cards */
     --card-foreground: 210 40% 98%;
 
-    --popover: 224 30% 13%;
+    --popover: 220 10% 18%; /* Popover to match card */
     --popover-foreground: 210 40% 98%;
 
-    --primary: 208 58% 48%; /* New blue #307cc4 */
-    --primary-foreground: 210 40% 98%; /* Text on primary - white should still be fine */
+    --primary: 208 58% 48%; /* Blue #307cc4 */
+    --primary-foreground: 210 40% 98%; 
 
-    --secondary: 224 25% 20%; /* A slightly lighter shade of navy for secondary elements */
+    --secondary: 220 10% 22%; /* Medium Gray for secondary elements */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 224 25% 25%; /* Muted elements */
-    --muted-foreground: 220 15% 65%; /* Muted text */
+    --muted: 220 10% 25%; /* Lighter Gray for muted elements */
+    --muted-foreground: 220 15% 65%; 
 
-    --accent: 210 20% 85%; /* Light Silver/Grey for accent */
-    --accent-foreground: 224 33% 10%; /* Text on accent (darker for light silver) */
+    --accent: 210 20% 85%; /* Light Silver/Grey for accent (used in animated border) */
+    --accent-foreground: 224 33% 10%; /* Dark blue text on light silver accent */
 
-    --destructive: 0 72% 51%; /* Default destructive color */
+    --destructive: 0 72% 51%; 
     --destructive-foreground: 210 40% 98%;
 
-    --border: 224 25% 20%; /* Border color for fine borders */
-    --input: 224 25% 16%; /* Input background, slightly darker than card for contrast with border */
-    --ring: 208 58% 48%; /* Ring color, new primary blue */
+    --border: 220 10% 22%; /* Medium Gray for borders */
+    --input: 220 10% 13%; /* Darker Gray for input backgrounds inside animated borders */
+    --ring: 208 58% 48%; /* Ring color, primary blue */
 
-    --radius: 0.5rem; /* Rounded corners */
+    --radius: 0.5rem; 
 
-    /* Chart colors - can be adjusted if charts are used */
-    --chart-1: 208 58% 48%; /* New primary blue */
+    /* Chart colors */
+    --chart-1: 208 58% 48%; /* Primary blue */
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
     /* Sidebar specific colors */
-    --sidebar-background: 224 33% 10%; /* Same as main background */
+    --sidebar-background: 220 10% 15%; /* Match main background */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 208 58% 48%; /* New primary blue for active/primary items */
+    --sidebar-primary: 208 58% 48%; /* Primary blue for active/primary items */
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 224 25% 15%; /* Slightly different from main accent for hover, closer to card bg */
+    --sidebar-accent: 220 10% 19%; /* Slightly lighter gray for hover in sidebar */
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 224 25% 20%; /* Fine borders within sidebar */
-    --sidebar-ring: 208 58% 48%; /* Ring for focus, matches new primary blue */
+    --sidebar-border: 220 10% 22%; /* Borders within sidebar */
+    --sidebar-ring: 208 58% 48%; /* Ring for focus, matches primary blue */
 
     /* Font variables */
     /* --font-inter is set by next/font */
     /* --font-bebas-neue is set by next/font */
-    --font-futura: "Futura", "Arial Black", "Impact", sans-serif; /* Fallback fonts for Futura */
+    --font-futura: "Futura", "Arial Black", "Impact", sans-serif; 
   }
 
   .light {
@@ -68,7 +68,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 208 58% 48%; /* New blue #307cc4 */
+    --primary: 208 58% 48%; /* Blue #307cc4 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -78,18 +78,19 @@
     --muted-foreground: 215.4 16.3% 46.9%;
 
     --accent: 210 20% 85%; /* Light Silver/Grey for accent */
-    --accent-foreground: 224 33% 10%; /* Text on accent (darker for light silver) */
+    --accent-foreground: 224 33% 10%; 
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 93.4%; /* Slightly darker input for light theme */
-    --ring: 208 58% 48%; /* New primary blue */
+    --input: 214.3 31.8% 93.4%; 
+    --ring: 208 58% 48%; /* Blue */
 
+    /* Sidebar specific colors for light theme */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 208 58% 48%; /* New primary blue */
+    --sidebar-primary: 208 58% 48%; /* Primary blue */
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 210 40% 96.1%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
@@ -102,7 +103,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans leading-normal; /* Default font is Inter (via font-sans), default line height 1.5 */
+    @apply bg-background text-foreground font-sans leading-normal; 
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-futura;
@@ -131,35 +132,36 @@
 
 @layer utilities {
   .animated-gradient-border-wrapper {
-    @apply relative rounded-lg p-[2px] overflow-hidden transition-all duration-300 ease-in-out;
+    @apply relative rounded-lg p-[1.5px] overflow-hidden transition-all duration-300 ease-in-out;
     /* Gradient: Dominant Blue, with Light Silver accent */
-    background-image: conic-gradient(from var(--gradient-angle, 0deg) at 50% 50%, hsl(var(--primary)) 0%, hsl(var(--primary)) 15%, hsl(var(--accent)) 30%, hsl(var(--accent)) 45%, hsl(var(--primary)) 60%, hsl(var(--primary)) 75%, hsl(var(--accent)) 90%, hsl(var(--primary)) 100%);
-    animation: rotate-gradient-border 5s linear infinite;
+    background-image: conic-gradient(from var(--gradient-angle, 0deg) at 50% 50%, hsl(var(--primary)) 0%, hsl(var(--primary)) 20%, hsl(var(--accent)) 35%, hsl(var(--accent)) 45%, hsl(var(--primary)) 60%, hsl(var(--primary)) 80%, hsl(var(--accent)) 95%, hsl(var(--primary)) 100%);
+    animation: rotate-gradient-border 4s linear infinite; /* Slightly faster animation */
   }
-  .animated-gradient-border-wrapper:hover {
-    /* Adjusted hover shadow to use primary and accent (silver) */
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--accent) / 0.3);
+  .animated-gradient-border-wrapper:hover,
+  .animated-gradient-border-wrapper:focus-within {
+    /* Adjusted hover/focus shadow to use primary and accent (silver) */
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.4), 0 0 15px hsl(var(--accent) / 0.25);
   }
 
   /* Aurora Background for Login Page */
   .login-aurora-bg {
     @apply absolute inset-0 -z-10 transition-opacity duration-500;
     background-image: 
-      radial-gradient(ellipse 50% 80% at 20% -20%, hsla(var(--primary), 0.35), transparent 70%),
-      radial-gradient(ellipse 50% 80% at 80% 120%, hsla(var(--accent), 0.3), transparent 70%),
-      radial-gradient(circle 400px at 50% 50%, hsla(var(--primary), 0.15), transparent 80%);
-    background-size: 300% 300%; /* Make gradients larger */
-    animation: aurora-animation 30s ease-in-out infinite alternate;
+      radial-gradient(ellipse 50% 80% at 20% -20%, hsla(var(--primary), 0.35), transparent 70%), /* Blue top-left */
+      radial-gradient(ellipse 50% 80% at 80% 120%, hsla(var(--accent), 0.3), transparent 70%), /* Silver bottom-right */
+      radial-gradient(circle 400px at 50% 50%, hsla(var(--primary), 0.15), transparent 80%); /* Central blue halo */
+    background-size: 250% 250%; 
+    animation: aurora-animation 25s ease-in-out infinite alternate;
   }
 
   .dark .login-aurora-bg {
-     opacity: 0.6; /* Slightly more pronounced in dark mode */
+     opacity: 0.7; /* Slightly more pronounced in dark mode */
      background-image: 
       radial-gradient(ellipse 50% 80% at 10% -15%, hsla(var(--primary), 0.5), transparent 70%),
       radial-gradient(ellipse 50% 80% at 90% 115%, hsla(var(--accent), 0.25), transparent 70%),
       radial-gradient(circle 500px at 50% 30%, hsla(var(--primary), 0.2), transparent 80%);
-    background-size: 300% 300%;
-    animation: aurora-animation 30s ease-in-out infinite alternate;
+    background-size: 250% 250%;
+    animation: aurora-animation 25s ease-in-out infinite alternate;
   }
 }
 

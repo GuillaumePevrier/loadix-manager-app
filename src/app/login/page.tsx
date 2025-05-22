@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { AlertCircle, Loader2 } from 'lucide-react';
 import Logo from '@/components/icons/logo';
 import Link from 'next/link';
-// ThemeToggleButton is now in LoginLayout
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -43,7 +42,7 @@ export default function LoginPage() {
 
   if (authIsLoading || (!authIsLoading && isAuthenticated)) { 
     return (
-      <div className="flex h-screen items-center justify-center bg-transparent"> {/* Ensure loader is visible */}
+      <div className="flex h-screen items-center justify-center bg-transparent">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -52,8 +51,8 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-xl border-border/30 rounded-xl animate-in fade-in-0 zoom-in-95 duration-500">
       <CardHeader className="text-center pt-8 pb-6">
-        <Link href="/" className="flex flex-col items-center justify-center gap-2 mb-4 group">
-          <Logo className="w-14 h-14 text-primary transition-transform group-hover:scale-110 duration-300" />
+        <Link href="/" className="flex flex-col items-center justify-center gap-1 mb-3 group">
+          <Logo className="w-14 h-14 text-primary transition-transform group-hover:scale-110 duration-300" alt="ManuRob Logo" />
           <h1 className="text-4xl font-futura font-bold text-primary">
             ManuRob
           </h1>

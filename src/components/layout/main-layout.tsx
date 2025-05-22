@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import SidebarNav from './sidebar-nav';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // Removed AvatarImage
 import { Button } from '@/components/ui/button';
 import { Settings, LogOut, Loader2, Search } from 'lucide-react';
 import Logo from '@/components/icons/logo';
@@ -43,24 +43,20 @@ export default function MainLayout({ children }: MainLayoutProps) {
     '/dealers/create',
     '/loadix-units/create',
     '/methanisation-sites/create',
-    '/tools/bulk-import' // Added bulk import page
+    '/tools/bulk-import'
   ];
-  const isDealerEditPage = /^\/dealers\/edit\/[^/]+$/.test(pathname);
-  const isLoadixUnitEditPage = /^\/loadix-units\/edit\/[^/]+$/.test(pathname);
-  const isMethanisationSiteEditPage = /^\/methanisation-sites\/edit\/[^/]+$/.test(pathname);
+  
+  const editPageRegex = /^\/(dealers|loadix-units|methanisation-sites)\/edit\/[^/]+$/;
+  const applyNoPadding = noPaddingRoutes.includes(pathname) || editPageRegex.test(pathname);
 
-  const applyNoPadding = noPaddingRoutes.includes(pathname) ||
-                         isDealerEditPage ||
-                         isLoadixUnitEditPage ||
-                         isMethanisationSiteEditPage;
 
   return (
     <>
       <Sidebar collapsible="icon" variant="sidebar" side="left" className="border-r-border/50">
         <SidebarHeader className="flex items-center p-4 h-16 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full">
-            <Logo className="w-8 h-8 text-primary flex-shrink-0" />
-            <h1 className="text-xl font-futura font-semibold group-data-[collapsible=icon]:hidden">LOADIX</h1>
+            <Logo className="w-8 h-8 text-primary flex-shrink-0" alt="LOADIX App Logo" />
+            <h1 className="text-xl font-futura font-semibold group-data-[collapsible=icon]:hidden text-primary">LOADIX</h1>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2 flex-1">
@@ -74,7 +70,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           ) : user ? (
             <div className="flex items-center group-data-[collapsible=icon]:justify-center gap-3 p-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2 rounded-md hover:bg-sidebar-accent/50 transition-colors">
               <Avatar className="h-9 w-9 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 flex-shrink-0">
-                <AvatarImage src={user.avatarUrl || `https://placehold.co/100x100.png`} alt={user.name || 'User Avatar'} data-ai-hint="user avatar" />
+                {/* Removed AvatarImage, relying on placeholder or future user.avatarUrl if you implement it */}
                 <AvatarFallback>{user.name ? user.name.substring(0, 2).toUpperCase() : 'AD'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden group-data-[collapsible=icon]:hidden">
@@ -116,7 +112,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto ${applyNoPadding ? '' : 'p-2 md:p-4 lg:p-6'}`}> {/* Reduced default padding slightly */}
+        <main className={`flex-1 overflow-y-auto ${applyNoPadding ? '' : 'p-2 md:p-4 lg:p-6'}`}>
           {children}
         </main>
       </SidebarInset>

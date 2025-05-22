@@ -1,19 +1,36 @@
-import type { SVGProps } from 'react';
+import Image from 'next/image';
+import type { ImageProps } from 'next/image';
 
-// New LOADIX logo based on the provided image
-export default function Logo(props: SVGProps<SVGSVGElement>) {
+// This component now expects to render a PNG logo from the /public directory.
+// Ensure your logo file (e.g., logo-loadix.png) is in the public folder.
+// The `className` prop will be used to control the size of the logo.
+// The `alt` prop should be provided for accessibility.
+
+interface LogoProps extends Omit<ImageProps, 'src' | 'alt' | 'width' | 'height'> {
+  alt?: string;
+  className?: string;
+  // Width and height will be controlled by className and fill or fixed sizes where used
+}
+
+export default function Logo({ alt = "LOADIX Logo", className, ...props }: LogoProps) {
+  // Defaulting to a common logo name. Adjust if your filename is different.
+  const logoPath = '/logo-loadix.png';
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5" // Made it slightly thicker to match the new logo's style
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M5 19V5L12 12L19 5V19" />
-    </svg>
+    <div className={cn("relative", className)}>
+      <Image
+        src={logoPath}
+        alt={alt}
+        fill
+        style={{ objectFit: 'contain' }} // 'contain' is often good for logos
+        priority // Preload logo if it's above the fold
+        {...props}
+      />
+    </div>
   );
 }
+
+// Helper cn function if not already available, or import from '@/lib/utils'
+// For simplicity, including a basic version here if this file is standalone.
+// In a real project, you'd import cn from '@/lib/utils'.
+const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');

@@ -14,8 +14,8 @@
     --popover: 224 30% 13%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 220 82% 57%; /* Electric blue #386AE9 */
-    --primary-foreground: 210 40% 98%; /* Text on primary */
+    --primary: 208 58% 48%; /* New blue #307cc4 */
+    --primary-foreground: 210 40% 98%; /* Text on primary - white should still be fine */
 
     --secondary: 224 25% 20%; /* A slightly lighter shade of navy for secondary elements */
     --secondary-foreground: 210 40% 98%;
@@ -31,12 +31,12 @@
 
     --border: 224 25% 20%; /* Border color for fine borders */
     --input: 224 25% 16%; /* Input background, slightly darker than card for contrast with border */
-    --ring: 220 82% 57%; /* Ring color, same as primary */
+    --ring: 208 58% 48%; /* Ring color, new primary blue */
 
     --radius: 0.5rem; /* Rounded corners */
 
     /* Chart colors - can be adjusted if charts are used */
-    --chart-1: 220 70% 50%;
+    --chart-1: 208 58% 48%; /* New primary blue */
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
@@ -45,12 +45,12 @@
     /* Sidebar specific colors */
     --sidebar-background: 224 33% 10%; /* Same as main background */
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 220 82% 57%; /* Electric blue for active/primary items */
+    --sidebar-primary: 208 58% 48%; /* New primary blue for active/primary items */
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 224 25% 15%; /* Slightly different from main accent for hover, closer to card bg */
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 224 25% 20%; /* Fine borders within sidebar */
-    --sidebar-ring: 220 82% 57%; /* Ring for focus, matches primary */
+    --sidebar-ring: 208 58% 48%; /* Ring for focus, matches new primary blue */
 
     /* Font variables */
     /* --font-inter is set by next/font */
@@ -68,7 +68,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 220 82% 57%; /* Electric blue #386AE9 */
+    --primary: 208 58% 48%; /* New blue #307cc4 */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -85,11 +85,11 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 93.4%; /* Slightly darker input for light theme */
-    --ring: 220 82% 57%;
+    --ring: 208 58% 48%; /* New primary blue */
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 220 82% 57%;
+    --sidebar-primary: 208 58% 48%; /* New primary blue */
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 210 40% 96.1%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;

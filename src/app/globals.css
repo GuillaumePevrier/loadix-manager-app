@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    /* Dark Theme as default */
-    --background: 220 10% 15%; /* Darker Gray */
+    /* Dark Theme as default - Lighter version */
+    --background: 220 10% 22%; /* Dark Gray - Lighter */
     --foreground: 210 40% 98%; 
 
-    --card: 220 10% 18%; /* Slightly Lighter Gray for cards */
+    --card: 220 10% 25%; /* Slightly Lighter Gray for cards */
     --card-foreground: 210 40% 98%;
 
-    --popover: 220 10% 18%; /* Popover to match card */
+    --popover: 220 10% 25%; /* Popover to match card */
     --popover-foreground: 210 40% 98%;
 
     --primary: 208 58% 48%; /* Blue #307cc4 */
     --primary-foreground: 210 40% 98%; 
 
-    --secondary: 220 10% 22%; /* Medium Gray for secondary elements */
+    --secondary: 220 10% 30%; /* Medium Gray for secondary elements */
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 10% 25%; /* Lighter Gray for muted elements */
-    --muted-foreground: 220 15% 65%; 
+    --muted: 220 10% 35%; /* Lighter Gray for muted elements */
+    --muted-foreground: 220 15% 70%; /* Adjusted for lighter muted background */
 
     --accent: 210 20% 85%; /* Light Silver/Grey for accent (used in animated border) */
     --accent-foreground: 224 33% 10%; /* Dark blue text on light silver accent */
@@ -29,8 +29,8 @@
     --destructive: 0 72% 51%; 
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 10% 22%; /* Medium Gray for borders */
-    --input: 220 10% 13%; /* Darker Gray for input backgrounds inside animated borders */
+    --border: 220 10% 30%; /* Medium Gray for borders */
+    --input: 220 10% 20%; /* Darker Gray for input backgrounds inside animated borders */
     --ring: 208 58% 48%; /* Ring color, primary blue */
 
     --radius: 0.5rem; 
@@ -43,13 +43,13 @@
     --chart-5: 340 75% 55%;
 
     /* Sidebar specific colors */
-    --sidebar-background: 220 10% 15%; /* Match main background */
+    --sidebar-background: 220 10% 22%; /* Match new main background */
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 208 58% 48%; /* Primary blue for active/primary items */
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 220 10% 19%; /* Slightly lighter gray for hover in sidebar */
+    --sidebar-accent: 220 10% 26%; /* Slightly lighter gray for hover in sidebar */
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 220 10% 22%; /* Borders within sidebar */
+    --sidebar-border: 220 10% 30%; /* Borders within sidebar */
     --sidebar-ring: 208 58% 48%; /* Ring for focus, matches primary blue */
 
     /* Font variables */

@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import type { ImageProps } from 'next/image';
 
@@ -9,7 +10,6 @@ import type { ImageProps } from 'next/image';
 interface LogoProps extends Omit<ImageProps, 'src' | 'alt' | 'width' | 'height'> {
   alt?: string;
   className?: string;
-  // Width and height will be controlled by className and fill or fixed sizes where used
 }
 
 export default function Logo({ alt = "LOADIX Logo", className, ...props }: LogoProps) {

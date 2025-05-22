@@ -51,11 +51,9 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-xl border-border/30 rounded-xl animate-in fade-in-0 zoom-in-95 duration-500">
       <CardHeader className="text-center pt-8 pb-6">
-        <Link href="/" className="flex flex-col items-center justify-center gap-1 mb-3 group">
-          <Logo className="w-14 h-14 text-primary transition-transform group-hover:scale-110 duration-300" alt="ManuRob Logo" />
-          <h1 className="text-4xl font-futura font-bold text-primary">
-            ManuRob
-          </h1>
+        <Link href="/" className="flex flex-col items-center justify-center mb-4 group">
+          <Logo className="w-20 h-20 text-primary transition-transform group-hover:scale-110 duration-300" alt="ManuRob Logo" />
+          {/* Le h1 ManuRob a été supprimé */}
         </Link>
         <CardTitle className="text-3xl font-futura text-foreground/90">Connexion</CardTitle>
         <CardDescription className="text-md font-bebas-neue tracking-wider text-primary/90 mt-1">

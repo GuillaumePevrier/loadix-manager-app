@@ -59,42 +59,42 @@
   }
 
   .light {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 40% 96.5%; /* Light cool gray */
+    --foreground: 222.2 84% 4.9%; /* Dark gray/black */
 
-    --card: 0 0% 100%;
+    --card: 0 0% 100%; /* White */
     --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 0 0% 100%;
+    --popover: 0 0% 100%; /* White */
     --popover-foreground: 222.2 84% 4.9%;
 
     --primary: 208 58% 48%; /* Blue #307cc4 */
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 210 40% 98%; /* Light text for blue buttons */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 30% 92%; /* Slightly darker light gray */
+    --secondary-foreground: 222.2 47.4% 11.2%; /* Dark text */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 30% 92%; /* Same as secondary */
+    --muted-foreground: 215.4 16.3% 50%; /* Medium-light gray text */
 
-    --accent: 210 20% 85%; /* Light Silver/Grey for accent */
-    --accent-foreground: 224 33% 10%; 
+    --accent: 210 20% 85%; /* Light Silver/Grey for accent (animated border) */
+    --accent-foreground: 224 33% 10%; /* Dark blue text on light silver accent */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 93.4%; 
+    --border: 210 25% 88%; /* Visible border for light gray bg */
+    --input: 0 0% 100%; /* White input background */
     --ring: 208 58% 48%; /* Blue */
 
     /* Sidebar specific colors for light theme */
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 210 35% 95%; /* Distinct light gray for sidebar */
     --sidebar-foreground: 222.2 84% 4.9%;
     --sidebar-primary: 208 58% 48%; /* Primary blue */
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent: 210 30% 90%; /* Slightly darker hover for sidebar */
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-border: 210 25% 85%;
   }
 }
 

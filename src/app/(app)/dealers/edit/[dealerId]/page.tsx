@@ -100,6 +100,11 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
         if (dealerData.geoLocation) {
           setAddressValidated(true); 
         }
+ if (!dealerData.geoLocation && dealerData.address && dealerData.city && dealerData.postalCode && dealerData.country) {
+ setAddressValidated(false);
+        }
+
+
       } else {
         setError('Concessionnaire non trouvé.');
       }

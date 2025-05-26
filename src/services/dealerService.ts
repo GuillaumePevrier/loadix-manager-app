@@ -195,11 +195,10 @@ export async function addDealer(dealerData: NewDealerData): Promise<Dealer | nul
       updatedAt: serverTimestamp(),
     };
 
-    if (dealerData.geoLocation) {
+    // Handle geoLocation: convert to GeoPoint if valid, otherwise set to null
+    if (dealerData.geoLocation && typeof dealerData.geoLocation.lat === 'number' && typeof dealerData.geoLocation.lng === 'number') {
       dataToSave.geoLocation = new GeoPoint(dealerData.geoLocation.lat, dealerData.geoLocation.lng);
-    } else {
-      dataToSave.geoLocation = null;
-    }
+    } else dataToSave.geoLocation = null; // Set to null if not provided or invalid
 
     const initialCommentsArray: Partial<Comment>[] = [];
     if (dealerData.initialCommentText && dealerData.initialCommentText.trim() !== '') {
@@ -242,21 +241,26 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
     console.warn("Firebase not configured. Cannot update dealer.");
     throw new Error("Firebase not configured.");
   }
+ console.log('updateDealer received ID:', id, 'and data:', dataToUpdate);
+
   try {
     const dealerRef = doc(db, 'dealers', id);
     const updatePayload: { [key: string]: any } = { ...dataToUpdate };
 
     updatePayload.updatedAt = serverTimestamp();
 
-    if (updatePayload.hasOwnProperty('geoLocation')) {
-        if (updatePayload.geoLocation && typeof updatePayload.geoLocation.lat === 'number' && typeof updatePayload.geoLocation.lng === 'number') {
+    // Handle geoLocation: If it's already a GeoPoint (from fetched data), keep it.
+    // If it's an object with lat/lng (from form geocoding), convert it to GeoPoint.
+    // Otherwise, set to null.
+ if (updatePayload.hasOwnProperty('geoLocation')) {
+      if (updatePayload.geoLocation instanceof GeoPoint) {
+ // It's already a GeoPoint, keep it
+      } else if (updatePayload.geoLocation && typeof updatePayload.geoLocation.lat === 'number' && typeof updatePayload.geoLocation.lng === 'number') {
             updatePayload.geoLocation = new GeoPoint(updatePayload.geoLocation.lat, updatePayload.geoLocation.lng);
-        } else {
-            // If geoLocation is explicitly set to undefined or null (e.g. address cleared and not re-geocoded)
-            // set it to null in Firestore.
-            updatePayload.geoLocation = null; 
+      } else {
+ updatePayload.geoLocation = null; // Invalid or undefined, set to null
+      }
         }
-    }
     
     if (updatePayload.hasOwnProperty('comments')) {
       delete updatePayload.comments; 
@@ -278,6 +282,8 @@ export async function updateDealer(id: string, dataToUpdate: UpdateDealerData): 
             delete updatePayload[key];
         }
     });
+
+ console.log('updateDealer payload before updateDoc:', updatePayload);
 
     await updateDoc(dealerRef, updatePayload);
     const updatedDocSnap = await getDoc(dealerRef);

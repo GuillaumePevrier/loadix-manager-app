@@ -75,9 +75,44 @@ export interface MethanisationSite extends BaseEntity {
   capacity?: string; 
   operator?: string; 
   startDate?: string; 
+ legalType: string; // Type juridique
+ siretSiren: string; // SIRET / SIREN
+ mainContact: string; // Contact principal
   siteClients?: MethanisationSiteClient[]; 
+ department: string; // Département
+ phone: string; // Téléphone
+ email: string; // Email
+ website: string; // Site internet
+ urbanOrRuralArea: string; // Zone urbaine / rurale
+ proximityToStepIsdnd: string; // Proximité STEP / ISDND
+ projectType: string; // Type de projet
+ valorizationType: string; // Type de valorisation
+ icpeStatus: string; // Statut ICPE
+ icpeRegime: string; // Régime ICPE en vigueur
+ mainIntrantsType: string; // Type d’intrants principaux
+ majorityAgriculturalCapital: boolean; // Capitaux Agricoles majoritaires
+ legalStructure: string; // Montage juridique
+ authorizedVolume: string; // Volume autorisé
+ installedElectricalPower: string; // Puissance électrique installée
+ installedThermalPower: string; // Puissance thermique installée
+ maxBiomethaneFlow: string; // Débit maximal de biométhane
+ estimatedAnnualProduction: string; // Production annuelle estimée
+ commissioningYear: number; // Année de mise en service
+ boilerMotorType: string; // Type de chaudière / moteur
+ operatingHours: number; // Nombre d'heures de fonctionnement
+ icpeFileNumber: string; // Numéro du dossier ICPE
+ prefecturalDecree: string; // Arrêté préfectural
+  prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost';
+  comments?: Comment[];
+ publicConsultationLink: string; // Consultation publique (lien)
+ publicSubsidies: string; // Subventions publiques reçues
+ drealInspection: string; // Inspection DREAL / anomalies
+ operationalStatus: string; // État de fonctionnement
+ extensionProjects: string; // Projets d’extension
+ incidentHistory: string; // Historique incidents
+ publicOpinion: string; // Avis du public / voisins
   technologies?: string[]; 
-  relatedDealerIds?: string[]; 
+ relatedDealerIds?: string[];
   // region?: string; // Future field
 }
 
@@ -152,10 +187,28 @@ export const TRACTOR_BRAND_OPTIONS: { value: string; label: string }[] = [
   { value: "case_ih", label: "Case IH" },
   { value: "new_holland", label: "New Holland" },
   { value: "fendt", label: "Fendt" },
+  { value: "valtra", label: "Valtra" },
+  { value: "vicon", label: "Vicon" },
+  { value: "lindner", label: "Lindner" },
+  { value: "manitou", label: "Manitou" },
+  { value: "dieci", label: "Dieci" },
+  { value: "jcb", label: "JCB" },
+  { value: "krone", label: "Krone" },
+  { value: "kioti", label: "Kioti" },
+  { value: "delaval", label: "DeLaval" },
+  { value: "kramer", label: "Kramer" },
+  { value: "kuhn", label: "Kuhn" },
   { value: "massey_ferguson", label: "Massey Ferguson" },
   { value: "claas", label: "Claas" },
-  { value: "valtra", label: "Valtra" },
   { value: "deutz_fahr", label: "Deutz-Fahr" },
+  { value: "supertino", label: "Supertino" },
+  { value: "merlo", label: "Merlo" },
+  { value: "maschio", label: "Maschio" },
+  { value: "bobcat", label: "Bobcat" },
+  { value: "pfanzelt", label: "Pfanzelt" },
+  { value: "zetor", label: "Zetor" },
+  { value: "giant", label: "Giant" },
+  { value: "weidemann", label: "Weidemann" },
   { value: "kubota", label: "Kubota" },
   { value: "mc_cormick", label: "McCormick" },
   { value: "landini", label: "Landini" },
@@ -257,6 +310,33 @@ export const MethanisationSiteImportSchemaZod = z.object({
   capacity: z.string().optional(),
   operator: z.string().optional(),
   startDate: toOptionalDate('startDate'),
+ legalType: z.string().optional().default(''),
+ siretSiren: z.string().optional().default(''),
+ mainContact: z.string().optional().default(''),
+ department: z.string().optional().default(''),
+ phone: z.string().optional().default(''),
+ email: z.string().optional().default(''),
+ website: z.string().optional().default(''),
+ urbanOrRuralArea: z.string().optional().default(''),
+ proximityToStepIsdnd: z.string().optional().default(''),
+ projectType: z.string().optional().default(''),
+ valorizationType: z.string().optional().default(''),
+ icpeStatus: z.string().optional().default(''),
+ icpeRegime: z.string().optional().default(''),
+ mainIntrantsType: z.string().optional().default(''),
+ majorityAgriculturalCapital: z.boolean().optional().default(false),
+ legalStructure: z.string().optional().default(''),
+ authorizedVolume: z.string().optional().default(''),
+ installedElectricalPower: z.string().optional().default(''),
+ installedThermalPower: z.string().optional().default(''),
+ maxBiomethaneFlow: z.string().optional().default(''),
+ estimatedAnnualProduction: z.string().optional().default(''),
+ commissioningYear: z.number().optional().default(0),
+ boilerMotorType: z.string().optional().default(''),
+ operatingHours: z.number().optional().default(0),
+  prospectionStatus: z.enum(['hot', 'warm', 'cold', 'none', 'converted', 'lost']).optional().default('none'),
+  comments: z.array(z.any()).optional().default([]), // Using z.any() for comments in import schema, actual type validation should happen elsewhere if needed
+ relatedDealerIds: toArrayOfStrings('relatedDealerIds'),
 });
 export type MethanisationSiteImportSchema = z.infer<typeof MethanisationSiteImportSchemaZod>;
 

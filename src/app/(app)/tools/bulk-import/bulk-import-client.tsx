@@ -246,7 +246,13 @@ export default function BulkImportClient() {
                     {importResult.errorsDetail.map((err, index) => (
                       <li key={index} className="p-1.5 rounded-sm border border-destructive/30 bg-destructive/5">
                         Ligne {err.rowIndex + 1}: {err.message} <br />
-                        <code className="text-xs text-destructive/80 block truncate">Données: {err.rowData.join(', ')}</code>
+                        <code className="text-xs text-destructive/80 block truncate">Données: {
+ Array.isArray(err.rowData)
+ ? err.rowData.join(', ')
+ : typeof err.rowData === 'object'
+ ? Object.values(err.rowData).join(', ')
+ : String(err.rowData)
+ }</code>
                       </li>
                     ))}
                   </ul>

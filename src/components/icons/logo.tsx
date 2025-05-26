@@ -22,6 +22,7 @@ export default function Logo({ alt = "LOADIX Logo", className, ...props }: LogoP
         src={logoPath}
         alt={alt}
         fill
+        sizes="(max-width: 768px) 32px, 64px" // Example sizes
         style={{ objectFit: 'contain' }} // 'contain' is often good for logos
         priority // Preload logo if it's above the fold
         {...props}

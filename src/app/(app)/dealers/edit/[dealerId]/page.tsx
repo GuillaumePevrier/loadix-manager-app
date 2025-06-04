@@ -531,7 +531,7 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
                                 onChange={(e) => setNewCommentText(e.target.value)}
                                 placeholder="Votre commentaire..."
                                 rows={3}
-                                className="bg-input/70 focus:bg-input text-sm"
+ className="bg-white text-sm"
                             />
                         </div>
                         <Button type="button" onClick={handleAddNewComment} disabled={isAddingComment || !newCommentText.trim()} size="sm">

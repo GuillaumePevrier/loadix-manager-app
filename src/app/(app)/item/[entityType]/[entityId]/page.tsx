@@ -1,37 +1,32 @@
+// Temporary comment to test writing
 // This is a client component
-"use client"; 
+"use client";
 
 import * as React from 'react';
-import { useRouter, notFound, useParams } from 'next/navigation'; // useParams for client components
-import type { EntityType, AppEntity, Dealer, LoadixUnit, MethanisationSite } from '@/types';
-import { getDealerById, getLoadixUnitById, getMethanisationSiteById } from '@/services/dealerService';
+import { useRouter } from 'next/navigation';
+import type { EntityType, AppEntity, Dealer, LoadixUnit } from '@/types';
+import { getDealerById, getLoadixUnitById } from '@/services/dealerService';
 import { cn } from '@/lib/utils';
+import { getMethanisationSiteById } from '@/services/methanisationSiteService';
 import {
-  Building, User, Truck, Factory, MapPin,
-  Phone, Mail, Globe, CalendarDays, Tag,
-  Info, Hash, Power, ChevronsRight, Edit2,
-  CircleAlert, Loader2, Printer 
+  Building, Info, Truck, MapPin,
+  ChevronsRight, Loader2, CircleAlert
 } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import DealerTabsContent from './DealerTabsContent'; 
-import DeleteEntityButton from './DeleteEntityButton'; 
+import DealerTabsContent from './DealerTabsContent';
+import DeleteButton from '@/components/item/delete-button';
+import MethanisationSiteFormContent from '@/components/methanisation-sites/MethanisationSiteFormContent';
 
-// ItemPageProps pour un composant client n'utilise pas la promesse directement
 interface ItemPageProps {
-  params: { // params est un objet direct dans les client components utilisant useParams
-    entityType: EntityType;
-    entityId: string;
-  };
+  params: Promise<{ entityType: EntityType; entityId: string }>;
 }
 
-
-const getEntityTypeDisplayName = (type: EntityType): string => {
-  const names: Record<EntityType, string> = {
+const getEntityTypeDisplayName = (type: EntityType | undefined): string => {
+  const names: Record<string, string> = {
     dealer: 'Concessionnaire',
     'loadix-unit': 'Engin LOADIX',
     'methanisation-site': 'Site de Méthanisation',
@@ -39,176 +34,20 @@ const getEntityTypeDisplayName = (type: EntityType): string => {
   return names[type] || 'Entité';
 };
 
-const getEntityIcon = (type: EntityType, className?: string): React.ReactNode => {
-  const icons: Record<EntityType, React.ElementType> = {
+const getEntityIcon = (type: EntityType | undefined, className?: string): React.ReactNode => {
+  const icons: Partial<Record<EntityType, React.ElementType>> = {
     dealer: Building,
     'loadix-unit': Truck,
-    'methanisation-site': Factory,
   };
   const IconComponent = icons[type] || Info;
   return <IconComponent className={className || 'h-6 w-6'} />;
 };
 
-const getEntityEditRoute = (type: EntityType, id: string): string => {
-    switch (type) {
-        case 'dealer': return `/dealers/edit/${id}`;
-        case 'loadix-unit': return `/loadix-units/edit/${id}`;
-        case 'methanisation-site': return `/methanisation-sites/edit/${id}`;
-        default: return '/directory';
-    }
-};
-
-const DetailItem: React.FC<{
-  icon: React.ElementType;
-  label: string;
-  value?: string | string[] | React.ReactNode | null;
-  isLink?: boolean;
-  isEmail?: boolean;
-  className?: string;
-}> = ({ icon: Icon, label, value, isLink, isEmail, className }) => {
-  if (!value && typeof value !== 'boolean' && typeof value !== 'number' && !(Array.isArray(value) && value.length > 0)) return null;
-
-  const renderValue = () => {
-    if (React.isValidElement(value)) {
-        return value;
-    }
-    if (Array.isArray(value)) {
-      if (value.length === 0) return <span className="text-muted-foreground italic text-sm">Non spécifié</span>;
-      return (
-        <div className="flex flex-wrap gap-1">
-          {value.map((v, i) => (
-            <Badge key={i} variant="secondary" className="text-xs px-1.5 py-0.5">
-              {v}
-            </Badge>
-          ))}
-        </div>
-      );
-    }
-    if (typeof value === 'string') {
-      if (isLink) {
-        return (
-          <a
-            href={value.startsWith('http') ? value : `https://${value}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline break-all text-sm"
-          >
-            {value}
-          </a>
-        );
-      }
-      if (isEmail) {
-        return (
-          <a
-            href={`mailto:${value}`}
-            className="text-primary hover:underline break-all text-sm"
-          >
-            {value}
-          </a>
-        );
-      }
-      return <span className="text-foreground/90 break-words text-sm">{value}</span>;
-    }
-     if (value === null || value === undefined) {
-        return <span className="text-muted-foreground italic text-sm">Non spécifié</span>;
-    }
-    return <span className="text-foreground/90 break-words text-sm">{String(value)}</span>;
-  };
-
-  return (
-    <div className={cn('flex items-start space-x-3 py-1.5', className)}>
-      <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-1" />
-      <div>
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        {renderValue()}
-      </div>
-    </div>
-  );
-};
-
-const getLoadixStatusBadgeVariant = (status?: LoadixUnit['status']): "default" | "secondary" | "destructive" | "outline" | "success" => {
-    switch (status) {
-        case 'active': return 'success' as any;
-        case 'maintenance': return 'default';
-        case 'inactive': return 'outline';
-        case 'in_stock': return 'secondary';
-        case 'sold': return 'destructive';
-        default: return 'outline';
-    }
-};
-
-
-const LoadixUnitDetailCard: React.FC<{ unit: LoadixUnit }> = ({ unit }) => (
-  <Card className="shadow-lg">
-    <CardHeader>
-      <CardTitle className="font-bebas-neue text-primary text-xl">Détails de l'Engin</CardTitle>
-    </CardHeader>
-    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 md:gap-y-3">
-      <DetailItem icon={Hash} label="Numéro de Série" value={unit.serialNumber} />
-      <DetailItem icon={Truck} label="Modèle" value={unit.model} />
-      <DetailItem icon={Power} label="Statut" value={unit.status ? <Badge variant={getLoadixStatusBadgeVariant(unit.status)} className="text-xs">{unit.status.charAt(0).toUpperCase() + unit.status.slice(1)}</Badge> : null} />
-      <DetailItem icon={MapPin} label="Localisation" value={`${unit.address || 'N/A'}, ${unit.postalCode || ''} ${unit.city || ''}, ${unit.country || ''}`} />
-      {unit.purchaseDate && <DetailItem icon={CalendarDays} label="Date d'achat" value={new Date(unit.purchaseDate).toLocaleDateString()} />}
-      {unit.lastMaintenanceDate && <DetailItem icon={CalendarDays} label="Dernière Maintenance" value={new Date(unit.lastMaintenanceDate).toLocaleDateString()} />}
-      {unit.dealerId && <DetailItem icon={Building} label="Concessionnaire Associé" value={<Link href={`/item/dealer/${unit.dealerId}`} className="text-primary hover:underline">Voir Concessionnaire</Link>} />}
-      {unit.methanisationSiteId && <DetailItem icon={Factory} label="Site de Méthanisation Associé" value={<Link href={`/item/methanisation-site/${unit.methanisationSiteId}`} className="text-primary hover:underline">Voir Site</Link>} />}
-       {unit.geoLocation && (
-          <div className="md:col-span-2 h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
-              <Image
-              src={`https://placehold.co/800x300.png?text=Carte+Engin+${encodeURIComponent(unit.name)}`}
-              alt={`Carte pour ${unit.name}`}
-              width={800}
-              height={300}
-              className="object-cover h-full w-full"
-              data-ai-hint="map location"
-              />
-          </div>
-      )}
-    </CardContent>
-  </Card>
-);
-
-const MethanisationSiteDetailCard: React.FC<{ site: MethanisationSite }> = ({ site }) => (
-  <Card className="shadow-lg">
-    <CardHeader>
-      <CardTitle className="font-bebas-neue text-primary text-xl">Détails du Site</CardTitle>
-    </CardHeader>
-    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-4 md:gap-x-6 gap-y-2 md:gap-y-3">
-      <DetailItem icon={MapPin} label="Adresse" value={`${site.address || 'N/A'}, ${site.postalCode || ''} ${site.city || ''}, ${site.country || ''}`} />
-      {site.capacity && <DetailItem icon={Info} label="Capacité" value={site.capacity} />}
-      {site.operator && <DetailItem icon={User} label="Opérateur" value={site.operator} />}
-      {site.startDate && <DetailItem icon={CalendarDays} label="Date de mise en service" value={new Date(site.startDate).toLocaleDateString()} />}
-      {site.siteClients && site.siteClients.length > 0 && (
-        <DetailItem icon={User} label="Clients du Site" value={site.siteClients.map(client => client.name)} />
-      )}
-      {site.technologies && site.technologies.length > 0 && (
-        <DetailItem icon={Tag} label="Technologies" value={site.technologies} />
-      )}
-      {site.relatedDealerIds && site.relatedDealerIds.length > 0 && (
-        <DetailItem icon={Building} label="Concessionnaires Liés" value={site.relatedDealerIds.map(id => <Link key={id} href={`/item/dealer/${id}`} className="text-primary hover:underline block">Concessionnaire {id.substring(0,8)}...</Link>)} />
-      )}
-       {site.geoLocation && (
-          <div className="md:col-span-2 h-40 md:h-48 w-full bg-muted rounded-md overflow-hidden shadow-inner border border-border/30 mt-2" data-ai-hint="map preview">
-              <Image
-              src={`https://placehold.co/800x300.png?text=Carte+Site+${encodeURIComponent(site.name)}`}
-              alt={`Carte pour ${site.name}`}
-              width={800}
-              height={300}
-              className="object-cover h-full w-full"
-              data-ai-hint="map location"
-              />
-          </div>
-      )}
-    </CardContent>
-  </Card>
-);
-
-
-export default function ItemDetailPage({ params: paramsPromise }: ItemPageProps) {
-  // Utiliser React.use pour déballer la promesse des paramètres
-  const resolvedParams = React.use(paramsPromise);
+export default function ItemDetailPage({ params }: ItemPageProps) {
+  // Unwrap the params promise as per Next.js recommendation
+  const resolvedParams = React.use(params);
   const { entityType, entityId } = resolvedParams;
-  
+
   const [currentEntity, setCurrentEntity] = React.useState<AppEntity | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -217,162 +56,126 @@ export default function ItemDetailPage({ params: paramsPromise }: ItemPageProps)
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    let fetchedEntity: AppEntity | null = null;
-
-    if (!entityType || !entityId) {
-      console.warn('ItemDetailPage: EntityType or EntityId is undefined. Resolved Params:', resolvedParams);
-      setError('Paramètres de route invalides.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      let fetched: AppEntity | null = null;
       if (entityType === 'dealer') {
-        fetchedEntity = await getDealerById(entityId);
+        fetched = await getDealerById(entityId);
       } else if (entityType === 'loadix-unit') {
-        fetchedEntity = await getLoadixUnitById(entityId);
+        fetched = await getLoadixUnitById(entityId);
       } else if (entityType === 'methanisation-site') {
-        fetchedEntity = await getMethanisationSiteById(entityId);
-      } else {
-        console.warn(`ItemDetailPage: Unknown entity type: ${entityType}, falling back to notFound.`);
-        setError(`Type d'entité inconnu: ${entityType}`);
+        fetched = await getMethanisationSiteById(entityId);
       }
-
-      if (!fetchedEntity && entityType && (entityType === 'dealer' || entityType === 'loadix-unit' || entityType === 'methanisation-site')) {
-         setError(`Entité ${getEntityTypeDisplayName(entityType)} avec ID ${entityId} non trouvée.`);
+      if (!fetched) {
+        setError(`Entité ${getEntityTypeDisplayName(entityType)} avec ID ${entityId} non trouvée.`);
       }
-      setCurrentEntity(fetchedEntity);
+      // Convert Timestamp objects to ISO strings before passing to client component
+ if (fetched) {
+        if (fetched.createdAt && typeof fetched.createdAt !== 'string' && typeof fetched.createdAt !== 'number' && 'toDate' in fetched.createdAt) {
+ fetched.createdAt = (fetched.createdAt as any).toDate().toISOString();
+        }
+        if (fetched.updatedAt && typeof fetched.updatedAt !== 'string' && typeof fetched.updatedAt !== 'number' && 'toDate' in fetched.updatedAt) {
+ fetched.updatedAt = (fetched.updatedAt as any).toDate().toISOString();
+        }
+ setCurrentEntity(fetched);
+      }
     } catch (err) {
-        console.error(`ItemDetailPage: Error fetching entity ${entityType}/${entityId}:`, err);
-        setError(err instanceof Error ? err.message : "Échec du chargement des données de l'entité.");
+      setError(err instanceof Error ? err.message : 'Échec du chargement des données.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [entityType, entityId, resolvedParams]); 
+  }, [entityType, entityId]);
 
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-
   if (isLoading) {
     return (
-        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4 text-center">
-            <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
-            <p className="mt-2 text-sm md:text-base text-muted-foreground">Chargement...</p>
-        </div>
+      <div className="container mx-auto max-w-5xl py-6 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+        <p className="mt-2 text-muted-foreground">Chargement...</p>
+      </div>
     );
   }
 
-  if (error && !currentEntity) { 
+  if (error || !currentEntity) {
     return (
-        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
-            <Alert variant="destructive">
-                <CircleAlert className="h-5 w-5" />
-                <AlertTitle>Erreur de Chargement</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-            </Alert>
-             <Button asChild variant="outline" className="mt-4">
-                <Link href="/directory">
-                <ChevronsRight className="h-4 w-4 mr-2 rotate-180" />
-                Retour au Répertoire
-                </Link>
-            </Button>
-        </div>
+      <div className="container mx-auto max-w-5xl py-6">
+        <Alert variant="destructive">
+          <CircleAlert className="h-5 w-5" />
+          <AlertTitle>Erreur</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button asChild variant="outline" className="mt-4">
+          <Link href="/directory">
+            <ChevronsRight className="h-4 w-4 mr-2 rotate-180" /> Retour
+          </Link>
+        </Button>
+      </div>
     );
   }
 
-  if (!currentEntity && !isLoading) { 
-    return (
-        <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4">
-            <Alert variant="destructive">
-                <CircleAlert className="h-5 w-5" />
-                <AlertTitle>Entité Non Trouvée</AlertTitle>
-                <AlertDescription>
-                    L'entité que vous recherchez (Type: {entityType}, ID: {entityId}) n'a pas pu être trouvée.
-                </AlertDescription>
-            </Alert>
-             <Button asChild variant="outline" className="mt-4">
-                <Link href="/directory">
-                <ChevronsRight className="h-4 w-4 mr-2 rotate-180" />
-                Retour au Répertoire
-                </Link>
-            </Button>
-        </div>
-    );
-  }
-  
-  if (!currentEntity) { 
-      return (
-           <div className="container mx-auto max-w-5xl py-6 px-3 md:px-4 text-center">
-                <Loader2 className="h-10 w-10 md:h-12 md:w-12 animate-spin text-primary mx-auto" />
-                <p className="mt-2 text-sm md:text-base text-muted-foreground">Préparation des données...</p>
-           </div>
-      )
-  }
+  const entityDisplay = getEntityTypeDisplayName(currentEntity.entityType);
+  const editRoute =
+    entityType === 'dealer'
+      ? `/dealers/edit/${entityId}`
+      : entityType === 'methanisation-site' // Add condition for methanisation-site
+      ? `/methanisation-sites/edit/${entityId}`
+      : `/loadix-units/edit/${entityId}`;
 
-
-  const entityTypeDisplay = getEntityTypeDisplayName(currentEntity.entityType);
-  const editRoute = getEntityEditRoute(currentEntity.entityType, currentEntity.id);
-
-  const renderEntitySpecificDetails = () => {
-    switch (currentEntity.entityType) {
-      case 'dealer':
-        return <DealerTabsContent dealer={currentEntity as Dealer} onDataRefresh={fetchData} />;
-      case 'loadix-unit':
-        return <LoadixUnitDetailCard unit={currentEntity as LoadixUnit} />;
-      case 'methanisation-site':
-        return <MethanisationSiteDetailCard site={currentEntity as MethanisationSite} />;
-      default:
-        return <p className="text-muted-foreground">Type d'entité non pris en charge pour l'affichage détaillé.</p>;
+  const renderDetails = () => {
+    if (currentEntity.entityType === 'dealer') {
+      return <DealerTabsContent dealer={currentEntity as Dealer} onDataRefresh={fetchData} />;
     }
+    if (currentEntity.entityType === 'loadix-unit') {
+      return (
+        <Card className="shadow-lg">
+          {/* TODO: Replace with LoadixUnitTabsContent */}
+          {/* This is a placeholder structure */}
+
+          <CardHeader>
+            <CardTitle className="font-bebas-neue text-primary text-xl">Détails de l'Engin</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Détails du LoadixUnit */}
+          </CardContent>
+        </Card>
+      );
+    }
+    if (currentEntity.entityType === 'methanisation-site') {
+      return <MethanisationSiteFormContent site={currentEntity as any} isEditing={false} />;
+    }
+    return <p className="text-muted-foreground">Type d'entité non pris en charge.</p>;
   };
 
   return (
-    <div className="container mx-auto max-w-5xl py-4 md:py-6 px-3 md:px-4">
-      <Button asChild variant="outline" className="mb-4 md:mb-6 group text-xs sm:text-sm">
+    <div className="container mx-auto max-w-5xl py-4 px-3 md:px-4">
+      <Button asChild variant="outline" className="mb-6">
         <Link href="/directory">
-          <ChevronsRight className="h-4 w-4 mr-1.5 md:mr-2 rotate-180 transition-transform group-hover:-translate-x-1" />
-          Retour au Répertoire
+          <ChevronsRight className="h-4 w-4 mr-1.5 rotate-180" /> Retour
         </Link>
       </Button>
-      <header className="mb-4 md:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-2 md:gap-3">
-            <div className="p-2 bg-primary/10 text-primary rounded-lg shadow-sm">
-                {getEntityIcon(currentEntity.entityType, 'h-5 w-5 md:h-6 md:w-6')}
-            </div>
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-futura text-foreground leading-tight">{currentEntity.name}</h1>
+
+      <header className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            {getEntityIcon(currentEntity.entityType, 'h-5 w-5')}
           </div>
-          <Badge variant="secondary" className="text-xs px-2 py-0.5 md:px-2.5 md:py-1 self-start sm:self-center">{entityTypeDisplay}</Badge>
+          <h1 className="text-2xl font-bold">{currentEntity.name}</h1>
         </div>
-        {(currentEntity.city || currentEntity.country) && (
-            <p className="text-xs md:text-sm text-muted-foreground mt-1 ml-1 flex items-center">
-                <MapPin className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1 md:mr-1.5 inline-block opacity-70" />
-                {currentEntity.city}{currentEntity.city && currentEntity.country ? ', ' : ''}{currentEntity.country}
-            </p>
-        )}
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{entityDisplay}</Badge>
+        </div>
       </header>
 
-      {renderEntitySpecificDetails()}
+      {renderDetails()}
 
-      <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 md:pt-6 border-t border-border/20 mt-4 md:mt-6 px-0">
-          <Button asChild variant="outline" className="w-full sm:w-auto text-sm">
-              <Link href={editRoute}>
-                  <Edit2 className="mr-2 h-4 w-4" />
-                  Modifier
-              </Link>
-          </Button>
-          <DeleteEntityButton entityType={currentEntity.entityType} entityId={currentEntity.id} />
-      </CardFooter>
-
-     <Alert variant="default" className="mt-6 md:mt-8 bg-muted/20 border-border/30 text-muted-foreground/90">
-        <CircleAlert className="h-5 w-5 text-muted-foreground/70" />
-        <AlertTitle className="font-bebas-neue text-md md:text-lg text-muted-foreground/80">Note sur les Données</AlertTitle>
-        <AlertDescription className="text-xs">
-            Les données des concessionnaires, engins LOADIX et sites de méthanisation sont maintenant lues depuis Firebase Firestore. L'ajout de commentaires est fonctionnel pour les concessionnaires.
-        </AlertDescription>
-    </Alert>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button asChild variant="outline">
+          <Link href={editRoute}>Modifier</Link>
+        </Button>
+        <DeleteButton entityType={currentEntity.entityType} entityId={currentEntity.id} />
+      </div>
     </div>
   );
 }

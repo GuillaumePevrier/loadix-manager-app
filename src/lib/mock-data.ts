@@ -1,5 +1,5 @@
 
-import type { Dealer, LoadixUnit, MethanisationSite, AppEntity, Comment } from '@/types';
+import type { Dealer, LoadixUnit, Site, AppEntity, Comment } from '@/types';
 import { TRACTOR_BRAND_OPTIONS, MACHINE_TYPE_OPTIONS } from '@/types'; // Import options
 
 const commonAddressFrance = {
@@ -118,31 +118,9 @@ export const mockLoadixUnits: LoadixUnit[] = [
   }
 ];
 
-export const mockMethanisationSites: MethanisationSite[] = [
-  {
-    id: 'site-1',
-    name: 'Site de Méthanisation Valorem',
-    entityType: 'methanisation-site',
-    address: 'Route de la Biomasse',
-    city: 'Rennes',
-    postalCode: '35000',
-    country: 'France',
-    geoLocation: { lat: 48.1173, lng: -1.6778 },
-    capacity: '5000 tons/an',
-    operator: 'Valorem SAS',
-    startDate: new Date('2022-01-10').toISOString(),
-    siteClients: [
-      { name: 'Ferme Durand', contactEmail: 'contact@ferme-durand.fr'},
-      { name: 'GAEC Le Champs Vert'}
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'site-2',
-    name: 'BioÉnergie Ouest',
-    entityType: 'methanisation-site',
-    address: 'Zone Industrielle Sud',
+
+export const allMockEntities: AppEntity[] = [
+  {    id: 'site-2', name: 'BioÉnergie Ouest', entityType: 'site', address: 'Zone Industrielle Sud',
     city: 'Nantes',
     postalCode: '44200',
     country: 'France',
@@ -152,17 +130,15 @@ export const mockMethanisationSites: MethanisationSite[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
-];
-
-export const allMockEntities: AppEntity[] = [
+  ,
   ...mockDealers,
   ...mockLoadixUnits,
-  ...mockMethanisationSites,
 ];
 
 export function findEntityByIdAndType(entityType: EntityType, id: string): AppEntity | undefined {
   switch (entityType) {
     case 'dealer':
+      // Add logic to find a dealer if you add mock dealers later
       return mockDealers.find(d => d.id === id);
     case 'loadix-unit':
       return mockLoadixUnits.find(u => u.id === id);
@@ -172,3 +148,4 @@ export function findEntityByIdAndType(entityType: EntityType, id: string): AppEn
       return undefined;
   }
 }
+

@@ -44,11 +44,15 @@ const csvInstructions: Record<EntityToImport, { title: string; columns: string[]
   },
   'methanisation-site': {
     title: "Format CSV pour Sites de Méthanisation",
+    title: "Format CSV pour Sites de Méthanisation (Simplifié)",
     columns: [
-      "name (requis)", "address (requis)", "city (requis)", "postalCode (requis)", "country (requis)",
-      "capacity", "operator", "startDate (YYYY-MM-DD)"
+      "name (requis)",
+ "address (requis)",
+ "city (requis)",
+ "postalCode (requis)",
+ "country (requis)"
     ],
-    notes: ["La géolocalisation sera ignorée.", "Les champs siteClients, technologies, relatedDealerIds ne sont pas inclus dans cet import de base."]
+    notes: ["Ce format inclut les champs essentiels pour l'identification et la géolocalisation.", "La géolocalisation sera effectuée automatiquement si les champs d'adresse sont valides.", "D'autres champs (capacité, opérateur, date de début, clients, technologies, concessionnaires liés) pourront être ajoutés ultérieurement via l'édition individuelle des fiches."]
   }
 };
 

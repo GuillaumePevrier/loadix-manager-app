@@ -1,4 +1,3 @@
-
 // src/components/layout/sidebar-nav.tsx
 'use client';
 
@@ -9,12 +8,12 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar,
 } from '@/components/ui/sidebar';
-import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench, UploadCloud } from 'lucide-react';
+import { MapPin, FileText, Settings, BotMessageSquare, UserCheck, BarChart3, List, Wrench, UploadCloud, Factory, Building } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Accueil', icon: BarChart3, tooltip: 'Dashboard' },
-  { href: '/directory', label: 'Répertoire', icon: List, tooltip: 'Répertoire des Entités' },
   {
     label: 'Gestion Technique',
     icon: Wrench,
@@ -41,12 +40,21 @@ const navItems = [
     subItems: [
         { href: '/settings/users', label: 'Utilisateurs', icon: UserCheck, tooltip: 'Gestion Utilisateurs' },
     ],
-  }
+  },
+  {
+    label: 'Répertoire',
+    icon: List,
+    isGroup: true,
+    subItems: [
+        { href: '/directory', label: 'Toutes Entités', icon: List, tooltip: 'Répertoire de toutes les Entités' },
+    ],
+  },
 ];
 
 
 export default function SidebarNav() {
   const pathname = usePathname();
+  const { setOpen, isMobile } = useSidebar();
 
   return (
     <SidebarMenu>
@@ -67,9 +75,12 @@ export default function SidebarNav() {
                     tooltip={subItem.tooltip}
                     variant="default"
                     size="default"
+                    onClick={() => isMobile && setOpen(false)}
+
                 >
+
                     <Link href={subItem.href}>
-                        <subItem.icon />
+ <subItem.icon />
                         <span className="group-data-[collapsible=icon]:hidden">{subItem.label}</span>
                     </Link>
                 </SidebarMenuButton>
@@ -83,10 +94,11 @@ export default function SidebarNav() {
                 tooltip={item.tooltip}
                 variant="default"
                 size="default"
+                onClick={() => isMobile && setOpen(false)}
               >
                 <Link href={item.href}>
                   <item.icon />
-                  <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+ <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

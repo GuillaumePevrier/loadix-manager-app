@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { deleteDealer } from '@/services/dealerService';
+import { deleteMethanisationSite } from '@/services/methanisationSiteService';
 import type { EntityType } from '@/types';
-import * as React from 'react';
 
 interface DeleteButtonProps {
   entityId: string;
@@ -14,7 +14,7 @@ interface DeleteButtonProps {
 const DeleteButton: React.FC<DeleteButtonProps> = ({ entityId, entityType }) => {
   const router = useRouter();
 
-  const handleDeleteDealer = async () => {
+  const handleDeleteEntity = async () => {
     if (entityType === 'dealer') {
       try {
         await deleteDealer(entityId);
@@ -23,15 +23,19 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({ entityId, entityType }) => 
         console.error("Error deleting dealer:", error);
         // Optionally, show an error message to the user
       }
+    } else if (entityType === 'methanisation-site') {
+      try {
+        await deleteMethanisationSite(entityId);
+        router.push('/directory'); // Redirect after successful deletion
+      } catch (error) {
+        console.error("Error deleting methanisation site:", error);
+        // Optionally, show an error message to the user
+      }
     }
   };
 
-  if (entityType !== 'dealer') {
-    return null; // Only render for dealers
-  }
-
   return (
-    <Button variant="destructive" onClick={handleDeleteDealer}>
+    <Button variant="destructive" onClick={handleDeleteEntity}>
       Supprimer
     </Button>
   );

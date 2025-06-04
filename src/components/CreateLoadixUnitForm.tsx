@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRouter } from 'next/navigation';
 import { addLoadixUnit } from '@/services/dealerService'; 
 import type { NewLoadixUnitData, LoadixUnit, GeoLocation } from '@/types';
-import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, MapPin, CheckCircle, XCircle, AlertTriangle, MapPinOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { geocodeAddress } from '@/services/geocodingService';
 
 const initialFormData: NewLoadixUnitData = {
   name: '',
@@ -73,14 +74,18 @@ export default function CreateLoadixUnitForm() {
     setIsGeocoding(true);
     setAddressValidated(null);
     setSubmissionError(null);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const mockSuccess = Math.random() > 0.2; 
-    if (mockSuccess) {
-        const mockLocation = { lat: 48.8566 + (Math.random() - 0.5) * 0.2, lng: 2.3522 + (Math.random() - 0.5) * 0.2 };
-        setFormData((prev) => ({ ...prev, geoLocation: mockLocation }));
+
+    try {
+        const result = await geocodeAddress(`${formData.address}, ${formData.postalCode}, ${formData.city}, ${formData.country}`);
+        if (result && result.lat && result.lng) {
+            setFormData((prev) => ({ ...prev, geoLocation: { lat: result.lat, lng: result.lng } }));
+            setAddressValidated(true);
+        } else {
+            setAddressValidated(false);
+            setSubmissionError('Géocodage échoué. L\'adresse n\'a pas pu être trouvée.');
+        }
+    } catch (error) {
         setAddressValidated(true);
-    } else {
-        setAddressValidated(false);
         setSubmissionError('Géocodage simulé échoué. Vérifiez l\'adresse.');
     }
     setIsGeocoding(false);
@@ -162,14 +167,26 @@ export default function CreateLoadixUnitForm() {
             <Label htmlFor="country">Pays *</Label>
             <Input id="country" name="country" value={formData.country} onChange={handleChange} placeholder="Ex: France" required/>
         </div>
-      </div>
-      <div className="flex items-center gap-2 mt-2">
-          <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
-              {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-              Valider l'Adresse
-          </Button>
-          {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
-          {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
+
+        {/* Geocoding Validation and Info - Adjusted Layout */}
+        <div className="md:col-span-3 flex flex-col md:flex-row md:items-start gap-4">
+            <div className="flex items-center gap-2 md:w-auto">
+                <Button type="button" onClick={handleGeocodeAddress} disabled={isGeocoding || !formData.address || !formData.city || !formData.postalCode || !formData.country} variant="outline" size="sm">
+                    {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                    Valider l'Adresse
+                </Button>
+                {addressValidated === true && <CheckCircle className="h-5 w-5 text-green-500" title="Adresse validée"/>}
+                {addressValidated === false && formData.address && <XCircle className="h-5 w-5 text-red-500" title="Validation échouée"/>}
+            </div>
+            <div className="text-sm text-muted-foreground flex-grow">
+                <Alert variant="default"> {/* Using default variant for info */}
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                        La validation de l'adresse utilise l'API Google Geocoding. Assurez-vous que votre clé API est configurée et dispose des autorisations nécessaires.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        </div>
       </div>
       {formData.geoLocation && addressValidated === true && (
           <p className="text-xs text-green-600 dark:text-green-400">Coordonnées : Lat {formData.geoLocation.lat.toFixed(5)}, Lng {formData.geoLocation.lng.toFixed(5)}</p>

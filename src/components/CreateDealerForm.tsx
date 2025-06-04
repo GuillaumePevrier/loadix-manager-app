@@ -210,24 +210,24 @@ const CreateDealerForm: React.FC = () => {
             <h3 className="text-lg font-semibold text-primary border-b pb-2 mb-3 md:mb-4">Informations Générales et Localisation</h3>
             <div>
               <Label htmlFor="name">Nom du concessionnaire *</Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: AgriServices Nord" />
+              <Input id="name" name="name" value={formData.name} onChange={handleChange} required placeholder="Ex: AgriServices Nord" className="bg-white" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
                 <div>
                     <Label htmlFor="address">Adresse *</Label>
-                    <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required />
+                    <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Ex: 123 Rue Principale" required className="bg-white" />
                 </div>
                 <div>
                     <Label htmlFor="postalCode">Code Postal *</Label>
-                    <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Ex: 75001" required />
+                    <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleChange} placeholder="Ex: 75001" required className="bg-white" />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-end">
               <div>
                 <Label htmlFor="city">Ville *</Label>
-                <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Ex: Paris" required />
+                <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Ex: Paris" required className="bg-white" />
               </div>
               <div>
                 <Label htmlFor="country">Pays *</Label>
@@ -262,6 +262,7 @@ const CreateDealerForm: React.FC = () => {
                     selected={formData.machineTypes}
                     onChange={(selected) => handleSelectChange('machineTypes', selected)}
                     placeholder="Sélectionner types..."
+                    className="bg-white"
                   />
                 </div>
             </div>
@@ -274,17 +275,17 @@ const CreateDealerForm: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <Label htmlFor="phone">Téléphone</Label>
-                    <Input id="phone" name="phone" type="tel" value={formData.phone || ''} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" />
+                    <Input id="phone" name="phone" type="tel" value={formData.phone || ''} onChange={handleChange} placeholder="Ex: +33 1 23 45 67 89" className="bg-white" />
                 </div>
                 <div>
                     <Label htmlFor="fax">Fax</Label>
-                    <Input id="fax" name="fax" type="tel" value={formData.fax || ''} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" />
+                    <Input id="fax" name="fax" type="tel" value={formData.fax || ''} onChange={handleChange} placeholder="Ex: +33 1 98 76 54 32" className="bg-white" />
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="Ex: contact@example.com" />
+                    <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleChange} placeholder="Ex: contact@example.com" className="bg-white" />
                 </div>
                 <div>
                     <Label htmlFor="website">Site Web</Label>
@@ -307,7 +308,7 @@ const CreateDealerForm: React.FC = () => {
                 </div>
                 <div>
                     <Label htmlFor="brandSign">Enseigne</Label>
-                    <Input id="brandSign" name="brandSign" value={formData.brandSign || ''} onChange={handleChange} placeholder="Ex: Groupe AgriPro" />
+                    <Input id="brandSign" name="brandSign" value={formData.brandSign || ''} onChange={handleChange} placeholder="Ex: Groupe AgriPro" className="bg-white" />
                 </div>
             </div>
              <div>

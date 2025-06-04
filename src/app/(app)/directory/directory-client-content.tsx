@@ -5,12 +5,12 @@ import { useState, useMemo } from 'react';
 import type { AppEntity, EntityType, Dealer } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Search as SearchIcon, Filter, Building, Truck, Factory as SiteIcon } from 'lucide-react'; // Renamed Search to SearchIcon
-import { Badge } from '@/components/ui/badge';
+import { PlusCircle, Search as SearchIcon, Filter, Building, Truck, Home as SiteIcon } from 'lucide-react'; // Renamed Search to SearchIcon, using Home as Site icon
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,46 +28,92 @@ interface DirectoryClientContentProps {
 const entityTypeTranslations: Record<EntityType, string> = {
   'dealer': 'Concessionnaire',
   'loadix-unit': 'Engin LOADIX',
-  'methanisation-site': 'Site de Méthanisation',
+  'site': 'Site de Méthanisation',
 };
 
 const entityTypeBadgeColors: Record<EntityType, "default" | "secondary" | "destructive" | "outline" | "success" | null > = {
   'dealer': 'default',
   'loadix-unit': 'destructive',
-  'methanisation-site': 'secondary',
+  'site': 'secondary', // Using secondary for Site, can be changed
 };
 
 const entityCreationRoutes: Record<EntityType, string> = {
   'dealer': '/dealers/create',
   'loadix-unit': '/loadix-units/create',
-  'methanisation-site': '/methanisation-sites/create',
+  'site': '/methanisation-sites/create', // Updated route
 };
 
-export default function DirectoryClientContent({ initialEntities }: DirectoryClientContentProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+export default function DirectoryClientContent({
+  initialEntities: rawInitialEntities,
+}: DirectoryClientContentProps) {
+  // Convert complex objects (like Timestamps) to plain objects (like ISO strings)
+  // before passing them to the client component.
+  const initialEntities = useMemo(() => rawInitialEntities.map(entity => ({
+    ...entity,
+    createdAt: entity.createdAt instanceof Date
+ ? entity.createdAt.toISOString()
+ : (entity.createdAt && typeof entity.createdAt.toDate === 'function'
+ ? entity.createdAt.toDate().toISOString() : entity.createdAt || null),
+    updatedAt: entity.updatedAt instanceof Date
+ ? entity.updatedAt.toISOString()
+ : (entity.updatedAt && typeof entity.updatedAt.toDate === 'function'
+ ? entity.updatedAt.toDate().toISOString() : entity.updatedAt || null),
+  })), [rawInitialEntities]);
+  const [searchTerm, setSearchTerm] = useState(''); // Make sure to initialize state correctly
   const [selectedEntityType, setSelectedEntityType] = useState<EntityType | 'all'>('all');
+  const [sortColumn, setSortColumn] = useState<keyof AppEntity | null>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
 
-  const filteredEntities = useMemo(() => {
+  const filteredAndSortedEntities = useMemo(() => {
     return initialEntities.filter(entity => {
-      const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;
+      const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;      
       const searchMatch =
         entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity.city && entity.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity.entityType === 'dealer' && (entity as Dealer).tractorBrands?.some((brand: string) => brand.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (entity.entityType === 'dealer' && (entity as Dealer).machineTypes?.some((type: string) => type.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (entity.entityType === 'dealer' && (entity as Dealer).brandSign?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (entity.entityType === 'dealer' && (entity as Dealer).branchName?.toLowerCase().includes(searchTerm.toLowerCase()));
+        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) || // Moved outside entity type specific checks
+        (entity.entityType === 'dealer' && ((entity as Dealer).tractorBrands?.some((brand: string) => brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity as Dealer).machineTypes?.some((type: string) => type.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity as Dealer).brandSign?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity as Dealer).branchName?.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (entity.entityType === 'site' && ( // Corrected unbalanced parentheses
+        (entity as MethanisationSite).postalCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity as MethanisationSite).country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity as MethanisationSite).contactEmail?.toLowerCase().includes(searchTerm.toLowerCase()))); // Corrected unbalanced parentheses
       return typeMatch && searchMatch;
     });
-  }, [initialEntities, searchTerm, selectedEntityType]);
 
-  const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'methanisation-site'];
+    if (!sortColumn) {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      const aValue = a[sortColumn as keyof AppEntity];
+      const bValue = b[sortColumn as keyof AppEntity];
+
+      if (aValue === bValue) {
+        return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+ return aValue.localeCompare(bValue);
+      } else if (aValue < bValue) {
+ comparison = -1;
+      } else {
+ comparison = 1;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [initialEntities, searchTerm, selectedEntityType, sortColumn, sortDirection]);
+  const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'site']; // Updated entityTypes
 
   const handleRowClick = (entity: AppEntity) => {
-    router.push(`/item/${entity.entityType}/${entity.id}`);
+    if (entity.entityType === 'site') {
+      router.push(`/item/methanisation-site/${entity.id}`);
+    } else {
+      router.push(`/item/${entity.entityType}/${entity.id}`);
+    }
   };
 
   const handleCreateNew = (type: EntityType) => {
@@ -127,9 +173,9 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
               <Truck className="mr-2 h-4 w-4" />
               <span>Engin LOADIX</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleCreateNew('methanisation-site')}>
+            <DropdownMenuItem onClick={() => handleCreateNew('site')}> {/* Updated type and label */}
               <SiteIcon className="mr-2 h-4 w-4" />
-              <span>Site de Méthanisation</span>
+              <span>Site</span> {/* Updated label */}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -140,19 +186,88 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px] min-w-[150px] px-2 py-2 text-xs">Nom</TableHead>
-                <TableHead className="min-w-[120px] px-2 py-2 text-xs">Type</TableHead>
-                <TableHead className="min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell">Ville</TableHead>
-                <TableHead className="min-w-[100px] px-2 py-2 text-xs hidden md:table-cell">Pays</TableHead>
+                <TableHead
+                  className="w-[180px] min-w-[150px] px-2 py-2 text-xs cursor-pointer"
+                  onClick={() => {
+                    if (sortColumn === 'name') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortColumn('name');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div className="flex items-center">
+                    Nom
+                    {sortColumn === 'name' && (
+                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
+                    )}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[120px] px-2 py-2 text-xs cursor-pointer"
+                  onClick={() => {
+                    if (sortColumn === 'entityType') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortColumn('entityType');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div className="flex items-center">
+                    Type
+                    {sortColumn === 'entityType' && (
+                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
+                    )}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer"
+                  onClick={() => {
+                    if (sortColumn === 'city') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortColumn('city');
+                      setSortDirection('asc');
+                    }
+                  }}
+                >
+                  <div className="flex items-center">
+                    Ville
+                    {sortColumn === 'city' && (
+                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
+                    )}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[100px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer"
+                  onClick={() => {
+                    if (sortColumn === 'country') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortColumn('country');
+                      setSortDirection('asc');
+                    }
+                  }}>Pays</TableHead>
                 <TableHead className="min-w-[150px] px-2 py-2 text-xs hidden lg:table-cell">Marques Tracteurs</TableHead>
                 <TableHead className="min-w-[150px] px-2 py-2 text-xs hidden lg:table-cell">Types Machines</TableHead>
-                <TableHead className="min-w-[120px] px-2 py-2 text-xs hidden md:table-cell">Enseigne</TableHead>
+                <TableHead
+                  className="min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer"
+                  onClick={() => {
+                    if (sortColumn === 'brandSign') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortColumn('brandSign');
+                      setSortDirection('asc');
+                    }
+                  }}>Enseigne</TableHead>
                 <TableHead className="min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell">Succursale</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEntities.length > 0 ? (
-                filteredEntities.map((entity) => (
+              {filteredAndSortedEntities.length > 0 ? (
+                filteredAndSortedEntities.map((entity) => (
                   <TableRow
                     key={entity.id}
                     onClick={() => handleRowClick(entity)}
@@ -196,10 +311,10 @@ export default function DirectoryClientContent({ initialEntities }: DirectoryCli
             </TableBody>
           </Table>
         </div>
-      </ScrollArea>
-      {filteredEntities.length > 0 && (
+ </ScrollArea>
+      {filteredAndSortedEntities.length > 0 && (
         <p className="text-xs text-muted-foreground text-center md:text-right pt-1.5">
-          Affichage de {filteredEntities.length} sur {initialEntities.length} entités.
+          Affichage de {filteredAndSortedEntities.length} sur {initialEntities.length} entités.
         </p>
       )}
     </div>

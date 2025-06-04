@@ -96,7 +96,7 @@ export interface MethanisationSite extends BaseEntity {
  installedElectricalPower: string; // Puissance électrique installée
  installedThermalPower: string; // Puissance thermique installée
  maxBiomethaneFlow: string; // Débit maximal de biométhane
- estimatedAnnualProduction: string; // Production annuelle estimée
+ estimatedAnnualProduction: string; // Production annuelle estimée 
  commissioningYear: number; // Année de mise en service
  boilerMotorType: string; // Type de chaudière / moteur
  operatingHours: number; // Nombre d'heures de fonctionnement
@@ -105,7 +105,9 @@ export interface MethanisationSite extends BaseEntity {
   prospectionStatus?: 'hot' | 'warm' | 'cold' | 'none' | 'converted' | 'lost';
   comments?: Comment[];
  publicConsultationLink: string; // Consultation publique (lien)
+  source?: string; // Source (externe)
  publicSubsidies: string; // Subventions publiques reçues
+  notes?: string;
  drealInspection: string; // Inspection DREAL / anomalies
  operationalStatus: string; // État de fonctionnement
  extensionProjects: string; // Projets d’extension
@@ -331,9 +333,9 @@ export const MethanisationSiteImportSchemaZod = z.object({
  installedThermalPower: z.string().optional().default(''),
  maxBiomethaneFlow: z.string().optional().default(''),
  estimatedAnnualProduction: z.string().optional().default(''),
- commissioningYear: z.number().optional().default(0),
+ commissioningYear: z.number().optional(),
  boilerMotorType: z.string().optional().default(''),
- operatingHours: z.number().optional().default(0),
+ operatingHours: z.number().optional(),
   prospectionStatus: z.enum(['hot', 'warm', 'cold', 'none', 'converted', 'lost']).optional().default('none'),
   comments: z.array(z.any()).optional().default([]), // Using z.any() for comments in import schema, actual type validation should happen elsewhere if needed
  relatedDealerIds: toArrayOfStrings('relatedDealerIds'),

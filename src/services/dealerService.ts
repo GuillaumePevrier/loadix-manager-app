@@ -2,7 +2,7 @@
 'use server';
 
 import { db, storage, allConfigPresent as firebaseConfigPresent } from '@/lib/firebase';
-import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, MethanisationSite, NewMethanisationSiteData, AppEntity } from '@/types';
+import type { Dealer, GeoLocation, NewDealerData, UpdateDealerData, Comment, LoadixUnit, NewLoadixUnitData, AppEntity } from '@/types';
 import { collection, getDocs, doc, getDoc, Timestamp, GeoPoint, addDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 // File upload related imports are removed as per new requirements for comments
 // import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject as deleteFileFromStorage } from 'firebase/storage';
@@ -105,43 +105,14 @@ const mapDocToLoadixUnit = (docId: string, data: any): LoadixUnit => {
         purchaseDate: data.purchaseDate instanceof Timestamp ? data.purchaseDate.toDate().toISOString() : data.purchaseDate,
         lastMaintenanceDate: data.lastMaintenanceDate instanceof Timestamp ? data.lastMaintenanceDate.toDate().toISOString() : data.lastMaintenanceDate,
         dealerId: data.dealerId,
-        methanisationSiteId: data.methanisationSiteId,
+        siteId: data.siteId, // Assuming this is the updated field name
         createdAt,
         updatedAt,
     };
 };
 
 // Helper to convert Firestore document data to MethanisationSite
-const mapDocToMethanisationSite = (docId: string, data: any): MethanisationSite => {
-    const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString();
-    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate().toISOString() : new Date().toISOString();
-
-    let geoLocation: GeoLocation | undefined = undefined;
-    if (data.geoLocation instanceof GeoPoint) {
-        geoLocation = { lat: data.geoLocation.latitude, lng: data.geoLocation.longitude };
-    } else if (data.geoLocation && typeof data.geoLocation.lat === 'number' && typeof data.geoLocation.lng === 'number') {
-        geoLocation = data.geoLocation;
-    }
-
-    return {
-        id: docId,
-        name: data.name || '',
-        entityType: 'methanisation-site',
-        address: data.address || '',
-        city: data.city || '',
-        postalCode: data.postalCode || '',
-        country: data.country || '',
-        geoLocation,
-        capacity: data.capacity,
-        operator: data.operator,
-        startDate: data.startDate instanceof Timestamp ? data.startDate.toDate().toISOString() : data.startDate,
-        siteClients: Array.isArray(data.siteClients) ? data.siteClients : [], 
-        technologies: Array.isArray(data.technologies) ? data.technologies : [],
-        relatedDealerIds: Array.isArray(data.relatedDealerIds) ? data.relatedDealerIds : [],
-        createdAt,
-        updatedAt,
-    };
-};
+// mapDocToMethanisationSite removed
 
 
 export async function getDealers(): Promise<Dealer[]> {
@@ -512,79 +483,7 @@ export async function addLoadixUnit(unitData: NewLoadixUnitData): Promise<Loadix
   }
 }
 
-// --- MethanisationSite Functions ---
-export async function getMethanisationSites(): Promise<MethanisationSite[]> {
-  if (!firebaseConfigPresent || !db) {
-    console.warn("Firebase not configured. Returning empty Methanisation site list.");
-    return [];
-  }
-  try {
-    const sitesCol = collection(db, 'methanisationSites');
-    const siteSnapshot = await getDocs(sitesCol);
-    return siteSnapshot.docs.map(docSnap => mapDocToMethanisationSite(docSnap.id, docSnap.data()));
-  } catch (error) {
-    console.error("Error fetching Methanisation sites from Firestore:", error);
-    return [];
-  }
-}
-
-export async function getMethanisationSiteById(id: string): Promise<MethanisationSite | null> {
-  if (!firebaseConfigPresent || !db) {
-    console.warn("Firebase not configured. Cannot fetch Methanisation site.");
-    return null;
-  }
-  try {
-    const siteRef = doc(db, 'methanisationSites', id);
-    const siteDocSnap = await getDoc(siteRef);
-    if (!siteDocSnap.exists()) {
-      console.log(`No Methanisation site found with ID: ${id}`);
-      return null;
-    }
-    return mapDocToMethanisationSite(siteDocSnap.id, siteDocSnap.data());
-  } catch (error) {
-    console.error(`Error fetching Methanisation site with ID ${id} from Firestore:`, error);
-    return null;
-  }
-}
-
-export async function addMethanisationSite(siteData: NewMethanisationSiteData): Promise<MethanisationSite | null> {
-   if (!firebaseConfigPresent || !db) {
-    console.warn("Firebase not configured. Cannot add Methanisation Site.");
-    throw new Error("Firebase not configured.");
-  }
-  try {
-    const sitesCol = collection(db, 'methanisationSites');
-    const dataToSave: any = {
-      ...siteData,
-      entityType: 'methanisation-site',
-      siteClients: Array.isArray(siteData.siteClients) ? siteData.siteClients : [], 
-      technologies: Array.isArray(siteData.technologies) ? siteData.technologies : [],
-      relatedDealerIds: Array.isArray(siteData.relatedDealerIds) ? siteData.relatedDealerIds : [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-    
-    if (siteData.geoLocation) {
-      dataToSave.geoLocation = new GeoPoint(siteData.geoLocation.lat, siteData.geoLocation.lng);
-    } else {
-      dataToSave.geoLocation = null;
-    }
-
-    if (siteData.startDate && siteData.startDate !== "") dataToSave.startDate = Timestamp.fromDate(new Date(siteData.startDate));
-    else delete dataToSave.startDate;
-
-
-    const docRef = await addDoc(sitesCol, dataToSave);
-    const newDocSnap = await getDoc(docRef);
-    if (newDocSnap.exists()) {
-      return mapDocToMethanisationSite(newDocSnap.id, newDocSnap.data());
-    }
-    return null;
-  } catch (error) {
-    console.error("Error adding Methanisation Site to Firestore:", error);
-    throw error;
-  }
-}
+// MethanisationSite Functions removed
 
 // TODO: Implement updateLoadixUnit, deleteLoadixUnit
-// TODO: Implement updateMethanisationSite, deleteMethanisationSite
+// TODO: Implement updateMethanisationSite, deleteMethanisationSite removed

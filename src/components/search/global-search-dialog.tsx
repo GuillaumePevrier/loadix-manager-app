@@ -6,8 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
+  DialogDescription,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Users, Settings, Briefcase, Truck, Factory, Map, BarChart3, BotMessageSquare, ExternalLink, HelpCircle, Building, UserCheck, Search, UploadCloud } from 'lucide-react';
@@ -99,6 +102,9 @@ export default function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearc
       <DialogContent
         className="sm:max-w-lg md:max-w-2xl p-0 bg-card/80 backdrop-blur-xl border-border/60 shadow-2xl"
         onKeyDown={handleKeyDown}
+
+        // Add an accessible description for screen readers
+ aria-describedby="global-search-description"
       >
         <div className="p-3 md:p-4 border-b border-border/30">
           <div className="rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300">
@@ -113,6 +119,10 @@ export default function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearc
             />
           </div>
         </div>
+
+        {/* Visually hidden description for accessibility */}
+ <VisuallyHidden id="global-search-description"><DialogDescription>Search for pages, tools, or entities within the application.</DialogDescription></VisuallyHidden>
+
         <div className="border-t border-border/30">
           {searchQuery.trim() !== '' && searchResults.length === 0 && (
             <div className="p-4 md:p-6 text-center text-muted-foreground">

@@ -353,8 +353,8 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
   <Tabs defaultValue="details" className="w-full">
     <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-3 md:mb-4 bg-muted/50 p-1 h-auto">
       <TabsTrigger value="details" className="text-xs sm:text-sm px-2 py-1.5">Détails</TabsTrigger>
-      <TabsTrigger value="contact" className="text-xs sm:text-sm px-2 py-1.5">Contact & Commercial</TabsTrigger>
-      <TabsTrigger value="prospection" className="text-xs sm:text-sm px-2 py-1.5">Suivi Prospection</TabsTrigger>
+      <TabsTrigger value="contact" className="text-xs sm:text-sm px-2 py-1.5">Contact</TabsTrigger>
+      <TabsTrigger value="prospection" className="text-xs sm:text-sm px-2 py-1.5">Suivi</TabsTrigger>
       <TabsTrigger value="media" className="text-xs sm:text-sm px-2 py-1.5">Médias</TabsTrigger>
       <TabsTrigger value="relations" className="text-xs sm:text-sm px-2 py-1.5">Relations</TabsTrigger>
     </TabsList>
@@ -427,7 +427,7 @@ const DealerTabsContent: React.FC<{ dealer: Dealer; onDataRefresh: () => void; }
     <TabsContent value="prospection" className="space-y-3 md:space-y-4">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 md:pb-3 p-3 md:p-4">
-                <CardTitle className="font-bebas-neue text-primary text-lg md:text-xl">Suivi de Prospection</CardTitle>
+                <CardTitle className="font-bebas-neue text-primary text-lg md:text-xl">Suivi</CardTitle>
                 {dealer.prospectionStatus && <Badge variant={statusInfo.variant as any} className="text-xs md:text-sm px-2 py-0.5 md:px-3 md:py-1">{statusInfo.label}</Badge>}
             </CardHeader>
             <CardContent className="p-3 md:p-4 pt-0">

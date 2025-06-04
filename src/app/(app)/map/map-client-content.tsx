@@ -440,7 +440,7 @@ export default function MapClientContent({ initialEntities }: MapClientContentPr
                     <Pin
                       background={isHovered ? `hsl(var(--primary) / 0.8)` : pinStyle.background}
                       borderColor={isHovered ? `hsl(var(--primary))` : (pinStyle.borderColor || pinStyle.background)}
-                      glyphColor={pinStyle.glyphColor}
+ glyphColor={pinStyle.glyphColor}
                       scale={isHovered ? 1.2 : 1}
                     />
                   </AdvancedMarker>

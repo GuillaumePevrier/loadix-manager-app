@@ -76,6 +76,7 @@ import Image from 'next/image';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
 // Import de DetailItem (assumé défini ailleurs dans votre code)
+// Assurez-vous que DetailItem gère l'affichage de tableaux ou de listes pour 'Matières injectées' si nécessaire
 import { DetailItem } from '@/components/item/DetailItem';
 
 
@@ -421,7 +422,7 @@ const MethanisationSiteTabsContent: React.FC<MethanisationSiteTabsContentProps> 
   return (
     <Tabs defaultValue="details" className="w-full">
       <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-3 md:mb-4 bg-muted/50 p-1 h-auto">
-        <TabsTrigger
+ <TabsTrigger
           value="details"
           className="text-xs sm:text-sm px-2 py-1.5"
         >
@@ -439,8 +440,9 @@ const MethanisationSiteTabsContent: React.FC<MethanisationSiteTabsContentProps> 
         >
           Suivi
         </TabsTrigger>
+ {/* Section Médias */}
         <TabsTrigger
-          value="medias"
+ value="medias"
           className="text-xs sm:text-sm px-2 py-1.5"
         >
           Médias
@@ -451,6 +453,13 @@ const MethanisationSiteTabsContent: React.FC<MethanisationSiteTabsContentProps> 
         >
           Relations
         </TabsTrigger>
+ <TabsTrigger
+ value="technique"
+ className="text-xs sm:text-sm px-2 py-1.5"
+ >
+ Suivi Technique
+ </TabsTrigger>
+
       </TabsList>
 
       {/* Section Détails */}
@@ -879,6 +888,62 @@ const MethanisationSiteTabsContent: React.FC<MethanisationSiteTabsContentProps> 
         </AlertDialog>
       </TabsContent>
 
+      {/* Section Suivi Technique */}
+      <TabsContent value="technique" className="space-y-3 md:space-y-4">
+        <Card>
+ <CardHeader className="p-3 md:p-4">
+ <CardTitle className="font-bebas-neue text-primary text-lg md:text-xl">
+ Détails Techniques
+ </CardTitle>
+ </CardHeader>
+ <CardContent className="p-3 md:p-4 pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              {methanisationSite.currentProduction !== undefined && methanisationSite.currentProduction !== null && (
+                <DetailItem
+                  icon={Power} // Icône à choisir
+                  label="Production actuelle"
+                  value={`${methanisationSite.currentProduction} m³`} // Unité à adapter si nécessaire
+                />
+              )}
+              {methanisationSite.maxCapacity !== undefined && methanisationSite.maxCapacity !== null && (
+                <DetailItem
+                  icon={Info} // Icône à choisir
+                  label="Capacité maximale"
+                  value={`${methanisationSite.maxCapacity} m³`} // Unité à adapter si nécessaire
+                />
+              )}
+              {methanisationSite.creationYear !== undefined && methanisationSite.creationYear !== null && (
+                <DetailItem
+                  icon={CalendarDays} // Icône à choisir
+                  label="Année de création"
+                  value={methanisationSite.creationYear}
+                />
+              )}
+              {methanisationSite.injectedMaterials && methanisationSite.injectedMaterials.length > 0 ? (
+                <DetailItem
+                  icon={Truck} // Icône à choisir
+                  label="Matières injectées"
+                  value={methanisationSite.injectedMaterials.join(', ')}
+                />
+              ) : (
+                <DetailItem
+                  icon={Truck} // Icône à choisir
+                  label="Matières injectées"
+                  value={<span className="italic text-muted-foreground">Non spécifié</span>}
+                />
+              )}
+              {methanisationSite.exploitationArea !== undefined && methanisationSite.exploitationArea !== null && (
+                <DetailItem
+                  icon={MapIcon} // Icône à choisir
+                  label="Superficie de l’exploitation"
+                  value={`${methanisationSite.exploitationArea} hectares`} // Unité à adapter si nécessaire
+                />
+              )}
+              {/* Ajouter d'autres champs techniques si nécessaire */}
+            </div>
+ </CardContent>
+ </Card>
+      </TabsContent>
       {/* Section Médias */}
       <TabsContent value="medias" className="space-y-3 md:space-y-4">
         <Card>

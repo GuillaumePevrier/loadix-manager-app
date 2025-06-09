@@ -45,8 +45,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
 
   const [formData, setFormData] = useState<Partial<UpdateDealerData>>({
     tractorBrands: [],
-    machineTypes: [],
-    servicesOffered: [],
+ machineTypes: [],
+ servicesOffered: [],
     galleryUris: [], 
     documentUris: [], 
   });
@@ -90,8 +90,8 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
           contactPerson: dealerData.contactPerson || '',
           brandSign: dealerData.brandSign || '',
           branchName: dealerData.branchName || '',
-          machineTypes: dealerData.machineTypes || [],
-          tractorBrands: dealerData.tractorBrands || [],
+ machineTypes: Array.isArray(dealerData.machineTypes) ? dealerData.machineTypes : [],
+ tractorBrands: Array.isArray(dealerData.tractorBrands) ? dealerData.tractorBrands : [],
           prospectionStatus: dealerData.prospectionStatus || 'none',
           geoLocation: dealerData.geoLocation, 
           servicesOffered: dealerData.servicesOffered || [],
@@ -134,7 +134,15 @@ export default function EditDealerPage({ params: paramsPromise }: EditDealerPage
   };
 
   const handleSelectChange = (name: keyof UpdateDealerData, value: string | string[]) => {
-    setFormData(prevData => ({ ...prevData, [name]: value as any }));
+ setFormData(prevData => {
+      if (name === 'machineTypes' || name === 'tractorBrands') {
+        // Ensure the value is always an array for these specific fields
+        const arrayValue = Array.isArray(value) ? value : [];
+        return { ...prevData, [name]: arrayValue as any };
+      }
+      // For other fields, set the value directly
+ return { ...prevData, [name]: value as any };
+ });
   };
 
 

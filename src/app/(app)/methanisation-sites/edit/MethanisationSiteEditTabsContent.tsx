@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { MethanisationSite, Comment } from '@/types';
+import type { MethanisationSite, Comment, MatterType } from '@/types';
 import { geocodeAddress } from '@/services/geocodingService';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -50,7 +50,13 @@ import { useAuth } from '@/context/auth-context';
 
 interface MethanisationSiteEditTabsContentProps {
   methanisationSite: MethanisationSite;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  handleInputChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | {
+      target: {
+        name: string;
+        value: any;
+      };
+    }) => void;
   onGeoLocationChange: (location: { lat: number; lng: number } | null) => void;
   onDataRefresh: () => void;
 }
@@ -417,15 +423,28 @@ const MethanisationSiteEditTabsContent: React.FC<MethanisationSiteEditTabsConten
     loadDealers();
   }, [toast]);
 
+  const matterTypeOptions: { value: MatterType; label: string }[] = [
+    { value: 'agricultural_waste', label: 'Déchets agricoles' },
+    { value: 'slurry', label: 'Lisier' },
+    { value: 'food_waste', label: 'Déchets alimentaires' },
+    { value: 'intermediate_crops', label: 'Cultures intermédiaires' },
+    { value: 'industrial_organic_residues', label: 'Résidus industriels organiques' },
+    // Add other matter types as needed based on your MatterType enum
+  ];
 
   return (
     <Tabs defaultValue="details" className="w-full">
-      <TabsList className="grid w-full grid-cols-5 mb-3 md:mb-4 bg-muted/50 p-1 h-auto">
+      <TabsList className="grid w-full grid-cols-6 mb-3 md:mb-4 bg-muted/50 p-1 h-auto text-center">
         <TabsTrigger value="details" className="text-xs sm:text-sm px-2 py-1.5">Détails</TabsTrigger>
         <TabsTrigger value="contact" className="text-xs sm:text-sm px-2 py-1.5">Contact</TabsTrigger>
-        <TabsTrigger value="suivi" className="text-xs sm:text-sm px-2 py-1.5">Suivi</TabsTrigger>
+        <TabsTrigger value="suivi" className="text-xs sm:text-sm px-2 py-1.5">Suivi Activité</TabsTrigger>
         <TabsTrigger value="medias" className="text-xs sm:text-sm px-2 py-1.5">Médias</TabsTrigger>
         <TabsTrigger value="relations" className="text-xs sm:text-sm px-2 py-1.5">Relations</TabsTrigger>
+ {/* Section Suivi Technique */}
+ <TabsTrigger
+ value="technique"
+ className="text-xs sm:text-sm px-2 py-1.5"
+ >Suivi Technique</TabsTrigger>
       </TabsList>
 
       <TabsContent value="details" className="space-y-4">
@@ -751,6 +770,63 @@ const MethanisationSiteEditTabsContent: React.FC<MethanisationSiteEditTabsConten
         </Card>
       </TabsContent>
 
+      {/* Section Suivi Technique */}
+      <TabsContent value="technique" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Données Techniques</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="currentProduction">Production actuelle (m³)</Label>
+              <Input
+                id="currentProduction"
+                name="currentProduction"
+                type="number"
+                value={site.currentProduction || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="maxCapacity">Capacité maximale (m³)</Label>
+              <Input
+                id="maxCapacity"
+                name="maxCapacity"
+                type="number"
+                value={site.maxCapacity || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="creationYear">Année de création</Label>
+              <Input
+                id="creationYear"
+                name="creationYear"
+                type="number"
+                value={site.creationYear || ""}
+                onChange={handleInputChange}
+                placeholder="e.g., 2021"
+              />
+            </div>
+            <div>
+              <Label htmlFor="injectedMatters">Matières injectées</Label>
+              <MultiSelect
+                options={matterTypeOptions}
+                value={(site.injectedMatters || []) as string[]} // Cast to string[] for MultiSelect
+                onValueChange={(selectedValues) => {
+                  handleInputChange({
+                    target: {
+                      name: 'injectedMatters',
+                      value: selectedValues as MatterType[], // Cast back to MatterType[]
+                    },
+                  });
+                }}
+                placeholder="Sélectionner les matières..."
+              />
+            </div>
+          </CardContent>
+        </Card>
+ </TabsContent>
       <TabsContent value="medias" className="space-y-4">
         <Card>
           <CardHeader>

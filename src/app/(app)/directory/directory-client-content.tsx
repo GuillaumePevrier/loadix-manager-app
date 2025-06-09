@@ -6,7 +6,7 @@ import type { AppEntity, EntityType, Dealer } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input'; // Added missing import for MethanisationSite
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import type { MethanisationSite } from '@/types';
 interface DirectoryClientContentProps {
   initialEntities: AppEntity[];
 }
@@ -41,6 +41,68 @@ const entityCreationRoutes: Record<EntityType, string> = {
   'dealer': '/dealers/create',
   'loadix-unit': '/loadix-units/create',
   'site': '/methanisation-sites/create', // Updated route
+};
+
+// Define column configurations for each entity type
+const columnConfigs: Record<EntityType | 'all', { key: keyof AppEntity | string; label: string; className?: string; render?: (entity: AppEntity) => React.ReactNode }[]> = {
+  'all': [
+    { key: 'name', label: 'Nom', className: 'w-[180px] min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'entityType', label: 'Type', className: 'min-w-[120px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'city', label: 'Ville', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer' },
+    { key: 'country', label: 'Pays', className: 'min-w-[100px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer' },
+    { key: 'dealerColumns', label: 'Détails Concessionnaire', className: 'min-w-[300px] px-2 py-2 text-xs hidden lg:table-cell',
+      render: (entity) => {
+        if (entity.entityType === 'dealer') {
+          const dealer = entity as Dealer;
+          return (
+            <>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {dealer.tractorBrands && dealer.tractorBrands.length > 0
+                  ? dealer.tractorBrands.slice(0, 2).map(brand => <Badge key={brand} variant="secondary" className="mr-1 text-xs">{brand}</Badge>)
+                  : <span className="text-muted-foreground text-xs italic">N/A</span>}
+                {dealer.tractorBrands && dealer.tractorBrands.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {dealer.machineTypes && dealer.machineTypes.length > 0
+                  ? dealer.machineTypes.slice(0, 2).map(type => <Badge key={type} variant="secondary" className="mr-1 text-xs">{type}</Badge>)
+                  : <span className="text-muted-foreground text-xs italic">N/A</span>}
+                {dealer.machineTypes && dealer.machineTypes.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
+              </div>
+            </>
+          );
+        }
+        return null;
+      }
+    },
+    { key: 'brandSign', label: 'Enseigne', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer' },
+    { key: 'branchName', label: 'Succursale', className: 'min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell' },
+  ],
+  'dealer': [
+    { key: 'name', label: 'Nom', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'city', label: 'Ville', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'country', label: 'Pays', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer' },
+    { key: 'tractorBrands', label: 'Marques Tracteurs', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'machineTypes', label: 'Types Machines', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'brandSign', label: 'Enseigne', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell' },
+    { key: 'branchName', label: 'Succursale', className: 'min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell' },
+  ],
+  'site': [
+    { key: 'name', label: 'Nom du Site', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'city', label: 'Ville', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'productionActuelle', label: 'Production Actuelle (Nm³/h)', className: 'min-w-[120px] px-2 py-2 text-xs hidden sm:table-cell' },
+    { key: 'capaciteMaximale', label: 'Capacité Max (Nm³/h)', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'anneeCreation', label: 'Année Création', className: 'min-w-[100px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'matieresInjectees', label: 'Matières Injectées', className: 'min-w-[200px] px-2 py-2 text-xs hidden lg:table-cell' },
+    { key: 'superficieExploitation', label: 'Superficie (ha)', className: 'min-w-[100px] px-2 py-2 text-xs hidden xl:table-cell' },
+  ],
+  'loadix-unit': [
+     { key: 'name', label: 'Nom Engin', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
+     { key: 'model', label: 'Modèle', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
+     { key: 'year', label: 'Année', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell' },
+     { key: 'dealerId', label: 'Concessionnaire ID', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' }, // Potentially link to dealer
+     { key: 'status', label: 'Statut', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell' },
+     // Add other relevant loadix-unit columns
+  ]
 };
 
 export default function DirectoryClientContent({
@@ -66,18 +128,24 @@ export default function DirectoryClientContent({
   const router = useRouter();
 
   const filteredAndSortedEntities = useMemo(() => {
-    return initialEntities.filter(entity => {
+    const filtered = initialEntities.filter(entity => {
       const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;      
       const searchMatch =
         entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) || // Moved outside entity type specific checks
+        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity.country?.toLowerCase().includes(searchTerm.toLowerCase())) || // Added country to search
         (entity.entityType === 'dealer' && ((entity as Dealer).tractorBrands?.some((brand: string) => brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (entity as Dealer).machineTypes?.some((type: string) => type.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (entity as Dealer).brandSign?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entity as Dealer).branchName?.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (entity.entityType === 'site' && ( // Corrected unbalanced parentheses
+        (entity.entityType === 'site' && ( // Added technical fields to search for sites
+        (entity as MethanisationSite).productionActuelle?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity as MethanisationSite).capaciteMaximale?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entity as MethanisationSite).anneeCreation?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ((entity as MethanisationSite).matieresInjectees?.join(', ').toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (entity as MethanisationSite).superficieExploitation?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entity as MethanisationSite).postalCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entity as MethanisationSite).country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (entity as MethanisationSite).contactEmail?.toLowerCase().includes(searchTerm.toLowerCase()))); // Corrected unbalanced parentheses

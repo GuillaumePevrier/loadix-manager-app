@@ -1,10 +1,9 @@
+'use client';
 
-"use client";
-
-import * as React from "react";
-import { Check, ChevronsUpDown, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import * as React from 'react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -12,13 +11,13 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 
 export interface MultiSelectOption {
   value: string;
@@ -26,55 +25,74 @@ export interface MultiSelectOption {
 }
 
 interface MultiSelectProps {
-  options: MultiSelectOption[];
-  value: string[];
-  onValueChange: (value: string[]) => void;
+  /** Liste d'options disponibles */
+  options?: MultiSelectOption[];
+  /** Valeurs sélectionnées (alias de `value`) */
+  selected?: string[];
+  /** Valeurs sélectionnées */
+  value?: string[];
+  /** Callback appelé à chaque changement de sélection */
+  onValueChange?: (value: string[]) => void;
+  /** Alias pour onValueChange, pour compatibilité */
+  onChange?: (value: string[]) => void;
+  /** Texte d'indication lorsque rien n'est sélectionné */
   placeholder?: string;
   className?: string;
   triggerClassName?: string;
 }
 
 export function MultiSelect({
-  options,
+  options = [],
   value,
+  selected,
   onValueChange,
-  placeholder = "Sélectionner...",
+  onChange,
+  placeholder = 'Sélectionner...',
   className,
   triggerClassName,
 }: MultiSelectProps) {
+  const validOptions = Array.isArray(options) ? options : [];
   const [open, setOpen] = React.useState(false);
 
-  // Add useState hook to manage selected state
-  const [selected, setSelected] = React.useState<string[]>(value);
+  // Combine les alias `value` et `selected`
+  const current = Array.isArray(value)
+    ? value
+    : Array.isArray(selected)
+    ? selected
+    : [];
 
-  // Update internal state when the external value prop changes
-  React.useEffect(() => {
-    setSelected(value);
-  }, [value]);
+  // Choisit le handler disponible
+  const handleChange = React.useCallback(
+    (next: string[]) => {
+      if (onValueChange) return onValueChange(next);
+      if (onChange) return onChange(next);
+      console.warn('MultiSelect: aucun callback onValueChange ou onChange fourni');
+    },
+    [onValueChange, onChange]
+  );
 
   const handleSelect = (optionValue: string) => {
-    onValueChange(
- selected.includes(optionValue)
- ? selected.filter((item) => item !== optionValue)
- : [...selected, optionValue]
- );
+    const updated = current.includes(optionValue)
+      ? current.filter((item) => item !== optionValue)
+      : [...current, optionValue];
+    handleChange(updated);
   };
 
-  const selectedLabels = selected
-    .map((val) => options.find((option) => option.value === val)?.label)
+  const selectedLabels = current
+    .map((val) => validOptions.find((o) => o.value === val)?.label)
     .filter(Boolean) as string[];
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn('space-y-2', className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className={cn("w-full justify-between h-auto min-h-10", triggerClassName)}
+            className={cn('w-full justify-between h-auto min-h-10', triggerClassName)}
             onClick={() => setOpen(!open)}
-          > {/* Corrected line */}
+          >
             <span className="flex flex-wrap gap-1 items-center">
               {selectedLabels.length > 0 ? (
                 selectedLabels.map((label) => (
@@ -83,10 +101,10 @@ export function MultiSelect({
                     key={label}
                     className="mr-1 mb-1 px-2 py-0.5"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent popover from opening/closing
-                      const valueToDeselect = options.find(opt => opt.label === label)?.value;
+                      e.stopPropagation();
+                      const valueToDeselect = validOptions.find((opt) => opt.label === label)?.value;
                       if (valueToDeselect) {
- handleSelect(valueToDeselect);
+                        handleSelect(valueToDeselect);
                       }
                     }}
                   >
@@ -107,26 +125,21 @@ export function MultiSelect({
             <CommandList>
               <CommandEmpty>Aucun résultat.</CommandEmpty>
               <CommandGroup>
-                {options && Array.isArray(options) && options.map((option) => (
- <CommandItem
- key={option.value}
- value={option.label} // Search by label
- onSelect={() => {
- handleSelect(option.value);
- // setOpen(false); // Keep popover open for multiple selections // Corrected line
- }}
- >
- <Check
- className={cn(
- "mr-2 h-4 w-4",
- selected.includes(option.value)
- ? "opacity-100"
- : "opacity-0"
- )}
- />
- {option.label}
- </CommandItem>
- ))}
+                {validOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => handleSelect(option.value)}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        current.includes(option.value) ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
               </CommandGroup>
             </CommandList>
           </Command>

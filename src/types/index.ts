@@ -74,6 +74,7 @@ export interface MethanisationSite extends BaseEntity {
   entityType: 'methanisation-site';
   capacity?: string; 
   operator?: string; 
+  status: 'active' | 'maintenance' | 'inactive' | 'in_stock' | 'sold';
   startDate?: string; 
  legalType: string; // Type juridique
  siretSiren: string; // SIRET / SIREN

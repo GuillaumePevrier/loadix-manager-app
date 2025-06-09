@@ -27,8 +27,8 @@ export interface MultiSelectOption {
 
 interface MultiSelectProps {
   options: MultiSelectOption[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
+  value: string[];
+  onValueChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
   triggerClassName?: string;
@@ -36,23 +36,32 @@ interface MultiSelectProps {
 
 export function MultiSelect({
   options,
-  selected,
-  onChange,
+  value,
+  onValueChange,
   placeholder = "Sélectionner...",
   className,
   triggerClassName,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  const handleSelect = (value: string) => {
-    const newSelected = selected.includes(value)
-      ? selected.filter((item) => item !== value)
-      : [...selected, value];
-    onChange(newSelected);
+  // Add useState hook to manage selected state
+  const [selected, setSelected] = React.useState<string[]>(value);
+
+  // Update internal state when the external value prop changes
+  React.useEffect(() => {
+    setSelected(value);
+  }, [value]);
+
+  const handleSelect = (optionValue: string) => {
+    onValueChange(
+ selected.includes(optionValue)
+ ? selected.filter((item) => item !== optionValue)
+ : [...selected, optionValue]
+ );
   };
 
   const selectedLabels = selected
-    .map((value) => options.find((option) => option.value === value)?.label)
+    .map((val) => options.find((option) => option.value === val)?.label)
     .filter(Boolean) as string[];
 
   return (
@@ -65,7 +74,7 @@ export function MultiSelect({
             aria-expanded={open}
             className={cn("w-full justify-between h-auto min-h-10", triggerClassName)}
             onClick={() => setOpen(!open)}
-          >
+          > {/* Corrected line */}
             <span className="flex flex-wrap gap-1 items-center">
               {selectedLabels.length > 0 ? (
                 selectedLabels.map((label) => (
@@ -77,7 +86,7 @@ export function MultiSelect({
                       e.stopPropagation(); // Prevent popover from opening/closing
                       const valueToDeselect = options.find(opt => opt.label === label)?.value;
                       if (valueToDeselect) {
-                        handleSelect(valueToDeselect);
+ handleSelect(valueToDeselect);
                       }
                     }}
                   >
@@ -98,26 +107,26 @@ export function MultiSelect({
             <CommandList>
               <CommandEmpty>Aucun résultat.</CommandEmpty>
               <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label} // Search by label
-                    onSelect={() => {
-                      handleSelect(option.value);
-                      // setOpen(false); // Keep popover open for multiple selections
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        selected.includes(option.value)
-                          ? "opacity-100"
-                          : "opacity-0"
-                      )}
-                    />
-                    {option.label}
-                  </CommandItem>
-                ))}
+                {options && Array.isArray(options) && options.map((option) => (
+ <CommandItem
+ key={option.value}
+ value={option.label} // Search by label
+ onSelect={() => {
+ handleSelect(option.value);
+ // setOpen(false); // Keep popover open for multiple selections // Corrected line
+ }}
+ >
+ <Check
+ className={cn(
+ "mr-2 h-4 w-4",
+ selected.includes(option.value)
+ ? "opacity-100"
+ : "opacity-0"
+ )}
+ />
+ {option.label}
+ </CommandItem>
+ ))}
               </CommandGroup>
             </CommandList>
           </Command>

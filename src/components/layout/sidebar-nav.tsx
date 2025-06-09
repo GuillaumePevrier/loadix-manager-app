@@ -1,4 +1,3 @@
-// src/components/layout/sidebar-nav.tsx
 'use client';
 
 import React from 'react';
@@ -19,8 +18,8 @@ const navItems = [
     icon: Wrench,
     isGroup: true,
     subItems: [
-        { href: '/service-records', label: 'Carnet de Santé', icon: FileText, tooltip: 'Carnets de Santé' },
-        { href: '/map', label: 'Carte Interactive', icon: MapPin, tooltip: 'Carte Interactive' },
+      { href: '/directory', label: 'Toutes Entités', icon: List, tooltip: 'Répertoire de toutes les Entités' },
+      { href: '/map', label: 'Carte Interactive', icon: MapPin, tooltip: 'Carte Interactive' },
     ],
   },
   {
@@ -28,10 +27,8 @@ const navItems = [
     icon: Settings, // Changed to a more generic 'Settings' or 'Tool' icon
     isGroup: true,
     subItems: [
-        { href: '/forms/prevention-plan', label: 'Plan de Prévention', icon: FileText, tooltip: 'Formulaire Plan de Prévention' },
-        { href: '/support', label: 'AI Support', icon: BotMessageSquare, tooltip: 'Outil Support AI' },
         { href: '/tools/bulk-import', label: 'Import en Masse', icon: UploadCloud, tooltip: 'Import en Masse de Données' },
-    ],
+ ],
   },
   {
     label: 'Paramètres',
@@ -39,14 +36,6 @@ const navItems = [
     isGroup: true,
     subItems: [
         { href: '/settings/users', label: 'Utilisateurs', icon: UserCheck, tooltip: 'Gestion Utilisateurs' },
-    ],
-  },
-  {
-    label: 'Répertoire',
-    icon: List,
-    isGroup: true,
-    subItems: [
-        { href: '/directory', label: 'Toutes Entités', icon: List, tooltip: 'Répertoire de toutes les Entités' },
     ],
   },
 ];

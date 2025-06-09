@@ -1,9 +1,22 @@
 // src/services/methanisationSiteService.ts
-import { db } from '@/lib/firebase'; // Assuming you have a firebase config and initialized app exported as db
-import { collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, Timestamp, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; // Votre configuration Firebase exportant "db"
+import {
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  Timestamp,
+  getDocs,
+  arrayUnion,
+  arrayRemove,
+} from 'firebase/firestore';
 
-// Define a basic type for Methanisation Site data to start with
-// You will want to expand this later to include all site-specific fields
+// -----------------------------
+// Types de base pour les sites
+// -----------------------------
+
 interface BaseMethanisationSiteData {
   name: string;
   address: string;
@@ -17,26 +30,39 @@ interface BaseMethanisationSiteData {
   contactEmail?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  // Add other common fields like comments, galleryUris, etc. later
+  comments?: Comment[];       // Tableau de commentaires (type importé ci-dessous)
+  galleryUris?: string[];
+  documentUris?: string[];
+  // (Vous pourrez ajouter d'autres champs spécifiques au fur et à mesure)
 }
 
-// Type for data when creating a new site (before adding timestamps and ID)
-// Omit generated fields like id, createdAt, updatedAt
-export type NewMethanisationSiteData = Omit<BaseMethanisationSiteData, 'createdAt' | 'updatedAt'>;
+export type NewMethanisationSiteData = Omit<
+  BaseMethanisationSiteData,
+  'createdAt' | 'updatedAt'
+>;
 
-// Type for data returned from Firestore (includes ID and timestamps)
 export interface MethanisationSite extends BaseMethanisationSiteData {
   id: string;
+  status?: 'planned' | 'construction' | 'active' | 'maintenance' | 'inactive';
 }
+
+// -----------------------------
+// Référence à la collection
+// -----------------------------
 
 const methanisationSitesCollection = collection(db, 'methanisationSites');
 
+// -----------------------------
+// CRUD principaux
+// -----------------------------
+
 /**
- * Adds a new methanisation site to Firestore.
- * @param siteData - The data for the new site (excluding ID and timestamps).
- * @returns A Promise that resolves with the added site data including its ID.
+ * Ajoute un nouveau site de méthanisation dans Firestore.
+ * On génère les timestamps côté client avec Timestamp.now().
  */
-export const addMethanisationSite = async (siteData: NewMethanisationSiteData): Promise<MethanisationSite> => {
+export const addMethanisationSite = async (
+  siteData: NewMethanisationSiteData
+): Promise<MethanisationSite> => {
   try {
     const now = Timestamp.now();
     const siteToAdd: BaseMethanisationSiteData = {
@@ -44,25 +70,26 @@ export const addMethanisationSite = async (siteData: NewMethanisationSiteData): 
       createdAt: now,
       updatedAt: now,
     };
+
     const docRef = await addDoc(methanisationSitesCollection, siteToAdd);
     const newSite: MethanisationSite = {
       id: docRef.id,
       ...siteToAdd,
     };
-    console.log("New methanisation site added with ID:", docRef.id);
+    console.log('Nouveau site ajouté avec ID :', docRef.id);
     return newSite;
   } catch (error) {
-    console.error("Error adding methanisation site:", error);
-    throw new Error("Failed to add methanisation site.");
+    console.error('Erreur lors de l’ajout du site :', error);
+    throw new Error('Erreur : impossible d’ajouter le site de méthanisation.');
   }
 };
 
 /**
- * Retrieves a methanisation site by its ID from Firestore.
- * @param id - The ID of the site to retrieve.
- * @returns A Promise that resolves with the site data, or null if not found.
+ * Récupère un site de méthanisation par son ID.
  */
-export const getMethanisationSiteById = async (id: string): Promise<MethanisationSite | null> => {
+export const getMethanisationSiteById = async (
+  id: string
+): Promise<MethanisationSite | null> => {
   try {
     const docRef = doc(methanisationSitesCollection, id);
     const docSnap = await getDoc(docRef);
@@ -73,25 +100,25 @@ export const getMethanisationSiteById = async (id: string): Promise<Methanisatio
         id: docSnap.id,
         ...siteData,
       };
-      console.log("Methanisation site found:", site);
+      console.log('Site trouvé :', site);
       return site;
     } else {
-      console.log("No such methanisation site found with ID:", id);
+      console.log(`Aucun site trouvé avec l’ID : ${id}`);
       return null;
     }
   } catch (error) {
-    console.error("Error getting methanisation site by ID:", id, error);
-    throw new Error(`Failed to get methanisation site with ID ${id}.`);
+    console.error(`Erreur en récupérant le site avec l’ID ${id} :`, error);
+    throw new Error(`Erreur : impossible de récupérer le site ${id}.`);
   }
 };
 
 /**
- * Updates an existing methanisation site in Firestore.
- * @param id - The ID of the site to update.
- * @param updateData - The data to update (partial data is fine).
- * @returns A Promise that resolves when the update is complete.
+ * Met à jour un site existant. Les champs partiels sont autorisés.
  */
-export const updateMethanisationSite = async (id: string, updateData: Partial<BaseMethanisationSiteData>): Promise<void> => {
+export const updateMethanisationSite = async (
+  id: string,
+  updateData: Partial<BaseMethanisationSiteData>
+): Promise<void> => {
   try {
     const docRef = doc(methanisationSitesCollection, id);
     const now = Timestamp.now();
@@ -100,36 +127,29 @@ export const updateMethanisationSite = async (id: string, updateData: Partial<Ba
       updatedAt: now,
     };
     await updateDoc(docRef, dataToUpdate);
-    console.log("Methanisation site updated with ID:", id);
+    console.log('Site mis à jour avec ID :', id);
   } catch (error) {
-    console.error("Error updating methanisation site with ID:", id, error);
-    throw new Error(`Failed to update methanisation site with ID ${id}.`);
+    console.error(`Erreur en mettant à jour le site ${id} :`, error);
+    throw new Error(`Erreur : impossible de mettre à jour le site ${id}.`);
   }
 };
 
 /**
- * Deletes a methanisation site from Firestore.
- * @param id - The ID of the site to delete.
- * @returns A Promise that resolves when the deletion is complete.
+ * Supprime un site de méthanisation.
  */
 export const deleteMethanisationSite = async (id: string): Promise<void> => {
   try {
     const docRef = doc(methanisationSitesCollection, id);
     await deleteDoc(docRef);
-    console.log("Methanisation site deleted with ID:", id);
+    console.log('Site supprimé avec ID :', id);
   } catch (error) {
-    console.error("Error deleting methanisation site with ID:", id, error);
-    throw new Error(`Failed to delete methanisation site with ID ${id}.`);
+    console.error(`Erreur en supprimant le site ${id} :`, error);
+    throw new Error(`Erreur : impossible de supprimer le site ${id}.`);
   }
 };
 
-// You may also want functions to list all sites, query sites by location, etc.
-// Example:
-// export const getAllMethanisationSites = async (): Promise<MethanisationSite[]> => { ... };
-
 /**
- * Retrieves all methanisation sites from Firestore.
- * @returns A Promise that resolves with an array of MethanisationSite objects.
+ * Récupère tous les sites de méthanisation.
  */
 export const getAllMethanisationSites = async (): Promise<MethanisationSite[]> => {
   try {
@@ -141,10 +161,75 @@ export const getAllMethanisationSites = async (): Promise<MethanisationSite[]> =
         sites.push({ id: docSnap.id, ...siteData });
       }
     });
-    console.log(`Found ${sites.length} methanisation sites.`);
+    console.log(`Trouvé ${sites.length} sites de méthanisation.`);
     return sites;
   } catch (error) {
-    console.error("Error getting all methanisation sites:", error);
-    throw new Error("Failed to get all methanisation sites.");
+    console.error('Erreur en récupérant tous les sites :', error);
+    throw new Error('Erreur : impossible de récupérer tous les sites.');
+  }
+};
+
+// -----------------------------
+// Gestion des commentaires
+// -----------------------------
+
+import type { Comment } from '@/types';
+
+/**
+ * Ajoute un nouveau commentaire à un site.
+ * IMPORTANT : on utilise strictement Timestamp.now() pour le champ "date".
+ *             Aucune utilisation de serverTimestamp() ici.
+ */
+export const addCommentToMethanisationSite = async (
+  siteId: string,
+  userName: string,
+  text: string,
+  statusAtEvent: MethanisationSite['status']
+): Promise<void> => {
+  const siteRef = doc(methanisationSitesCollection, siteId);
+
+  // Générer un ID unique localement pour le commentaire
+  const newComment: Comment = {
+    id: doc(methanisationSitesCollection, '_').id, // génère un ID unique
+    userName,
+    text,
+    date: Timestamp.now(),            // <— pas de serverTimestamp ici
+    statusAtEvent,                    // on stocke le statut au moment du commentaire
+    // ajoutez ici d’autres champs si votre type Comment en a (imageUrl, fileUrl, etc.)
+  };
+
+  try {
+    await updateDoc(siteRef, {
+      comments: arrayUnion(newComment),
+      // Si statusAtEvent n’est pas 'none', on met à jour le statut principal du site
+      status: statusAtEvent !== 'none' ? statusAtEvent : undefined,
+      updatedAt: Timestamp.now(),     // Mettre à jour le updatedAt du site
+    });
+    console.log(`Commentaire ajouté au site ${siteId}`, newComment);
+  } catch (error) {
+    console.error('Erreur en ajoutant le commentaire :', error);
+    throw error;
+  }
+};
+
+/**
+ * Supprime un commentaire d’un site.
+ * On s’appuie sur arrayRemove pour extraire l’objet complet du tableau "comments".
+ */
+export const deleteCommentFromMethanisationSite = async (
+  siteId: string,
+  commentToDelete: Comment
+): Promise<void> => {
+  const siteRef = doc(methanisationSitesCollection, siteId);
+
+  try {
+    await updateDoc(siteRef, {
+      comments: arrayRemove(commentToDelete),
+      updatedAt: Timestamp.now(), // mettre à jour updatedAt en même temps
+    });
+    console.log(`Commentaire supprimé du site ${siteId}`, commentToDelete);
+  } catch (error) {
+    console.error('Erreur en supprimant le commentaire :', error);
+    throw error;
   }
 };

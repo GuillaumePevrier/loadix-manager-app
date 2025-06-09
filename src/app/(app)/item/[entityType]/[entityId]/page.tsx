@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import DealerTabsContent from './DealerTabsContent';
 import DeleteButton from '@/components/item/delete-button';
 import MethanisationSiteFormContent from '@/components/methanisation-sites/MethanisationSiteFormContent';
+import MethanisationSiteTabsContent from './MethanisationSiteTabsContent';
 
 interface ItemPageProps {
   params: Promise<{ entityType: EntityType; entityId: string }>;
@@ -143,7 +144,7 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
       );
     }
     if (currentEntity.entityType === 'methanisation-site') {
-      return <MethanisationSiteFormContent site={currentEntity as any} isEditing={false} />;
+      return <MethanisationSiteTabsContent methanisationSite={currentEntity} onDataRefresh={fetchData} />;
     }
     return <p className="text-muted-foreground">Type d'entité non pris en charge.</p>;
   };

@@ -1,27 +1,27 @@
 "use client";
-
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation'; // Keep this import
 import type { MethanisationSite } from '@/types';
 import { getMethanisationSiteById, updateMethanisationSite } from '@/services/methanisationSiteService';
-import { ChevronLeft, Loader2, CircleAlert } from 'lucide-react';
+import { ChevronLeft, Loader2, CircleAlert, Factory } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import MethanisationSiteFormContent from '@/components/methanisation-sites/MethanisationSiteFormContent';
+import MethanisationSiteEditTabsContent from '@/app/(app)/methanisation-sites/edit/MethanisationSiteEditTabsContent';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 
 interface EditMethanisationSitePageProps {
   params: { siteId: string };
 }
-
 export default function EditMethanisationSitePage({ params }: EditMethanisationSitePageProps) {
-  const { siteId } = params;
-  const [site, setSite] = React.useState<MethanisationSite | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const resolvedParams = React.use(params);
+  const { siteId } = resolvedParams;
+  const [site, setSite] = useState<MethanisationSite | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const router = useRouter();
@@ -51,6 +51,12 @@ export default function EditMethanisationSitePage({ params }: EditMethanisationS
     }
   }, [siteId]);
 
+  const handleGeoLocationChange = (geoLocation: { lat: number; lng: number } | null) => {
+    setSite(prevSite => {
+      if (!prevSite) return null;
+      return { ...prevSite, geoLocation: geoLocation };
+    });
+  };
   React.useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -93,8 +99,8 @@ export default function EditMethanisationSitePage({ params }: EditMethanisationS
       // Prepare the data to save. Convert string representations of dates back if necessary
       // depending on what your update service expects.
       const siteToSave = { ...site };
-
-      await updateMethanisationSite(siteToSave);
+      // Pass the site ID and the data to update
+      await updateMethanisationSite(siteToSave.id, siteToSave);
       // Optionally show a success message
       router.push(`/item/methanisation-site/${siteId}`); // Redirect back to detail page
     } catch (err) {
@@ -138,14 +144,20 @@ export default function EditMethanisationSitePage({ params }: EditMethanisationS
         </Link>
       </Button>
 
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">Modifier Site de Méthanisation</h1>
+      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 p-3 bg-primary/10 rounded-full">
+             <Factory className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold truncate">Modifier Site de Méthanisation: {site.name}</h1>
+        </div>
+        <Badge variant="secondary" className="w-fit px-3 py-1 text-sm font-semibold">Site de Méthanisation</Badge>
       </header>
 
-      <MethanisationSiteFormContent
-        site={site}
-        isEditing={true}
+      <MethanisationSiteEditTabsContent
+        methanisationSite={site}
         handleInputChange={handleInputChange}
+        onGeoLocationChange={handleGeoLocationChange}
       />
 
 

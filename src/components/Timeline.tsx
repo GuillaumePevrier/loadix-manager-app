@@ -76,10 +76,10 @@ const Timeline: React.FC<TimelineProps> = ({ comments }) => {
         placeholder="Rechercher dans le fil d'actualité..."
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
-        className="mb-4 w-1/2"
+        className="mb-4 w-full bg-transparent text-gray-200 placeholder-gray-400 border-gray-600 focus:border-blue-500 focus:ring-blue-500 transition-all duration-300 animated-border"
       />
 
-      <ScrollArea className="w-full h-[300px] relative">
+      <ScrollArea className="w-full h-[400px] relative">
         <div
           ref={scrollRef}
           className="flex items-center h-full px-8 relative"
@@ -88,12 +88,12 @@ const Timeline: React.FC<TimelineProps> = ({ comments }) => {
           onPointerUp={onPointerUp}
         >
           {/* Ligne animée */}
-          <div className="timeline-line absolute inset-x-0 top-1/2 h-1 z-0 rounded" />
+          <div className="timeline-line absolute inset-x-0 top-1/2 h-1 z-0 rounded -translate-y-1/2" />
 
           {filtered.map((c, i) => (
             <div key={c.id ?? i} className="relative z-10 flex flex-col items-center mx-10">
               {/* Bulle de commentaire */}
-              <div className={`w-64 flex-shrink-0 overflow-hidden rounded-lg bg-white shadow-lg border border-transparent gradient-border-animation ${i % 2 === 0 ? 'mb-[4rem]' : 'mt-[4rem]'}`}>                
+              <div className={`w-64 flex-shrink-0 overflow-hidden rounded-lg bg-white shadow-lg border border-transparent gradient-border-animation ${i % 2 === 0 ? 'mb-[5rem]' : 'mt-[5rem]'}`}>
                 <CardHeader className="px-4 py-2">
                   <h4 className="text-sm font-semibold text-gray-800">{c.userName}</h4>
                   <div className="text-xs text-gray-500">{new Date(c.date).toLocaleString('fr-FR')}</div>

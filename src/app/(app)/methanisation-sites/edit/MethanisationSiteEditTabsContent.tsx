@@ -76,7 +76,7 @@ const getSiteStatusBadgeInfo = (
     case 'maintenance':
       return { variant: 'default', label: 'Maintenance 🛠️' };
     case 'none':
-      return { variant: 'secondary', label: 'Aucun Statut' };
+      return { variant: 'outline', label: 'Statut Inconnu' };
     default:
       return { variant: 'outline', label: 'Statut Inconnu' };
   }

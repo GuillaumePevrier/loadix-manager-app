@@ -1,16 +1,15 @@
-
-'use client';
+'use client'
 
 import { useState, useMemo } from 'react';
-import type { AppEntity, EntityType, Dealer } from '@/types';
+import type { AppEntity, EntityType, Dealer, MethanisationSite } from '@/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input'; // Added missing import for MethanisationSite
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Search as SearchIcon, Filter, Building, Truck, Home as SiteIcon } from 'lucide-react'; // Renamed Search to SearchIcon, using Home as Site icon
+import { PlusCircle, Search as SearchIcon, Filter, Building, Truck, Home as SiteIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,369 +19,259 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { MethanisationSite } from '@/types';
+
 interface DirectoryClientContentProps {
   initialEntities: AppEntity[];
 }
 
-const entityTypeTranslations: Record<EntityType, string> = {
+const entityTypeTranslations: Record<EntityType | 'all', string> = {
+  'all': 'Tous',
   'dealer': 'Concessionnaire',
   'loadix-unit': 'Engin LOADIX',
   'site': 'Site de Méthanisation',
 };
 
-const entityTypeBadgeColors: Record<EntityType, "default" | "secondary" | "destructive" | "outline" | "success" | null > = {
+const entityTypeBadgeColors: Record<EntityType, "default" | "secondary" | "destructive" | "outline" | "success" | null> = {
   'dealer': 'default',
   'loadix-unit': 'destructive',
-  'site': 'secondary', // Using secondary for Site, can be changed
+  'site': 'secondary',
 };
 
-const entityCreationRoutes: Record<EntityType, string> = {
+const entityCreationRoutes: Record<Exclude<EntityType, 'all'>, string> = {
   'dealer': '/dealers/create',
   'loadix-unit': '/loadix-units/create',
-  'site': '/methanisation-sites/create', // Updated route
+  'site': '/methanisation-sites/create',
 };
 
-// Define column configurations for each entity type
-const columnConfigs: Record<EntityType | 'all', { key: keyof AppEntity | string; label: string; className?: string; render?: (entity: AppEntity) => React.ReactNode }[]> = {
+// Column configurations per entity type
+const columnConfigs: Record<EntityType | 'all', {
+  key: string;
+  label: string;
+  className?: string;
+  render?: (entity: AppEntity) => React.ReactNode;
+}[]> = {
   'all': [
     { key: 'name', label: 'Nom', className: 'w-[180px] min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
-    { key: 'entityType', label: 'Type', className: 'min-w-[120px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'entityType', label: 'Type', className: 'min-w-[120px] px-2 py-2 text-xs cursor-pointer',
+      render: e => <Badge variant={entityTypeBadgeColors[e.entityType] || 'outline'} className="text-xs">{entityTypeTranslations[e.entityType]}</Badge>
+    },
     { key: 'city', label: 'Ville', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer' },
     { key: 'country', label: 'Pays', className: 'min-w-[100px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer' },
-    { key: 'dealerColumns', label: 'Détails Concessionnaire', className: 'min-w-[300px] px-2 py-2 text-xs hidden lg:table-cell',
-      render: (entity) => {
-        if (entity.entityType === 'dealer') {
-          const dealer = entity as Dealer;
-          return (
-            <>
-              <div className="flex flex-wrap gap-1 mb-1">
-                {dealer.tractorBrands && dealer.tractorBrands.length > 0
-                  ? dealer.tractorBrands.slice(0, 2).map(brand => <Badge key={brand} variant="secondary" className="mr-1 text-xs">{brand}</Badge>)
-                  : <span className="text-muted-foreground text-xs italic">N/A</span>}
-                {dealer.tractorBrands && dealer.tractorBrands.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {dealer.machineTypes && dealer.machineTypes.length > 0
-                  ? dealer.machineTypes.slice(0, 2).map(type => <Badge key={type} variant="secondary" className="mr-1 text-xs">{type}</Badge>)
-                  : <span className="text-muted-foreground text-xs italic">N/A</span>}
-                {dealer.machineTypes && dealer.machineTypes.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
-              </div>
-            </>
-          );
-        }
-        return null;
-      }
-    },
-    { key: 'brandSign', label: 'Enseigne', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer' },
-    { key: 'branchName', label: 'Succursale', className: 'min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell' },
+    { key: 'department', label: 'Département', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer' },
   ],
   'dealer': [
     { key: 'name', label: 'Nom', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
     { key: 'city', label: 'Ville', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
     { key: 'country', label: 'Pays', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer' },
-    { key: 'tractorBrands', label: 'Marques Tracteurs', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' },
-    { key: 'machineTypes', label: 'Types Machines', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' },
-    { key: 'brandSign', label: 'Enseigne', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell' },
-    { key: 'branchName', label: 'Succursale', className: 'min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell' },
+    { key: 'department', label: 'Département', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer',
+      render: e => {
+        const dept = (e as Dealer).department;
+        return dept ? dept : <span className="text-muted-foreground text-xs italic">N/A</span>;
+      }
+    },
+    { key: 'tractorBrands', label: 'Marques Tracteurs', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell',
+      render: e => {
+        const brands = (e as Dealer).tractorBrands;
+        if (!brands?.length) return <span className="text-muted-foreground text-xs italic">N/A</span>;
+        return (<>
+          {brands.slice(0,2).map(b => <Badge key={b} variant="secondary" className="mr-1 mb-1 text-xs">{b}</Badge>)}
+          {brands.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
+        </>);
+      }
+    },
+    { key: 'machineTypes', label: 'Types Machines', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell',
+      render: e => {
+        const types = (e as Dealer).machineTypes;
+        if (!types?.length) return <span className="text-muted-foreground text-xs italic">N/A</span>;
+        return (<>
+          {types.slice(0,2).map(t => <Badge key={t} variant="secondary" className="mr-1 mb-1 text-xs">{t}</Badge>)}
+          {types.length > 2 && <Badge variant="outline" className="text-xs">...</Badge>}
+        </>);
+      }
+    },
+    { key: 'brandSign', label: 'Enseigne', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell',
+      render: e => (e as Dealer).brandSign || <span className="text-muted-foreground text-xs italic">N/A</span>
+    },
+    { key: 'branchName', label: 'Succursale', className: 'min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell',
+      render: e => (e as Dealer).branchName || <span className="text-muted-foreground text-xs italic">N/A</span>
+    },
   ],
   'site': [
     { key: 'name', label: 'Nom du Site', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
     { key: 'city', label: 'Ville', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
-    { key: 'productionActuelle', label: 'Production Actuelle (Nm³/h)', className: 'min-w-[120px] px-2 py-2 text-xs hidden sm:table-cell' },
-    { key: 'capaciteMaximale', label: 'Capacité Max (Nm³/h)', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'department', label: 'Département', className: 'min-w-[120px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer',
+      render: e => {
+        const dept = (e as MethanisationSite).department;
+        return dept ? dept : <span className="text-muted-foreground text-xs italic">N/A</span>;
+      }
+    },
+    { key: 'productionActuelle', label: 'Production (Nm³/h)', className: 'min-w-[120px] px-2 py-2 text-xs hidden sm:table-cell' },
+    { key: 'capaciteMaximale', label: 'Capacité Max', className: 'min-w-[120px] px-2 py-2 text-xs hidden md:table-cell' },
     { key: 'anneeCreation', label: 'Année Création', className: 'min-w-[100px] px-2 py-2 text-xs hidden md:table-cell' },
-    { key: 'matieresInjectees', label: 'Matières Injectées', className: 'min-w-[200px] px-2 py-2 text-xs hidden lg:table-cell' },
+    { key: 'matieresInjectees', label: 'Matières Injectées', className: 'min-w-[200px] px-2 py-2 text-xs hidden lg:table-cell',
+      render: e => {
+        const items = (e as MethanisationSite).matieresInjectees;
+        return items?.join(', ') || <span className="text-muted-foreground text-xs italic">N/A</span>;
+      }
+    },
     { key: 'superficieExploitation', label: 'Superficie (ha)', className: 'min-w-[100px] px-2 py-2 text-xs hidden xl:table-cell' },
   ],
   'loadix-unit': [
-     { key: 'name', label: 'Nom Engin', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
-     { key: 'model', label: 'Modèle', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
-     { key: 'year', label: 'Année', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell' },
-     { key: 'dealerId', label: 'Concessionnaire ID', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' }, // Potentially link to dealer
-     { key: 'status', label: 'Statut', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell' },
-     // Add other relevant loadix-unit columns
-  ]
+    { key: 'name', label: 'Nom Engin', className: 'w-[200px] min-w-[180px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'model', label: 'Modèle', className: 'min-w-[150px] px-2 py-2 text-xs cursor-pointer' },
+    { key: 'year', label: 'Année', className: 'min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell' },
+    { key: 'dealerId', label: 'Concessionnaire ID', className: 'min-w-[150px] px-2 py-2 text-xs hidden md:table-cell' },
+    { key: 'status', label: 'Statut', className: 'min-w-[120px] px-2 py-2 text-xs hidden lg:table-cell' },
+  ],
 };
 
-export default function DirectoryClientContent({
-  initialEntities: rawInitialEntities,
-}: DirectoryClientContentProps) {
-  // Convert complex objects (like Timestamps) to plain objects (like ISO strings)
-  // before passing them to the client component.
-  const initialEntities = useMemo(() => rawInitialEntities.map(entity => ({
-    ...entity,
-    createdAt: entity.createdAt instanceof Date
- ? entity.createdAt.toISOString()
- : (entity.createdAt && typeof entity.createdAt.toDate === 'function'
- ? entity.createdAt.toDate().toISOString() : entity.createdAt || null),
-    updatedAt: entity.updatedAt instanceof Date
- ? entity.updatedAt.toISOString()
- : (entity.updatedAt && typeof entity.updatedAt.toDate === 'function'
- ? entity.updatedAt.toDate().toISOString() : entity.updatedAt || null),
+export default function DirectoryClientContent({ initialEntities: rawInitialEntities }: DirectoryClientContentProps) {
+  const initialEntities = useMemo(() => rawInitialEntities.map(e => ({
+    ...e,
+    createdAt: e.createdAt instanceof Date ? e.createdAt.toISOString() : (e.createdAt as any)?.toDate?.()?.toISOString() || e.createdAt,
+    updatedAt: e.updatedAt instanceof Date ? e.updatedAt.toISOString() : (e.updatedAt as any)?.toDate?.()?.toISOString() || e.updatedAt,
   })), [rawInitialEntities]);
-  const [searchTerm, setSearchTerm] = useState(''); // Make sure to initialize state correctly
+
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedEntityType, setSelectedEntityType] = useState<EntityType | 'all'>('all');
-  const [sortColumn, setSortColumn] = useState<keyof AppEntity | null>('name');
+  const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
 
-  const filteredAndSortedEntities = useMemo(() => {
-    const filtered = initialEntities.filter(entity => {
-      const typeMatch = selectedEntityType === 'all' || entity.entityType === selectedEntityType;      
-      const searchMatch =
-        entity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entity.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entityTypeTranslations[entity.entityType] || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity.city?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (entity.country?.toLowerCase().includes(searchTerm.toLowerCase())) || // Added country to search
-        (entity.entityType === 'dealer' && ((entity as Dealer).tractorBrands?.some((brand: string) => brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (entity as Dealer).machineTypes?.some((type: string) => type.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (entity as Dealer).brandSign?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as Dealer).branchName?.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (entity.entityType === 'site' && ( // Added technical fields to search for sites
-        (entity as MethanisationSite).productionActuelle?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as MethanisationSite).capaciteMaximale?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as MethanisationSite).anneeCreation?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ((entity as MethanisationSite).matieresInjectees?.join(', ').toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (entity as MethanisationSite).superficieExploitation?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as MethanisationSite).postalCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as MethanisationSite).country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (entity as MethanisationSite).contactEmail?.toLowerCase().includes(searchTerm.toLowerCase()))); // Corrected unbalanced parentheses
-      return typeMatch && searchMatch;
+  const filteredAndSorted = useMemo(() => {
+    let filtered = initialEntities.filter(e => {
+      const matchesType = selectedEntityType === 'all' || e.entityType === selectedEntityType;
+      const term = searchTerm.toLowerCase();
+      const baseMatch = e.name.toLowerCase().includes(term) || e.id.toLowerCase().includes(term)
+        || (e.city?.toLowerCase().includes(term)) || (e.country?.toLowerCase().includes(term));
+      const deptMatch = (e as any).department?.toLowerCase().includes(term);
+      const dealerMatch = e.entityType === 'dealer' && ((e as Dealer).tractorBrands || []).some(b => b.toLowerCase().includes(term))
+        || ((e as Dealer).machineTypes || []).some(t => t.toLowerCase().includes(term));
+      const siteMatch = e.entityType === 'site' && ((e as MethanisationSite).matieresInjectees || []).join(', ').toLowerCase().includes(term);
+      return matchesType && (baseMatch || deptMatch || dealerMatch || siteMatch);
     });
 
-    if (!sortColumn) {
-      return filtered;
+    if (sortColumn) {
+      filtered.sort((a, b) => {
+        const aVal = (a as any)[sortColumn] || '';
+        const bVal = (b as any)[sortColumn] || '';
+        const cmp = typeof aVal === 'string' && typeof bVal === 'string'
+          ? aVal.localeCompare(bVal)
+          : aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        return sortDirection === 'asc' ? cmp : -cmp;
+      });
     }
-
-    return [...filtered].sort((a, b) => {
-      const aValue = a[sortColumn as keyof AppEntity];
-      const bValue = b[sortColumn as keyof AppEntity];
-
-      if (aValue === bValue) {
-        return 0;
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
- return aValue.localeCompare(bValue);
-      } else if (aValue < bValue) {
- comparison = -1;
-      } else {
- comparison = 1;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
+    return filtered;
   }, [initialEntities, searchTerm, selectedEntityType, sortColumn, sortDirection]);
-  const entityTypes: EntityType[] = ['dealer', 'loadix-unit', 'site']; // Updated entityTypes
 
-  const handleRowClick = (entity: AppEntity) => {
-    if (entity.entityType === 'site') {
-      router.push(`/item/methanisation-site/${entity.id}`);
-    } else {
-      router.push(`/item/${entity.entityType}/${entity.id}`);
-    }
+  const entityTypes: (EntityType | 'all')[] = ['all', 'dealer', 'loadix-unit', 'site'];
+
+  const onSort = (key: string) => {
+    if (sortColumn === key) setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortColumn(key); setSortDirection('asc'); }
   };
 
-  const handleCreateNew = (type: EntityType) => {
-    router.push(entityCreationRoutes[type]);
+  const handleRowClick = (e: AppEntity) => {
+    const base = e.entityType === 'site' ? 'methanisation-site' : e.entityType;
+    router.push(`/item/${base}/${e.id}`);
   };
 
   return (
-    <div className="flex flex-col h-full p-1 md:p-2">
-      <div className="flex flex-col sm:flex-row items-center mb-2 md:mb-3 gap-2">
-        <div className="relative flex-grow w-full sm:w-auto rounded-md p-[1.5px] bg-gradient-to-r from-primary via-accent to-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all duration-300">
+    <div className="flex flex-col h-full p-2">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row items-center mb-3 gap-2">
+        <div className="relative flex-grow bg-gradient-to-r from-primary via-accent to-primary rounded-md p-[1.5px] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-card transition-all">
           <div className="relative flex items-center">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="absolute left-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Rechercher par nom, ville, ID, type..."
+              placeholder="Rechercher par nom, ville, département..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full bg-card border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none h-10 text-sm rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 w-full bg-card border-0 focus-visible:ring-0 h-10 text-sm rounded-[calc(var(--radius)-1.5px)] placeholder:text-muted-foreground/70"
             />
           </div>
         </div>
         <div className="flex items-center w-full sm:w-auto flex-shrink-0">
           <Filter className="h-4 w-4 text-muted-foreground mr-2 hidden sm:block" />
-          <Select
-            value={selectedEntityType}
-            onValueChange={(value) => setSelectedEntityType(value as EntityType | 'all')}
-          >
-            <SelectTrigger className="w-full sm:w-[200px] bg-input/50 border-border/70 focus:bg-input h-10 text-sm">
+          <Select value={selectedEntityType} onValueChange={v => setSelectedEntityType(v as EntityType | 'all')}>
+            <SelectTrigger className="w-full sm:w-[200px] h-10 text-sm">
               <SelectValue placeholder="Filtrer par type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les types</SelectItem>
               {entityTypes.map(type => (
-                <SelectItem key={type} value={type}>
-                  {entityTypeTranslations[type]}
-                </SelectItem>
+                <SelectItem key={type} value={type}>{entityTypeTranslations[type]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="default" className="w-full sm:w-auto h-10 text-sm flex-shrink-0">
+            <Button variant="default" className="h-10 text-sm flex items-center">
               <PlusCircle className="mr-2 h-4 w-4" />
               Créer une fiche
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Choisir le type de fiche</DropdownMenuLabel>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Type de fiche</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleCreateNew('dealer')}>
-              <Building className="mr-2 h-4 w-4" />
-              <span>Concessionnaire</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleCreateNew('loadix-unit')}>
-              <Truck className="mr-2 h-4 w-4" />
-              <span>Engin LOADIX</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleCreateNew('site')}> {/* Updated type and label */}
-              <SiteIcon className="mr-2 h-4 w-4" />
-              <span>Site</span> {/* Updated label */}
-            </DropdownMenuItem>
+            {(['dealer','loadix-unit','site'] as EntityType[]).map(type => (
+              <DropdownMenuItem key={type} onClick={() => router.push(entityCreationRoutes[type])}>
+                {{
+                  'dealer': <><Building className="mr-2 h-4 w-4"/>Concessionnaire</>,
+                  'loadix-unit': <><Truck className="mr-2 h-4 w-4"/>Engin LOADIX</>,
+                  'site': <><SiteIcon className="mr-2 h-4 w-4"/>Site Méthanisation</>
+                }[type]}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
+      {/* Table */}
       <ScrollArea className="flex-grow">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="w-[180px] min-w-[150px] px-2 py-2 text-xs cursor-pointer"
-                  onClick={() => {
-                    if (sortColumn === 'name') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortColumn('name');
-                      setSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div className="flex items-center">
-                    Nom
-                    {sortColumn === 'name' && (
-                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="min-w-[120px] px-2 py-2 text-xs cursor-pointer"
-                  onClick={() => {
-                    if (sortColumn === 'entityType') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortColumn('entityType');
-                      setSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div className="flex items-center">
-                    Type
-                    {sortColumn === 'entityType' && (
-                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="min-w-[100px] px-2 py-2 text-xs hidden sm:table-cell cursor-pointer"
-                  onClick={() => {
-                    if (sortColumn === 'city') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortColumn('city');
-                      setSortDirection('asc');
-                    }
-                  }}
-                >
-                  <div className="flex items-center">
-                    Ville
-                    {sortColumn === 'city' && (
-                      sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="min-w-[100px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer"
-                  onClick={() => {
-                    if (sortColumn === 'country') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortColumn('country');
-                      setSortDirection('asc');
-                    }
-                  }}>Pays</TableHead>
-                <TableHead className="min-w-[150px] px-2 py-2 text-xs hidden lg:table-cell">Marques Tracteurs</TableHead>
-                <TableHead className="min-w-[150px] px-2 py-2 text-xs hidden lg:table-cell">Types Machines</TableHead>
-                <TableHead
-                  className="min-w-[120px] px-2 py-2 text-xs hidden md:table-cell cursor-pointer"
-                  onClick={() => {
-                    if (sortColumn === 'brandSign') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortColumn('brandSign');
-                      setSortDirection('asc');
-                    }
-                  }}>Enseigne</TableHead>
-                <TableHead className="min-w-[120px] px-2 py-2 text-xs hidden xl:table-cell">Succursale</TableHead>
+                {columnConfigs[selectedEntityType].map(col => (
+                  <TableHead
+                    key={col.key}
+                    className={col.className}
+                    onClick={() => onSort(col.key)}
+                  >
+                    <div className="flex items-center">
+                      {col.label}
+                      {sortColumn === col.key && (sortDirection === 'asc' ? <span className="ml-1">▲</span> : <span className="ml-1">▼</span>)}
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedEntities.length > 0 ? (
-                filteredAndSortedEntities.map((entity) => (
-                  <TableRow
-                    key={entity.id}
-                    onClick={() => handleRowClick(entity)}
-                    className="cursor-pointer hover:bg-primary/10"
-                  >
-                    <TableCell className="font-medium px-2 py-1.5 text-xs">{entity.name}</TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs">
-                      <Badge variant={entityTypeBadgeColors[entity.entityType] || 'outline'} className="text-xs">
-                        {entityTypeTranslations[entity.entityType] || entity.entityType}
-                      </Badge>
+              {filteredAndSorted.length ? filteredAndSorted.map(entity => (
+                <TableRow key={entity.id} className="cursor-pointer hover:bg-primary/10" onClick={() => handleRowClick(entity)}>
+                  {columnConfigs[selectedEntityType].map(col => (
+                    <TableCell key={col.key} className="px-2 py-1.5 text-xs">
+                      {col.render ? col.render(entity) : ((entity as any)[col.key] ?? <span className="text-muted-foreground italic">N/A</span>)}
                     </TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden sm:table-cell">{entity.city}</TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden md:table-cell">{entity.country}</TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden lg:table-cell">
-                      {entity.entityType === 'dealer' && (entity as Dealer).tractorBrands && (entity as Dealer).tractorBrands!.length > 0
-                        ? (entity as Dealer).tractorBrands!.slice(0,2).map(brand => <Badge key={brand} variant="secondary" className="mr-1 mb-1 text-xs">{brand}</Badge>)
-                        : entity.entityType === 'dealer' ? <span className="text-muted-foreground text-xs italic">N/A</span> : ''}
-                      {(entity.entityType === 'dealer' && (entity as Dealer).tractorBrands && (entity as Dealer).tractorBrands!.length > 2) && <Badge variant="outline" className="text-xs">...</Badge>}
-                    </TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden lg:table-cell">
-                       {entity.entityType === 'dealer' && (entity as Dealer).machineTypes && (entity as Dealer).machineTypes!.length > 0
-                        ? (entity as Dealer).machineTypes!.slice(0,2).map(type => <Badge key={type} variant="secondary" className="mr-1 mb-1 text-xs">{type}</Badge>)
-                        : entity.entityType === 'dealer' ? <span className="text-muted-foreground text-xs italic">N/A</span> : ''}
-                      {(entity.entityType === 'dealer' && (entity as Dealer).machineTypes && (entity as Dealer).machineTypes!.length > 2) && <Badge variant="outline" className="text-xs">...</Badge>}
-                    </TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden md:table-cell">
-                      {entity.entityType === 'dealer' ? ((entity as Dealer).brandSign || <span className="text-muted-foreground text-xs italic">N/A</span>) : ''}
-                    </TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs hidden xl:table-cell">
-                      {entity.entityType === 'dealer' ? ((entity as Dealer).branchName || <span className="text-muted-foreground text-xs italic">N/A</span>) : ''}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+                  ))}
+                </TableRow>
+              )) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    Aucune entité trouvée. Essayez d'ajuster vos filtres ou votre recherche.
+                  <TableCell colSpan={columnConfigs[selectedEntityType].length} className="h-24 text-center text-muted-foreground">
+                    Aucune entité trouvée. Ajustez vos filtres ou votre recherche.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
- </ScrollArea>
-      {filteredAndSortedEntities.length > 0 && (
-        <p className="text-xs text-muted-foreground text-center md:text-right pt-1.5">
-          Affichage de {filteredAndSortedEntities.length} sur {initialEntities.length} entités.
+      </ScrollArea>
+
+      {filteredAndSorted.length > 0 && (
+        <p className="text-xs text-muted-foreground text-right pt-2">
+          Affichage de {filteredAndSorted.length} sur {initialEntities.length} entités.
         </p>
       )}
     </div>

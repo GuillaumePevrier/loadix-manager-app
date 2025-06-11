@@ -1,5 +1,9 @@
 // src/services/methanisationSiteService.ts
-import { db } from '@/lib/firebase'; // Votre configuration Firebase exportant "db"
+import { db, allConfigPresent } from '@/lib/firebase'; // Votre configuration Firebase exportant "db"
+
+if (!allConfigPresent) {
+  throw new Error('Firebase configuration is not present. Cannot use Firestore.');
+}
 import {
   collection,
   doc,
@@ -28,6 +32,7 @@ interface BaseMethanisationSiteData {
     lng: number;
   };
   contactEmail?: string;
+  department?: string; // Added department field
   createdAt: Timestamp;
   updatedAt: Timestamp;
   comments?: Comment[];       // Tableau de commentaires (type importé ci-dessous)
@@ -96,7 +101,13 @@ export const getMethanisationSiteById = async (
 
     if (docSnap.exists()) {
       const siteData = docSnap.data() as BaseMethanisationSiteData;
+      const comments = siteData.comments?.map(comment => ({
+        ...comment,
+        date: (comment.date as any)?.toDate?.().toISOString() || new Date().toISOString(), // Convert Timestamp to ISO string
+      })) || [];
+
       const site: MethanisationSite = {
+        comments: comments as Comment[], // Cast back to Comment[]
         id: docSnap.id,
         ...siteData,
       };
@@ -157,7 +168,15 @@ export const getAllMethanisationSites = async (): Promise<MethanisationSite[]> =
     const sites: MethanisationSite[] = [];
     querySnapshot.forEach((docSnap) => {
       if (docSnap.exists()) {
-        const siteData = docSnap.data() as BaseMethanisationSiteData;
+        const siteData = docSnap.data() as Omit<BaseMethanisationSiteData, 'createdAt' | 'updatedAt' | 'comments'> & {
+ comments?: ({date: Timestamp | string} & Omit<Comment, 'date'>)[];
+          createdAt: Timestamp;
+ updatedAt: Timestamp;
+        };
+        const comments = siteData.comments?.map(comment => ({
+          ...comment,
+          date: (comment.date as any)?.toDate?.().toISOString() || new Date().toISOString(), // Convert Timestamp to ISO string
+        })) || [];
         sites.push({ id: docSnap.id, ...siteData });
       }
     });

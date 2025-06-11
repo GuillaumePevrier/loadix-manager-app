@@ -77,6 +77,16 @@ export default function ItemDetailPage({ params }: ItemPageProps) {
         if (fetched.updatedAt && typeof fetched.updatedAt !== 'string' && typeof fetched.updatedAt !== 'number' && 'toDate' in fetched.updatedAt) {
  fetched.updatedAt = (fetched.updatedAt as any).toDate().toISOString();
         }
+
+        // Convert timestamps in comments for methanisation sites
+        if (entityType === 'methanisation-site' && fetched.comments) {
+          fetched.comments = fetched.comments.map(comment => {
+            if (comment.date && typeof comment.date !== 'string' && typeof comment.date !== 'number' && 'toDate' in comment.date) {
+              comment.date = (comment.date as any).toDate().toISOString();
+            }
+            return comment;
+          });
+        }
  setCurrentEntity(fetched);
       }
     } catch (err) {

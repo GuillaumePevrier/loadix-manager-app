@@ -10,7 +10,7 @@ export type EntityType = 'dealer' | 'loadix-unit' | 'methanisation-site';
 
 export interface Comment {
   userName: string;
-  date: string; // ISO Date string
+  date: string | { seconds: number; nanoseconds: number }; // ISO Date string or Firestore Timestamp
   text: string;
   imageUrl?: string;
   fileUrl?: string;
